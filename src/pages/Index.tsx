@@ -1,14 +1,215 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Sparkles, TrendingUp, Gift } from 'lucide-react';
+import { Layout } from '@/components/layout/Layout';
+import { EventCard } from '@/components/events/EventCard';
+import { EventFiltersComponent } from '@/components/events/EventFilters';
+import { PromotionCard } from '@/components/promotions/PromotionCard';
+import { Button } from '@/components/ui/button';
+import { mockEvents, mockPromotions } from '@/data/mockData';
+import { EventFilters, EventCategory } from '@/types';
 
-const Index = () => {
+export default function Index() {
+  const [filters, setFilters] = useState<EventFilters>({
+    search: '',
+    category: 'all',
+    date: 'all',
+    price: 'all',
+  });
+
+  // Фильтрация событий
+  const filteredEvents = useMemo(() => {
+    return mockEvents.filter((event) => {
+      // Поиск
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = 
+          event.title.toLowerCase().includes(searchLower) ||
+          event.organizerName.toLowerCase().includes(searchLower) ||
+          event.location.toLowerCase().includes(searchLower) ||
+          event.tags.some(tag => tag.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
+
+      // Категория
+      if (filters.category !== 'all' && event.category !== filters.category) {
+        return false;
+      }
+
+      // Дата
+      if (filters.date !== 'all') {
+        const eventDate = new Date(event.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (filters.date === 'today') {
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          if (eventDate < today || eventDate >= tomorrow) return false;
+        } else if (filters.date === 'week') {
+          const weekEnd = new Date(today);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+          if (eventDate < today || eventDate >= weekEnd) return false;
+        } else if (filters.date === 'month') {
+          const monthEnd = new Date(today);
+          monthEnd.setMonth(monthEnd.getMonth() + 1);
+          if (eventDate < today || eventDate >= monthEnd) return false;
+        }
+      }
+
+      // Цена
+      if (filters.price !== 'all') {
+        if (filters.price === 'free' && event.price !== null) return false;
+        if (filters.price === 'paid' && event.price === null) return false;
+      }
+
+      return true;
+    });
+  }, [filters]);
+
+  const featuredEvents = mockEvents.filter(e => e.isFeatured);
+  const topPromotions = mockPromotions.slice(0, 3);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
-};
+    <Layout>
+      {/* Hero секция */}
+      <section className="hero-gradient py-12 md:py-16">
+        <div className="container">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+              <span className="text-gradient-gold font-display">Афиша</span>
+              <br />
+              <span className="text-foreground">Жезказган</span>
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              События, акции и сообщества твоего города. Узнавай первым о самом интересном!
+            </p>
+          </div>
 
-export default Index;
+          {/* Фильтры */}
+          <div className="max-w-4xl mx-auto">
+            <EventFiltersComponent filters={filters} onChange={setFilters} />
+          </div>
+        </div>
+      </section>
+
+      {/* Главные события */}
+      {featuredEvents.length > 0 && !filters.search && filters.category === 'all' && (
+        <section className="py-8 md:py-12">
+          <div className="container">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <h2 className="text-2xl font-bold">Главные события</h2>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {featuredEvents.slice(0, 2).map((event) => (
+                <EventCard key={event.id} event={event} variant="featured" />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Все события */}
+      <section className="py-8 md:py-12">
+        <div className="container">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h2 className="text-2xl font-bold">
+                {filters.search || filters.category !== 'all' 
+                  ? `Найдено: ${filteredEvents.length}` 
+                  : 'Все события'}
+              </h2>
+            </div>
+          </div>
+
+          {filteredEvents.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-lg text-muted-foreground mb-4">
+                По вашему запросу ничего не найдено
+              </p>
+              <Button variant="outline" onClick={() => setFilters({
+                search: '',
+                category: 'all',
+                date: 'all',
+                price: 'all',
+              })}>
+                Сбросить фильтры
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Актуальные скидки */}
+      <section className="py-8 md:py-12 bg-muted/30">
+        <div className="container">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Gift className="w-5 h-5 text-teal" />
+              <h2 className="text-2xl font-bold">Актуальные скидки</h2>
+            </div>
+            <Link to="/promotions">
+              <Button variant="ghost" className="gap-1">
+                Все акции
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {topPromotions.map((promo) => (
+              <PromotionCard key={promo.id} promotion={promo} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA для бизнеса */}
+      <section className="py-12 md:py-16">
+        <div className="container">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-gold-dark p-8 md:p-12">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+                Развивайте свой бизнес вместе с нами
+              </h2>
+              <p className="text-primary-foreground/80 mb-6">
+                Размещайте события и акции, находите партнеров, общайтесь с предпринимателями города в VIP-чате
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/auth">
+                  <Button size="lg" variant="secondary" className="btn-glow">
+                    Зарегистрировать бизнес
+                  </Button>
+                </Link>
+                <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                  Узнать больше
+                </Button>
+              </div>
+            </div>
+            
+            {/* Декоративный орнамент */}
+            <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
+              <svg viewBox="0 0 200 200" className="w-full h-full">
+                <pattern id="kazakh-pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M20 0 L40 20 L20 40 L0 20 Z" fill="currentColor" />
+                </pattern>
+                <rect width="200" height="200" fill="url(#kazakh-pattern)" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  );
+}

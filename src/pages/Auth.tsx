@@ -1,0 +1,268 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Mail, Lock, User, Phone, Building2, Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+
+type AuthTab = 'login' | 'register';
+type UserType = 'resident' | 'entrepreneur';
+
+export default function Auth() {
+  const [tab, setTab] = useState<AuthTab>('login');
+  const [userType, setUserType] = useState<UserType>('resident');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    // TODO: Интеграция с Lovable Cloud для аутентификации
+    setTimeout(() => setIsLoading(false), 1500);
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Левая панель - форма */}
+      <div className="flex-1 flex flex-col justify-center px-4 py-12 sm:px-6 lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-sm">
+          {/* Назад */}
+          <Link 
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            На главную
+          </Link>
+
+          {/* Логотип */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary-foreground">Ж</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Афиша Жезказган</h1>
+              <p className="text-sm text-muted-foreground">
+                {tab === 'login' ? 'Войдите в аккаунт' : 'Создайте аккаунт'}
+              </p>
+            </div>
+          </div>
+
+          <Tabs value={tab} onValueChange={(v) => setTab(v as AuthTab)} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+              <TabsTrigger value="login">Вход</TabsTrigger>
+              <TabsTrigger value="register">Регистрация</TabsTrigger>
+            </TabsList>
+
+            {/* Вход */}
+            <TabsContent value="login">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="name@example.com" 
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Пароль</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="password" 
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <a href="#" className="text-sm text-primary hover:underline">
+                    Забыли пароль?
+                  </a>
+                </div>
+
+                <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
+                  {isLoading ? 'Вход...' : 'Войти'}
+                </Button>
+              </form>
+            </TabsContent>
+
+            {/* Регистрация */}
+            <TabsContent value="register">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Тип пользователя */}
+                <div className="space-y-2">
+                  <Label>Тип аккаунта</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setUserType('resident')}
+                      className={cn(
+                        'p-4 rounded-xl border-2 text-left transition-all',
+                        userType === 'resident'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <User className="w-6 h-6 mb-2 text-primary" />
+                      <p className="font-medium">Житель</p>
+                      <p className="text-xs text-muted-foreground">
+                        Просмотр событий и акций
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserType('entrepreneur')}
+                      className={cn(
+                        'p-4 rounded-xl border-2 text-left transition-all',
+                        userType === 'entrepreneur'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <Building2 className="w-6 h-6 mb-2 text-teal" />
+                      <p className="font-medium">Бизнес</p>
+                      <p className="text-xs text-muted-foreground">
+                        Размещение событий
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Имя</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="name" 
+                      type="text" 
+                      placeholder="Ваше имя" 
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="reg-email" 
+                      type="email" 
+                      placeholder="name@example.com" 
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Телефон</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      placeholder="+7 (7XX) XXX-XX-XX" 
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {userType === 'entrepreneur' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="business">Название бизнеса</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input 
+                        id="business" 
+                        type="text" 
+                        placeholder="Название компании" 
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password">Пароль</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="reg-password" 
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Минимум 8 символов"
+                      className="pl-10 pr-10"
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
+                  {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
+                </Button>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  Нажимая кнопку, вы соглашаетесь с{' '}
+                  <a href="#" className="text-primary hover:underline">условиями использования</a>
+                  {' '}и{' '}
+                  <a href="#" className="text-primary hover:underline">политикой конфиденциальности</a>
+                </p>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Правая панель - изображение */}
+      <div className="hidden lg:block relative w-0 flex-1">
+        <img
+          className="absolute inset-0 h-full w-full object-cover"
+          src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200"
+          alt="Жезказган"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-teal/60 mix-blend-multiply" />
+        <div className="absolute inset-0 flex items-center justify-center p-12">
+          <div className="text-center text-white">
+            <h2 className="text-4xl font-bold font-display mb-4">
+              Добро пожаловать в сообщество
+            </h2>
+            <p className="text-xl text-white/90 max-w-md">
+              Присоединяйтесь к тысячам жителей и предпринимателей Жезказгана
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
