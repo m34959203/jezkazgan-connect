@@ -16,7 +16,12 @@ const app = new Hono();
 app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://afisha.kz'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://afisha.kz',
+    'https://jezkazgan-connect-production.up.railway.app',
+  ],
   credentials: true,
 }));
 
