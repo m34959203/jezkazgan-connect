@@ -12,6 +12,12 @@ import EventDetails from "./pages/EventDetails";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+// Admin pages
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from "./pages/admin/UsersPage";
+import AdminBusinesses from "./pages/admin/BusinessesPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -28,6 +34,14 @@ const App = () => (
           <Route path="/community" element={<Community />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/auth" element={<Auth />} />
+
+          {/* Admin routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="businesses" element={<AdminBusinesses />} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

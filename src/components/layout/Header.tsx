@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { useCities } from '@/hooks/use-api';
+import { useCities, useCurrentUser, useLogout } from '@/hooks/use-api';
 
 const navLinks = [
   { href: '/', label: 'Афиша' },
@@ -25,6 +33,11 @@ export function Header() {
 
   // Загружаем города из API
   const { data: cities, isLoading: citiesLoading } = useCities();
+
+  // Текущий пользователь
+  const { data: user } = useCurrentUser();
+  const logout = useLogout();
+  const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
 
   // Текущий город
   const currentCity = cities?.find(c => c.slug === selectedCity);
@@ -127,12 +140,52 @@ export function Header() {
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
             </Button>
-            <Link to="/auth">
-              <Button variant="default" size="sm" className="hidden sm:flex gap-2 btn-glow">
-                <User className="w-4 h-4" />
-                <span>Войти</span>
-              </Button>
-            </Link>
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="hidden sm:flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs font-medium text-primary">
+                        {user.name?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <span className="max-w-[100px] truncate">{user.name || user.email}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span>{user.name}</span>
+                      <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex items-center">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Админ-панель
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={logout} className="text-red-600">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Выйти
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth">
+                <Button variant="default" size="sm" className="hidden sm:flex gap-2 btn-glow">
+                  <User className="w-4 h-4" />
+                  <span>Войти</span>
+                </Button>
+              </Link>
+            )}
 
             {/* Мобильное меню */}
             <Button
@@ -165,12 +218,36 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="default" className="w-full mt-2 btn-glow">
-                  <User className="w-4 h-4 mr-2" />
-                  Войти
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Shield className="w-4 h-4" />
+                  Админ-панель
+                </Link>
+              )}
+              {user ? (
+                <Button
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Выйти
                 </Button>
-              </Link>
+              ) : (
+                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="default" className="w-full mt-2 btn-glow">
+                    <User className="w-4 h-4 mr-2" />
+                    Войти
+                  </Button>
+                </Link>
+              )}
             </div>
           </nav>
         )}
