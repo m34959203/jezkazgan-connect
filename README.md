@@ -1,73 +1,94 @@
-# Welcome to your Lovable project
+# Afisha.kz
 
-## Project info
+Единая платформа событий, скидок и бизнеса для всех городов Казахстана.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Статус проекта
 
-## How can I edit this code?
+| Компонент | Статус | URL |
+|-----------|--------|-----|
+| Backend API | ✅ Online | https://afisha-bekend-production.up.railway.app |
+| Frontend | ✅ Online | https://jezkazgan-connect-production.up.railway.app |
+| Database | ✅ Connected | Neon PostgreSQL |
 
-There are several ways of editing your application.
+## Технологии
 
-**Use Lovable**
+### Backend
+- **Hono** — легковесный веб-фреймворк
+- **Drizzle ORM** — type-safe ORM для PostgreSQL
+- **Neon** — serverless PostgreSQL
+- **Railway** — хостинг
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Frontend
+- **React 18** + TypeScript
+- **Vite** — сборщик
+- **Tailwind CSS** + shadcn/ui — UI компоненты
+- **TanStack Query** — управление состоянием и кэширование
 
-Changes made via Lovable will be committed automatically to this repo.
+## Структура проекта
 
-**Use your preferred IDE**
+```
+jezkazgan-connect/
+├── backend/                 # Hono API сервер
+│   └── src/
+│       ├── db/             # Drizzle схема и подключение
+│       ├── routes/         # API endpoints
+│       └── index.ts        # Entry point
+├── src/                    # React frontend
+│   ├── components/         # UI компоненты
+│   ├── hooks/              # React Query hooks
+│   ├── lib/                # API клиент
+│   └── pages/              # Страницы
+└── docs/                   # Документация
+    ├── UNIFIED_PRODUCT_VISION.md
+    └── USER_STORIES.md
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## API Endpoints
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `/cities` | GET | Список городов |
+| `/events` | GET | События (фильтры: cityId, category) |
+| `/businesses` | GET | Бизнесы (фильтры: cityId, category) |
+| `/promotions` | GET | Акции (фильтры: cityId, active) |
+| `/auth/login` | POST | Авторизация |
+| `/auth/register` | POST | Регистрация |
 
-Follow these steps:
+## Локальная разработка
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Backend
+```bash
+cd backend
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Frontend
+```bash
+npm install
+npm run dev
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Монетизация
 
-**Use GitHub Codespaces**
+### B2C (пользователи)
+| Тариф | Цена | Доступ |
+|-------|------|--------|
+| Базовый | Бесплатно | Афиша, каталог |
+| Premium | 1,500-2,000 ₸/мес | + Все акции, QR-коды |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### B2B (бизнес)
+| Тариф | Цена | Публикаций |
+|-------|------|------------|
+| Бесплатный | 0 ₸ | 3/мес |
+| Lite | 50,000 ₸/мес | 10/мес |
+| Premium | 200,000 ₸/мес | ∞ + баннер |
 
-## What technologies are used for this project?
+## Документация
 
-This project is built with:
+- [Продуктовый документ](docs/UNIFIED_PRODUCT_VISION.md) — архитектура, стек, roadmap
+- [User Stories](docs/USER_STORIES.md) — функциональные требования
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Afisha.kz — январь 2026*
