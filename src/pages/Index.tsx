@@ -1,15 +1,18 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, TrendingUp, Gift } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Gift, MapPin, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFiltersComponent } from '@/components/events/EventFilters';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockEvents, mockPromotions } from '@/data/mockData';
-import { EventFilters, EventCategory } from '@/types';
+import { EventFilters } from '@/types';
+import { useCities } from '@/hooks/use-api';
 
 export default function Index() {
+  const [selectedCity, setSelectedCity] = useState<string>('jezkazgan');
   const [filters, setFilters] = useState<EventFilters>({
     search: '',
     category: 'all',
@@ -17,13 +20,19 @@ export default function Index() {
     price: 'all',
   });
 
+  // Загружаем города из API
+  const { data: cities, isLoading: citiesLoading } = useCities();
+
+  // Текущий город
+  const currentCity = cities?.find(c => c.slug === selectedCity);
+
   // Фильтрация событий
   const filteredEvents = useMemo(() => {
     return mockEvents.filter((event) => {
       // Поиск
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           event.title.toLowerCase().includes(searchLower) ||
           event.organizerName.toLowerCase().includes(searchLower) ||
           event.location.toLowerCase().includes(searchLower) ||
@@ -41,7 +50,7 @@ export default function Index() {
         const eventDate = new Date(event.date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         if (filters.date === 'today') {
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
@@ -79,11 +88,39 @@ export default function Index() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
               <span className="text-gradient-gold font-display">Афиша</span>
               <br />
-              <span className="text-foreground">Жезказган</span>
+              <span className="text-foreground">
+                {currentCity?.name || 'Казахстан'}
+              </span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-6">
               События, акции и сообщества твоего города. Узнавай первым о самом интересном!
             </p>
+
+            {/* Выбор города */}
+            <div className="flex items-center justify-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" />
+              {citiesLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Select value={selectedCity} onValueChange={setSelectedCity}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Выберите город" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities?.map((city) => (
+                      <SelectItem key={city.id} value={city.slug}>
+                        {city.name}
+                        {city.population && (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            ({(city.population / 1000).toFixed(0)}k)
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
           {/* Фильтры */}
@@ -120,8 +157,8 @@ export default function Index() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
               <h2 className="text-2xl font-bold">
-                {filters.search || filters.category !== 'all' 
-                  ? `Найдено: ${filteredEvents.length}` 
+                {filters.search || filters.category !== 'all'
+                  ? `Найдено: ${filteredEvents.length}`
                   : 'Все события'}
               </h2>
             </div>
@@ -197,7 +234,7 @@ export default function Index() {
                 </Button>
               </div>
             </div>
-            
+
             {/* Декоративный орнамент */}
             <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
               <svg viewBox="0 0 200 200" className="w-full h-full">
