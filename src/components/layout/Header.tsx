@@ -40,7 +40,9 @@ export function Header() {
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
-                <span className="text-xl font-bold text-primary-foreground">Ж</span>
+                <span className="text-xl font-bold text-primary-foreground">
+                  {currentCity?.name?.charAt(0) || 'А'}
+                </span>
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-foreground">Афиша</h1>
