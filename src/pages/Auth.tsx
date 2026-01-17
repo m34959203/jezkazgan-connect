@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, User, Phone, Building2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { useCities } from '@/hooks/use-api';
 
 type AuthTab = 'login' | 'register';
 type UserType = 'resident' | 'entrepreneur';
@@ -15,6 +16,31 @@ export default function Auth() {
   const [userType, setUserType] = useState<UserType>('resident');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // City selection sync with localStorage
+  const [selectedCity, setSelectedCity] = useState<string>(() => {
+    return localStorage.getItem('selectedCity') || 'jezkazgan';
+  });
+  const { data: cities } = useCities();
+  const currentCity = cities?.find(c => c.slug === selectedCity);
+
+  // Listen for city changes from Header
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const city = localStorage.getItem('selectedCity') || 'jezkazgan';
+      if (city !== selectedCity) {
+        setSelectedCity(city);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(handleStorageChange, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [selectedCity]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,10 +66,12 @@ export default function Auth() {
           {/* Логотип */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary-foreground">Ж</span>
+              <span className="text-2xl font-bold text-primary-foreground">
+                {currentCity?.name?.charAt(0) || 'А'}
+              </span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">Афиша Жезказган</h1>
+              <h1 className="text-xl font-bold">Афиша {currentCity?.name || 'Казахстан'}</h1>
               <p className="text-sm text-muted-foreground">
                 {tab === 'login' ? 'Войдите в аккаунт' : 'Создайте аккаунт'}
               </p>
@@ -249,7 +277,7 @@ export default function Auth() {
         <img
           className="absolute inset-0 h-full w-full object-cover"
           src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200"
-          alt="Жезказган"
+          alt={currentCity?.name || 'Казахстан'}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/80 to-teal/60 mix-blend-multiply" />
         <div className="absolute inset-0 flex items-center justify-center p-12">
@@ -258,7 +286,7 @@ export default function Auth() {
               Добро пожаловать в сообщество
             </h2>
             <p className="text-xl text-white/90 max-w-md">
-              Присоединяйтесь к тысячам жителей и предпринимателей Жезказгана
+              Присоединяйтесь к тысячам жителей и предпринимателей города {currentCity?.name || 'Казахстан'}
             </p>
           </div>
         </div>
