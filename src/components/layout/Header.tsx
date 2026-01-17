@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Bell, User, MapPin } from 'lucide-react';
+import { Menu, X, Search, Bell, User, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useCities } from '@/hooks/use-api';
 
 const navLinks = [
   { href: '/', label: 'Афиша' },
@@ -14,25 +16,58 @@ const navLinks = [
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string>(() => {
+    return localStorage.getItem('selectedCity') || 'jezkazgan';
+  });
   const location = useLocation();
+
+  // Загружаем города из API
+  const { data: cities, isLoading: citiesLoading } = useCities();
+
+  // Текущий город
+  const currentCity = cities?.find(c => c.slug === selectedCity);
+
+  // Сохраняем выбранный город
+  useEffect(() => {
+    localStorage.setItem('selectedCity', selectedCity);
+  }, [selectedCity]);
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-border/50">
       <div className="container">
         <div className="flex items-center justify-between h-16">
-          {/* Логотип */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
-              <span className="text-xl font-bold text-primary-foreground">Ж</span>
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-foreground">Афиша</h1>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="w-3 h-3" />
-                <span>Жезказган</span>
+          {/* Логотип + Город */}
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
+                <span className="text-xl font-bold text-primary-foreground">Ж</span>
               </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-foreground">Афиша</h1>
+              </div>
+            </Link>
+
+            {/* Селектор города */}
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4 text-primary" />
+              {citiesLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Select value={selectedCity} onValueChange={setSelectedCity}>
+                  <SelectTrigger className="w-[140px] h-8 text-sm border-none bg-transparent hover:bg-muted/50">
+                    <SelectValue placeholder="Город" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities?.map((city) => (
+                      <SelectItem key={city.id} value={city.slug}>
+                        {city.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          </Link>
+          </div>
 
           {/* Навигация - десктоп */}
           <nav className="hidden lg:flex items-center gap-1">
@@ -65,7 +100,7 @@ export function Header() {
                 <span>Войти</span>
               </Button>
             </Link>
-            
+
             {/* Мобильное меню */}
             <Button
               variant="ghost"
