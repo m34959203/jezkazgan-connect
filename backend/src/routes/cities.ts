@@ -6,13 +6,18 @@ const app = new Hono();
 
 // GET /cities - список всех активных городов
 app.get('/', async (c) => {
-  const result = await db
-    .select()
-    .from(cities)
-    .where(eq(cities.isActive, true))
-    .orderBy(cities.name);
+  try {
+    const result = await db
+      .select()
+      .from(cities)
+      .where(eq(cities.isActive, true))
+      .orderBy(cities.name);
 
-  return c.json(result);
+    return c.json(result);
+  } catch (error) {
+    console.error('Cities fetch error:', error);
+    return c.json({ error: 'Database error', details: String(error) }, 500);
+  }
 });
 
 // GET /cities/:slug - город по slug
