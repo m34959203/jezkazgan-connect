@@ -1,18 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, TrendingUp, Gift, MapPin, Loader2 } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Gift } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFiltersComponent } from '@/components/events/EventFilters';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockEvents, mockPromotions } from '@/data/mockData';
 import { EventFilters } from '@/types';
 import { useCities } from '@/hooks/use-api';
 
 export default function Index() {
-  const [selectedCity, setSelectedCity] = useState<string>('jezkazgan');
+  const [selectedCity, setSelectedCity] = useState<string>(() => {
+    return localStorage.getItem('selectedCity') || 'jezkazgan';
+  });
   const [filters, setFilters] = useState<EventFilters>({
     search: '',
     category: 'all',
@@ -21,10 +22,33 @@ export default function Index() {
   });
 
   // Загружаем города из API
-  const { data: cities, isLoading: citiesLoading } = useCities();
+  const { data: cities } = useCities();
 
   // Текущий город
   const currentCity = cities?.find(c => c.slug === selectedCity);
+
+  // Слушаем изменения в localStorage (когда город меняется в Header)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const city = localStorage.getItem('selectedCity') || 'jezkazgan';
+      setSelectedCity(city);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Также проверяем периодически для изменений в той же вкладке
+    const interval = setInterval(() => {
+      const city = localStorage.getItem('selectedCity') || 'jezkazgan';
+      if (city !== selectedCity) {
+        setSelectedCity(city);
+      }
+    }, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [selectedCity]);
 
   // Фильтрация событий
   const filteredEvents = useMemo(() => {
@@ -92,35 +116,9 @@ export default function Index() {
                 {currentCity?.name || 'Казахстан'}
               </span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-6">
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
               События, акции и сообщества твоего города. Узнавай первым о самом интересном!
             </p>
-
-            {/* Выбор города */}
-            <div className="flex items-center justify-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" />
-              {citiesLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Select value={selectedCity} onValueChange={setSelectedCity}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Выберите город" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities?.map((city) => (
-                      <SelectItem key={city.id} value={city.slug}>
-                        {city.name}
-                        {city.population && (
-                          <span className="text-muted-foreground ml-2 text-xs">
-                            ({(city.population / 1000).toFixed(0)}k)
-                          </span>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
           </div>
 
           {/* Фильтры */}
