@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Bell, User, MapPin, Loader2 } from 'lucide-react';
+import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useCities } from '@/hooks/use-api';
 
@@ -16,6 +17,7 @@ const navLinks = [
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState<string>(() => {
     return localStorage.getItem('selectedCity') || 'jezkazgan';
   });
@@ -49,24 +51,53 @@ export function Header() {
               </div>
             </Link>
 
-            {/* Селектор города */}
+            {/* Селектор города с поиском */}
             <div className="flex items-center gap-1">
               <MapPin className="w-4 h-4 text-primary" />
               {citiesLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Select value={selectedCity} onValueChange={setSelectedCity}>
-                  <SelectTrigger className="w-[140px] h-8 text-sm border-none bg-transparent hover:bg-muted/50">
-                    <SelectValue placeholder="Город" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities?.map((city) => (
-                      <SelectItem key={city.id} value={city.slug}>
-                        {city.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      role="combobox"
+                      aria-expanded={cityOpen}
+                      className="w-[140px] h-8 justify-between text-sm px-2"
+                    >
+                      {currentCity?.name || "Город..."}
+                      <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Поиск города..." />
+                      <CommandList>
+                        <CommandEmpty>Город не найден</CommandEmpty>
+                        <CommandGroup>
+                          {cities?.map((city) => (
+                            <CommandItem
+                              key={city.id}
+                              value={city.name}
+                              onSelect={() => {
+                                setSelectedCity(city.slug);
+                                setCityOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedCity === city.slug ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {city.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
