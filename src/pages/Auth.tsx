@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, User, Phone, Building2, Eye, EyeOff, MapPin, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,18 +8,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { useCities } from '@/hooks/use-api';
+import { useCities, useLogin, useRegister } from '@/hooks/use-api';
+import { useToast } from '@/hooks/use-toast';
 
 type AuthTab = 'login' | 'register';
 type UserType = 'resident' | 'entrepreneur';
 
 export default function Auth() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [tab, setTab] = useState<AuthTab>('login');
   const [userType, setUserType] = useState<UserType>('resident');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [businessCityOpen, setBusinessCityOpen] = useState(false);
   const [businessCitySlug, setBusinessCitySlug] = useState<string>('');
+
+  // Form fields
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [businessName, setBusinessName] = useState('');
+
+  // API hooks
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
 
   // City selection sync with localStorage
   const [selectedCity, setSelectedCity] = useState<string>(() => {
@@ -46,11 +59,40 @@ export default function Auth() {
     };
   }, [selectedCity]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    // TODO: Интеграция с Lovable Cloud для аутентификации
-    setTimeout(() => setIsLoading(false), 1500);
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      toast({
+        title: 'Добро пожаловать!',
+        description: 'Вы успешно вошли в аккаунт',
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Ошибка входа',
+        description: error instanceof Error ? error.message : 'Неверный email или пароль',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await registerMutation.mutateAsync({ email, password, name, phone });
+      toast({
+        title: 'Регистрация успешна!',
+        description: 'Добро пожаловать в Афишу',
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Ошибка регистрации',
+        description: error instanceof Error ? error.message : 'Не удалось зарегистрироваться',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -90,16 +132,18 @@ export default function Auth() {
 
             {/* Вход */}
             <TabsContent value="login">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="name@example.com" 
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
                       className="pl-10"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
@@ -109,11 +153,13 @@ export default function Auth() {
                   <Label htmlFor="password">Пароль</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="password" 
+                    <Input
+                      id="password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       className="pl-10 pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                     />
                     <button
@@ -132,15 +178,15 @@ export default function Auth() {
                   </a>
                 </div>
 
-                <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
-                  {isLoading ? 'Вход...' : 'Войти'}
+                <Button type="submit" className="w-full btn-glow" disabled={loginMutation.isPending}>
+                  {loginMutation.isPending ? 'Вход...' : 'Войти'}
                 </Button>
               </form>
             </TabsContent>
 
             {/* Регистрация */}
             <TabsContent value="register">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-4">
                 {/* Тип пользователя */}
                 <div className="space-y-2">
                   <Label>Тип аккаунта</Label>
@@ -181,14 +227,16 @@ export default function Auth() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Имя</Label>
+                  <Label htmlFor="reg-name">Имя</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="name" 
-                      type="text" 
-                      placeholder="Ваше имя" 
+                    <Input
+                      id="reg-name"
+                      type="text"
+                      placeholder="Ваше имя"
                       className="pl-10"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       required
                     />
                   </div>
@@ -198,26 +246,29 @@ export default function Auth() {
                   <Label htmlFor="reg-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="reg-email" 
-                      type="email" 
-                      placeholder="name@example.com" 
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      placeholder="name@example.com"
                       className="pl-10"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Телефон</Label>
+                  <Label htmlFor="reg-phone">Телефон</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="phone" 
-                      type="tel" 
-                      placeholder="+7 (7XX) XXX-XX-XX" 
+                    <Input
+                      id="reg-phone"
+                      type="tel"
+                      placeholder="+7 (7XX) XXX-XX-XX"
                       className="pl-10"
-                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                     />
                   </div>
                 </div>
@@ -233,6 +284,8 @@ export default function Auth() {
                           type="text"
                           placeholder="Название компании"
                           className="pl-10"
+                          value={businessName}
+                          onChange={(e) => setBusinessName(e.target.value)}
                           required
                         />
                       </div>
@@ -292,11 +345,13 @@ export default function Auth() {
                   <Label htmlFor="reg-password">Пароль</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input 
-                      id="reg-password" 
+                    <Input
+                      id="reg-password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Минимум 8 символов"
                       className="pl-10 pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={8}
                     />
@@ -310,8 +365,8 @@ export default function Auth() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
-                  {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
+                <Button type="submit" className="w-full btn-glow" disabled={registerMutation.isPending}>
+                  {registerMutation.isPending ? 'Регистрация...' : 'Зарегистрироваться'}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
