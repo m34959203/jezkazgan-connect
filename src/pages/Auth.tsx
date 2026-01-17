@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, User, Phone, Building2, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, User, Phone, Building2, Eye, EyeOff, MapPin, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useCities } from '@/hooks/use-api';
 
@@ -16,6 +18,8 @@ export default function Auth() {
   const [userType, setUserType] = useState<UserType>('resident');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [businessCityOpen, setBusinessCityOpen] = useState(false);
+  const [businessCitySlug, setBusinessCitySlug] = useState<string>('');
 
   // City selection sync with localStorage
   const [selectedCity, setSelectedCity] = useState<string>(() => {
@@ -219,19 +223,69 @@ export default function Auth() {
                 </div>
 
                 {userType === 'entrepreneur' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="business">Название бизнеса</Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input 
-                        id="business" 
-                        type="text" 
-                        placeholder="Название компании" 
-                        className="pl-10"
-                        required
-                      />
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="business">Название бизнеса</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="business"
+                          type="text"
+                          placeholder="Название компании"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="space-y-2">
+                      <Label>Город бизнеса</Label>
+                      <Popover open={businessCityOpen} onOpenChange={setBusinessCityOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={businessCityOpen}
+                            className="w-full justify-between pl-10 relative"
+                          >
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            {businessCitySlug
+                              ? cities?.find((city) => city.slug === businessCitySlug)?.name
+                              : "Выберите город..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Введите название города..." />
+                            <CommandList>
+                              <CommandEmpty>Город не найден</CommandEmpty>
+                              <CommandGroup>
+                                {cities?.map((city) => (
+                                  <CommandItem
+                                    key={city.id}
+                                    value={city.name}
+                                    onSelect={() => {
+                                      setBusinessCitySlug(city.slug);
+                                      setBusinessCityOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        businessCitySlug === city.slug ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {city.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
