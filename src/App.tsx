@@ -31,6 +31,8 @@ import AdminSettings from "./pages/admin/SettingsPage";
 import BusinessLayout from "./pages/business/BusinessLayout";
 import BusinessDashboard from "./pages/business/Dashboard";
 import BusinessPublications from "./pages/business/Publications";
+import BusinessEvents from "./pages/business/Events";
+import BusinessPromotions from "./pages/business/Promotions";
 import BusinessSubscription from "./pages/business/Subscription";
 import BusinessBanner from "./pages/business/Banner";
 import BusinessCreateEvent from "./pages/business/CreateEvent";
@@ -73,7 +75,9 @@ const App = () => (
           <Route path="/business" element={<BusinessLayout />}>
             <Route index element={<BusinessDashboard />} />
             <Route path="publications" element={<BusinessPublications />} />
+            <Route path="publications/events" element={<BusinessEvents />} />
             <Route path="publications/events/new" element={<BusinessCreateEvent />} />
+            <Route path="publications/promotions" element={<BusinessPromotions />} />
             <Route path="publications/promotions/new" element={<BusinessCreatePromotion />} />
             <Route path="subscription" element={<BusinessSubscription />} />
             <Route path="banner" element={<BusinessBanner />} />
