@@ -40,14 +40,14 @@ const tiers = [
     description: 'Для начинающих',
     features: [
       { name: '3 публикации в месяц', included: true },
-      { name: 'Базовый профиль', included: true },
       { name: '5 фото в галерее', included: true },
-      { name: 'Базовая статистика', included: true },
-      { name: 'Детальная статистика', included: false },
+      { name: 'Телефон, адрес, WhatsApp', included: true },
+      { name: 'Ссылка на Instagram', included: true },
+      { name: 'Просмотры и клики', included: false },
       { name: 'Приоритет в поиске', included: false },
       { name: 'Значок "Проверено"', included: false },
-      { name: 'Ответы на отзывы', included: false },
       { name: 'Рекламный баннер', included: false },
+      { name: 'Команда сотрудников', included: false },
     ],
   },
   {
@@ -58,14 +58,14 @@ const tiers = [
     popular: true,
     features: [
       { name: '10 публикаций в месяц', included: true },
-      { name: 'Расширенный профиль', included: true },
       { name: '15 фото в галерее', included: true },
-      { name: 'Детальная статистика', included: true },
+      { name: 'Телефон, адрес, WhatsApp', included: true },
+      { name: 'Ссылка на Instagram', included: true },
+      { name: 'Просмотры и клики', included: true },
       { name: 'Приоритет в поиске', included: true },
       { name: 'Значок "Проверено"', included: true },
-      { name: 'Ответы на отзывы', included: true },
       { name: 'Рекламный баннер', included: false },
-      { name: 'Несколько сотрудников', included: false },
+      { name: 'Команда сотрудников', included: false },
     ],
   },
   {
@@ -75,12 +75,12 @@ const tiers = [
     description: 'Максимум возможностей',
     features: [
       { name: 'Безлимит публикаций', included: true },
-      { name: 'Полный профиль', included: true },
-      { name: '50 фото в галерее', included: true },
+      { name: '30 фото в галерее', included: true },
+      { name: 'Телефон, адрес, WhatsApp', included: true },
+      { name: 'Ссылка на Instagram', included: true },
       { name: 'Полная статистика + экспорт', included: true },
       { name: 'Топ в поиске', included: true },
       { name: 'Значок "Проверено"', included: true },
-      { name: 'Ответы на отзывы', included: true },
       { name: 'Рекламный баннер на главной', included: true },
       { name: 'До 5 сотрудников', included: true },
     ],
@@ -312,29 +312,29 @@ export default function BusinessSubscription() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
+                  <Zap className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-medium">Безлимит</p>
+                  <p className="text-xs text-muted-foreground">Публикаций в месяц</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-medium">Топ в поиске</p>
+                  <p className="text-xs text-muted-foreground">Максимальный приоритет</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
                   <Megaphone className="w-5 h-5 text-amber-700" />
                 </div>
                 <div>
                   <p className="font-medium">Рекламный баннер</p>
                   <p className="text-xs text-muted-foreground">На главной странице</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-medium">Безлимит</p>
-                  <p className="text-xs text-muted-foreground">Публикаций</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
-                  <BarChart3 className="w-5 h-5 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-medium">Полная аналитика</p>
-                  <p className="text-xs text-muted-foreground">С экспортом</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
