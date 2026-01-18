@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, Percent, Clock, CheckCircle } from 'lucide-react';
+import { Search, MoreHorizontal, Eye, Trash2, Percent, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,8 +49,8 @@ const mockPromotions = [
     city: 'Алматы',
     startDate: '2026-01-15',
     endDate: '2026-02-15',
-    status: 'active',
-    views: 890,
+    status: 'pending',
+    views: 0,
   },
   {
     id: '3',
@@ -82,21 +82,23 @@ const mockPromotions = [
     city: 'Шымкент',
     startDate: '2026-02-01',
     endDate: '2026-02-28',
-    status: 'scheduled',
+    status: 'pending',
     views: 0,
   },
 ];
 
 const statusLabels: Record<string, string> = {
+  pending: 'На модерации',
   active: 'Активна',
   expired: 'Истекла',
-  scheduled: 'Запланирована',
+  rejected: 'Отклонена',
 };
 
 const statusColors: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-800',
   active: 'bg-green-100 text-green-800',
   expired: 'bg-gray-100 text-gray-800',
-  scheduled: 'bg-blue-100 text-blue-800',
+  rejected: 'bg-red-100 text-red-800',
 };
 
 export default function PromotionsPage() {
@@ -111,6 +113,8 @@ export default function PromotionsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const pendingCount = mockPromotions.filter((p) => p.status === 'pending').length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,13 +122,15 @@ export default function PromotionsPage() {
         <div>
           <h1 className="text-3xl font-bold">Акции и скидки</h1>
           <p className="text-muted-foreground">
-            Управление акциями и специальными предложениями
+            Модерация акций от бизнесов
           </p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить акцию
-        </Button>
+        {pendingCount > 0 && (
+          <Badge variant="destructive" className="text-sm px-3 py-1">
+            <AlertCircle className="w-4 h-4 mr-1" />
+            {pendingCount} на модерации
+          </Badge>
+        )}
       </div>
 
       {/* Stats */}
@@ -137,18 +143,18 @@ export default function PromotionsPage() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {mockPromotions.filter((p) => p.status === 'active').length}
+            <div className="text-2xl font-bold text-amber-600">
+              {mockPromotions.filter((p) => p.status === 'pending').length}
             </div>
-            <p className="text-sm text-muted-foreground">Активных</p>
+            <p className="text-sm text-muted-foreground">На модерации</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">
-              {mockPromotions.filter((p) => p.status === 'scheduled').length}
+            <div className="text-2xl font-bold text-green-600">
+              {mockPromotions.filter((p) => p.status === 'active').length}
             </div>
-            <p className="text-sm text-muted-foreground">Запланировано</p>
+            <p className="text-sm text-muted-foreground">Активных</p>
           </CardContent>
         </Card>
         <Card>
@@ -180,9 +186,10 @@ export default function PromotionsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="pending">На модерации</SelectItem>
                 <SelectItem value="active">Активные</SelectItem>
-                <SelectItem value="scheduled">Запланированные</SelectItem>
                 <SelectItem value="expired">Истекшие</SelectItem>
+                <SelectItem value="rejected">Отклонённые</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -194,7 +201,7 @@ export default function PromotionsPage() {
         <CardHeader>
           <CardTitle>Список акций</CardTitle>
           <CardDescription>
-            Показано: {filteredPromotions.length} акций
+            Акции создаются бизнесами в личном кабинете
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,7 +219,7 @@ export default function PromotionsPage() {
             </TableHeader>
             <TableBody>
               {filteredPromotions.map((promo) => (
-                <TableRow key={promo.id}>
+                <TableRow key={promo.id} className={promo.status === 'pending' ? 'bg-amber-50/50' : ''}>
                   <TableCell>
                     <div>
                       <p className="font-medium">{promo.title}</p>
@@ -259,14 +266,22 @@ export default function PromotionsPage() {
                           <Eye className="w-4 h-4 mr-2" />
                           Просмотреть
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
+                        {promo.status === 'pending' && (
+                          <>
+                            <DropdownMenuItem className="text-green-600">
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Одобрить
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600">
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Отклонить
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {promo.status === 'active' && (
-                          <DropdownMenuItem>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Продлить
+                          <DropdownMenuItem className="text-red-600">
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Снять с публикации
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
