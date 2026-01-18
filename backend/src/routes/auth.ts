@@ -85,7 +85,7 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     .limit(1);
 
   if (!user.length) {
-    return c.json({ error: 'Invalid credentials' }, 401);
+    return c.json({ error: 'Пользователь не найден. Пожалуйста, зарегистрируйтесь.' }, 401);
   }
 
   // Verify password with bcrypt
@@ -96,7 +96,7 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     : storedPassword === password; // Legacy plain text fallback
 
   if (!isValidPassword) {
-    return c.json({ error: 'Invalid credentials' }, 401);
+    return c.json({ error: 'Неверный пароль' }, 401);
   }
 
   // Generate JWT token
