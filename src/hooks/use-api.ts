@@ -8,6 +8,7 @@ import {
   fetchPromotions,
   login,
   register,
+  fetchCurrentUser,
   fetchMyBusiness,
   fetchMyBusinessStats,
   fetchMyBusinessPublications,
@@ -157,15 +158,31 @@ export function useRegister() {
   });
 }
 
-// Current user hook
+// Current user hook - fetches from API to get fresh role data
 export function useCurrentUser() {
   return useQuery({
     queryKey: ['user'],
-    queryFn: () => {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : null;
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return null;
+      }
+      try {
+        const user = await fetchCurrentUser();
+        // Update localStorage with fresh user data
+        localStorage.setItem('user', JSON.stringify(user));
+        return user;
+      } catch (error) {
+        // If API fails, try to use cached data
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+          return JSON.parse(cachedUser);
+        }
+        return null;
+      }
     },
-    staleTime: Infinity,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   });
 }
 
