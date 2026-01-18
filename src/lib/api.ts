@@ -184,6 +184,161 @@ export async function register(data: {
   return res.json();
 }
 
+// Fetch current user from /auth/me
+export async function fetchCurrentUser(): Promise<User> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch user');
+  }
+  return res.json();
+}
+
+// User API functions (authenticated)
+
+export async function createEvent(data: {
+  cityId: string;
+  businessId?: string;
+  title: string;
+  description?: string;
+  category: string;
+  image?: string;
+  date: string;
+  endDate?: string;
+  location?: string;
+  address?: string;
+  price?: number;
+  maxPrice?: number;
+  isFree?: boolean;
+}): Promise<Event> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/events`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to create event');
+  }
+  return res.json();
+}
+
+export async function createBusiness(data: {
+  cityId: string;
+  name: string;
+  description?: string;
+  category: string;
+  address?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  website?: string;
+  logo?: string;
+  cover?: string;
+}): Promise<Business> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to create business');
+  }
+  return res.json();
+}
+
+export async function updateBusiness(id: string, data: Partial<{
+  name: string;
+  description: string;
+  category: string;
+  address: string;
+  phone: string;
+  whatsapp: string;
+  instagram: string;
+  website: string;
+  logo: string;
+  cover: string;
+}>): Promise<Business> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to update business');
+  }
+  return res.json();
+}
+
+export async function createPromotion(data: {
+  title: string;
+  description?: string;
+  image?: string;
+  discount: string;
+  conditions?: string;
+  validUntil: string;
+  isPremiumOnly?: boolean;
+}): Promise<Promotion> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/promotions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to create promotion');
+  }
+  return res.json();
+}
+
 // Admin API types
 export interface AdminStats {
   users: number;

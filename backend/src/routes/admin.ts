@@ -1,34 +1,13 @@
 import { Hono } from 'hono';
 import { db, users, businesses, events, promotions, cities } from '../db';
 import { eq, desc, sql, count, and, gte, like, or } from 'drizzle-orm';
-import { verify } from 'hono/jwt';
+import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 
-const admin = new Hono();
+const admin = new Hono<{ Variables: { user: AuthUser } }>();
 
-// Middleware для проверки авторизации и роли admin/moderator
-const authMiddleware = async (c: any, next: any) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
-
-  const token = authHeader.substring(7);
-  try {
-    const payload = await verify(token, process.env.JWT_SECRET || 'secret');
-    const user = await db.select().from(users).where(eq(users.id, payload.userId as string)).limit(1);
-
-    if (!user[0] || (user[0].role !== 'admin' && user[0].role !== 'moderator')) {
-      return c.json({ error: 'Forbidden' }, 403);
-    }
-
-    c.set('user', user[0]);
-    await next();
-  } catch {
-    return c.json({ error: 'Invalid token' }, 401);
-  }
-};
-
+// Use shared auth middleware + admin role check
 admin.use('*', authMiddleware);
+admin.use('*', adminMiddleware);
 
 // ==================== STATS (Dashboard) ====================
 

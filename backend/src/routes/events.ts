@@ -3,8 +3,9 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq, and, gte, desc, asc, sql } from 'drizzle-orm';
 import { db, events, businesses, cities } from '../db';
+import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: AuthUser } }>();
 
 // Query params schema
 const listQuerySchema = z.object({
@@ -139,11 +140,10 @@ const createEventSchema = z.object({
 });
 
 // POST /events - создать событие (требует авторизации)
-app.post('/', zValidator('json', createEventSchema), async (c) => {
-  // TODO: Добавить middleware авторизации
-  const userId = c.req.header('X-User-Id'); // Временно через header
+app.post('/', authMiddleware, zValidator('json', createEventSchema), async (c) => {
+  const user = getCurrentUser(c);
 
-  if (!userId) {
+  if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
@@ -155,7 +155,7 @@ app.post('/', zValidator('json', createEventSchema), async (c) => {
       ...data,
       date: new Date(data.date),
       endDate: data.endDate ? new Date(data.endDate) : null,
-      creatorId: userId,
+      creatorId: user.id,
       isApproved: false, // Требует модерации
     })
     .returning();
