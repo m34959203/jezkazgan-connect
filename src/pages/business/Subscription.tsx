@@ -28,21 +28,9 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { useMyBusiness } from '@/hooks/use-api';
 
-// Mock data
-const mockBusiness = {
-  tier: 'lite' as const,
-  postsUsed: 7,
-  postsLimit: 10,
-  nextBillingDate: '2026-02-15',
-  subscriptionAmount: 50000,
-};
-
-const mockPaymentHistory = [
-  { id: '1', date: '2026-01-15', amount: 50000, status: 'paid', description: 'Lite подписка' },
-  { id: '2', date: '2025-12-15', amount: 50000, status: 'paid', description: 'Lite подписка' },
-  { id: '3', date: '2025-11-15', amount: 50000, status: 'paid', description: 'Lite подписка' },
-];
+const tierLimits = { free: 3, lite: 10, premium: 999 };
 
 const tiers = [
   {
@@ -109,8 +97,30 @@ export default function BusinessSubscription() {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('kaspi');
 
-  const business = mockBusiness;
+  const { data: businessData, isLoading } = useMyBusiness();
+
+  // Use real data
+  const businessTier = (businessData?.tier || 'free') as keyof typeof tierLimits;
+  const postsLimit = tierLimits[businessTier];
+  const postsUsed = businessData?.postsThisMonth || 0;
+  const tierUntil = businessData?.tierUntil;
+
+  const business = {
+    tier: businessTier,
+    postsUsed,
+    postsLimit,
+    nextBillingDate: tierUntil || null,
+  };
+
   const currentTierIndex = tiers.findIndex((t) => t.id === business.tier);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const handleUpgrade = (tierId: string) => {
     setSelectedTier(tierId);
@@ -160,9 +170,9 @@ export default function BusinessSubscription() {
                   </h3>
                   <Badge variant="outline">Активен</Badge>
                 </div>
-                {business.tier !== 'free' && (
+                {business.tier !== 'free' && business.nextBillingDate && (
                   <p className="text-muted-foreground">
-                    Следующее списание: {new Date(business.nextBillingDate).toLocaleDateString('ru-RU')} — {formatPrice(business.subscriptionAmount)}
+                    Подписка до: {new Date(business.nextBillingDate).toLocaleDateString('ru-RU')}
                   </p>
                 )}
               </div>
@@ -347,41 +357,9 @@ export default function BusinessSubscription() {
           <CardTitle>История платежей</CardTitle>
         </CardHeader>
         <CardContent>
-          {mockPaymentHistory.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              История платежей пуста
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {mockPaymentHistory.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                      <Receipt className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{payment.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(payment.date).toLocaleDateString('ru-RU')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">
-                      {new Intl.NumberFormat('ru-RU').format(payment.amount)} ₸
-                    </span>
-                    <Badge className="bg-green-100 text-green-800">Оплачено</Badge>
-                    <Button variant="ghost" size="icon">
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-center text-muted-foreground py-8">
+            История платежей пуста
+          </p>
         </CardContent>
       </Card>
 
