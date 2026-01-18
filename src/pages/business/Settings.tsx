@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   Mail,
@@ -6,7 +7,8 @@ import {
   Trash2,
   AlertTriangle,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,10 +25,12 @@ import {
 } from '@/components/ui/dialog';
 import { useCurrentUser } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
+import { changePassword, deleteMyBusiness } from '@/lib/api';
 
 export default function BusinessSettings() {
   const { toast } = useToast();
-  const { data: user } = useCurrentUser();
+  const navigate = useNavigate();
+  const { data: user, refetch: refetchUser } = useCurrentUser();
 
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -36,8 +40,10 @@ export default function BusinessSettings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingBusiness, setIsDeletingBusiness] = useState(false);
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast({
         title: 'Ошибка',
@@ -47,20 +53,61 @@ export default function BusinessSettings() {
       return;
     }
 
-    // TODO: Implement password change API
-    toast({
-      title: 'Функция в разработке',
-      description: 'Смена пароля будет доступна позже',
-    });
+    if (newPassword.length < 8) {
+      toast({
+        title: 'Ошибка',
+        description: 'Новый пароль должен содержать минимум 8 символов',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword({
+        currentPassword,
+        newPassword,
+      });
+      toast({
+        title: 'Успешно',
+        description: 'Пароль успешно изменен',
+      });
+      // Clear form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось изменить пароль',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
-  const handleDeleteBusiness = () => {
-    // TODO: Implement business deletion
-    toast({
-      title: 'Функция в разработке',
-      description: 'Удаление бизнеса будет доступно позже',
-    });
-    setShowDeleteDialog(false);
+  const handleDeleteBusiness = async () => {
+    setIsDeletingBusiness(true);
+    try {
+      await deleteMyBusiness();
+      toast({
+        title: 'Бизнес удален',
+        description: 'Ваш бизнес и все связанные данные были удалены',
+      });
+      setShowDeleteDialog(false);
+      // Refresh user data and redirect
+      await refetchUser();
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось удалить бизнес',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingBusiness(false);
+    }
   };
 
   return (
@@ -143,7 +190,8 @@ export default function BusinessSettings() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
-            <Button onClick={handleChangePassword}>
+            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+              {isChangingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Изменить пароль
             </Button>
           </div>
@@ -230,10 +278,11 @@ export default function BusinessSettings() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeletingBusiness}>
               Отмена
             </Button>
-            <Button variant="destructive" onClick={handleDeleteBusiness}>
+            <Button variant="destructive" onClick={handleDeleteBusiness} disabled={isDeletingBusiness}>
+              {isDeletingBusiness && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Удалить бизнес
             </Button>
           </DialogFooter>
