@@ -270,8 +270,10 @@ export async function createBusiness(data: {
   });
 
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to create business');
+    const error = await res.json().catch(() => ({}));
+    // Include the message field if present (for auth errors)
+    const errorMsg = error.message || error.error || 'Failed to create business';
+    throw new Error(errorMsg);
   }
   return res.json();
 }
