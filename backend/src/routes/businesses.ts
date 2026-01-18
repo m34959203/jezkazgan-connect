@@ -383,4 +383,88 @@ app.put('/:id', authMiddleware, zValidator('json', createBusinessSchema.partial(
   return c.json(result[0]);
 });
 
+// DELETE /businesses/me - удалить свой бизнес
+app.delete('/me', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select()
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  const businessId = business[0].id;
+
+  // Удалить все связанные данные (события, акции)
+  // События бизнеса
+  await db.delete(events).where(eq(events.businessId, businessId));
+
+  // Акции бизнеса
+  await db.delete(promotions).where(eq(promotions.businessId, businessId));
+
+  // Удалить сам бизнес
+  await db.delete(businesses).where(eq(businesses.id, businessId));
+
+  // Вернуть роль пользователя на user
+  await db
+    .update(users)
+    .set({ role: 'user' })
+    .where(eq(users.id, user.id));
+
+  return c.json({ success: true, message: 'Бизнес успешно удален' });
+});
+
+// DELETE /businesses/:id - удалить бизнес (только для админов)
+app.delete('/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id');
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес
+  const business = await db
+    .select()
+    .from(businesses)
+    .where(eq(businesses.id, id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  // Только владелец или админ может удалить
+  if (business[0].ownerId !== user.id && user.role !== 'admin') {
+    return c.json({ error: 'Access denied' }, 403);
+  }
+
+  const businessId = business[0].id;
+  const ownerId = business[0].ownerId;
+
+  // Удалить все связанные данные
+  await db.delete(events).where(eq(events.businessId, businessId));
+  await db.delete(promotions).where(eq(promotions.businessId, businessId));
+
+  // Удалить бизнес
+  await db.delete(businesses).where(eq(businesses.id, businessId));
+
+  // Вернуть роль владельца на user
+  await db
+    .update(users)
+    .set({ role: 'user' })
+    .where(eq(users.id, ownerId));
+
+  return c.json({ success: true, message: 'Бизнес успешно удален' });
+});
+
 export default app;

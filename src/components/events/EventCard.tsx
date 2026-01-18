@@ -1,9 +1,12 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Clock, Bookmark, Eye } from 'lucide-react';
 import { Event, EVENT_CATEGORIES } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toggleFavorite, checkFavorite } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface EventCardProps {
   event: Event;
@@ -12,7 +15,56 @@ interface EventCardProps {
 
 export function EventCard({ event, variant = 'default' }: EventCardProps) {
   const category = EVENT_CATEGORIES[event.category];
-  
+  const { toast } = useToast();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is logged in
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  // Check favorite status on mount (only if logged in)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    checkFavorite({ eventId: event.id })
+      .then((res) => setIsFavorite(res.isFavorite))
+      .catch(() => {}); // Silently fail if not logged in
+  }, [event.id, isLoggedIn]);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLoggedIn) {
+      toast({
+        title: 'Требуется авторизация',
+        description: 'Войдите в аккаунт, чтобы сохранять события',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await toggleFavorite({ eventId: event.id });
+      setIsFavorite(result.isFavorite);
+      toast({
+        title: result.isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
+        description: result.isFavorite
+          ? 'Событие сохранено в вашем профиле'
+          : 'Событие удалено из избранного',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось обновить избранное',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('ru-RU', {
       day: 'numeric',
@@ -49,9 +101,14 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white"
+              className={cn(
+                "absolute top-4 right-4 bg-white/20 backdrop-blur-sm hover:bg-white/30",
+                isFavorite ? "text-yellow-400" : "text-white"
+              )}
+              onClick={handleToggleFavorite}
+              disabled={isLoading}
             >
-              <Bookmark className="w-5 h-5" />
+              <Bookmark className={cn("w-5 h-5", isFavorite && "fill-current")} />
             </Button>
 
             {/* Контент */}
@@ -197,13 +254,14 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-primary"
-              onClick={(e) => {
-                e.preventDefault();
-                // TODO: Добавить в избранное
-              }}
+              className={cn(
+                "h-8 w-8",
+                isFavorite ? "text-yellow-500" : "text-muted-foreground hover:text-primary"
+              )}
+              onClick={handleToggleFavorite}
+              disabled={isLoading}
             >
-              <Bookmark className="w-4 h-4" />
+              <Bookmark className={cn("w-4 h-4", isFavorite && "fill-current")} />
             </Button>
           </div>
         </div>

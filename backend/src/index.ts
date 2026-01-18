@@ -11,6 +11,9 @@ import businesses from './routes/businesses';
 import promotions from './routes/promotions';
 import admin from './routes/admin';
 import team from './routes/team';
+import upload from './routes/upload';
+import favorites from './routes/favorites';
+import { apiRateLimit, authRateLimit, securityCheck } from './middleware/rateLimit';
 
 const app = new Hono();
 
@@ -48,7 +51,7 @@ app.use('*', cors({
 }));
 
 // Health check with version info
-const BUILD_VERSION = '2.0.0-jwt-auth';
+const BUILD_VERSION = '2.1.0-features';
 const BUILD_DATE = '2026-01-18';
 
 app.get('/', (c) => {
@@ -69,6 +72,15 @@ app.get('/health', (c) => {
   });
 });
 
+// Security check for blocked IPs
+app.use('*', securityCheck);
+
+// Rate limiting for API endpoints
+app.use('/api/*', apiRateLimit);
+
+// Stricter rate limiting for auth endpoints
+app.use('/auth/*', authRateLimit);
+
 // Routes
 app.route('/auth', auth);
 app.route('/cities', cities);
@@ -77,6 +89,8 @@ app.route('/businesses', businesses);
 app.route('/promotions', promotions);
 app.route('/admin', admin);
 app.route('/team', team);
+app.route('/upload', upload);
+app.route('/favorites', favorites);
 
 // 404 handler
 app.notFound((c) => {

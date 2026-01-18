@@ -192,4 +192,110 @@ app.get('/me', authMiddleware, async (c) => {
   return c.json(user[0]);
 });
 
+// Password change schema
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
+
+// POST /auth/change-password - смена пароля
+app.post('/change-password', authMiddleware, zValidator('json', changePasswordSchema), async (c) => {
+  const authUser = getCurrentUser(c);
+
+  if (!authUser) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { currentPassword, newPassword } = c.req.valid('json');
+
+  // Get user with password hash
+  const user = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.id, authUser.id))
+    .limit(1);
+
+  if (!user.length) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  // Verify current password
+  const storedPassword = user[0].passwordHash || '';
+  const isValidPassword = storedPassword.startsWith('$2')
+    ? await bcrypt.compare(currentPassword, storedPassword)
+    : storedPassword === currentPassword; // Legacy plain text fallback
+
+  if (!isValidPassword) {
+    return c.json({ error: 'Неверный текущий пароль' }, 400);
+  }
+
+  // Hash new password
+  const newPasswordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+  // Update password
+  await db
+    .update(users)
+    .set({
+      passwordHash: newPasswordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, authUser.id));
+
+  // Send email notification (non-blocking)
+  try {
+    const { sendPasswordChangedEmail } = await import('../services/email');
+    sendPasswordChangedEmail(user[0].email, user[0].name || undefined);
+  } catch {
+    // Email service might not be configured
+  }
+
+  return c.json({ success: true, message: 'Пароль успешно изменен' });
+});
+
+// Update profile schema
+const updateProfileSchema = z.object({
+  name: z.string().min(2).optional(),
+  phone: z.string().optional(),
+  avatar: z.string().url().optional(),
+});
+
+// PATCH /auth/profile - обновление профиля
+app.patch('/profile', authMiddleware, zValidator('json', updateProfileSchema), async (c) => {
+  const authUser = getCurrentUser(c);
+
+  if (!authUser) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const data = c.req.valid('json');
+
+  const result = await db
+    .update(users)
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, authUser.id))
+    .returning({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      phone: users.phone,
+      avatar: users.avatar,
+      role: users.role,
+      isPremium: users.isPremium,
+    });
+
+  if (!result.length) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  return c.json(result[0]);
+});
+
 export default app;

@@ -906,3 +906,232 @@ export async function removeTeamMember(id: string): Promise<{ success: boolean }
   }
   return res.json();
 }
+
+// ============================================
+// Favorites API
+// ============================================
+
+export interface Favorite {
+  id: string;
+  eventId: string | null;
+  businessId: string | null;
+  promotionId: string | null;
+  createdAt: string;
+}
+
+export interface FavoritesResponse {
+  favorites: Favorite[];
+  events: Event[];
+  businesses: Business[];
+  promotions: Promotion[];
+  counts: {
+    events: number;
+    businesses: number;
+    promotions: number;
+    total: number;
+  };
+}
+
+export async function fetchFavorites(): Promise<FavoritesResponse> {
+  const res = await fetch(`${API_URL}/favorites`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch favorites');
+  }
+  return res.json();
+}
+
+export async function checkFavorite(params: {
+  eventId?: string;
+  businessId?: string;
+  promotionId?: string;
+}): Promise<{ isFavorite: boolean; favoriteId: string | null }> {
+  const searchParams = new URLSearchParams();
+  if (params.eventId) searchParams.set('eventId', params.eventId);
+  if (params.businessId) searchParams.set('businessId', params.businessId);
+  if (params.promotionId) searchParams.set('promotionId', params.promotionId);
+
+  const res = await fetch(`${API_URL}/favorites/check?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to check favorite');
+  }
+  return res.json();
+}
+
+export async function toggleFavorite(params: {
+  eventId?: string;
+  businessId?: string;
+  promotionId?: string;
+}): Promise<{ isFavorite: boolean; favoriteId?: string; message: string }> {
+  const res = await fetch(`${API_URL}/favorites/toggle`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to toggle favorite');
+  }
+  return res.json();
+}
+
+export async function addToFavorites(params: {
+  eventId?: string;
+  businessId?: string;
+  promotionId?: string;
+}): Promise<{ favorite: Favorite; message: string }> {
+  const res = await fetch(`${API_URL}/favorites`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to add to favorites');
+  }
+  return res.json();
+}
+
+export async function removeFromFavorites(favoriteId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/favorites/${favoriteId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to remove from favorites');
+  }
+  return res.json();
+}
+
+// ============================================
+// Password & Profile API
+// ============================================
+
+export async function changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/auth/change-password`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to change password');
+  }
+  return res.json();
+}
+
+export async function updateProfile(data: {
+  name?: string;
+  phone?: string;
+  avatar?: string;
+}): Promise<User> {
+  const res = await fetch(`${API_URL}/auth/profile`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to update profile');
+  }
+  return res.json();
+}
+
+// ============================================
+// Business Deletion API
+// ============================================
+
+export async function deleteMyBusiness(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/businesses/me`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete business');
+  }
+  return res.json();
+}
+
+// ============================================
+// Image Upload API
+// ============================================
+
+export interface UploadConfig {
+  url: string;
+  cloudName: string;
+  uploadPreset: string;
+  folder?: string;
+  timestamp: number;
+  signature?: string;
+  apiKey?: string;
+}
+
+export interface UploadPresets {
+  [key: string]: {
+    folder: string;
+    maxSize: number;
+    allowedFormats: string[];
+    recommendedSize: { width: number; height: number };
+  };
+}
+
+export async function getUploadConfig(folder?: string): Promise<UploadConfig> {
+  const searchParams = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+  const res = await fetch(`${API_URL}/upload/config${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get upload config');
+  }
+  return res.json();
+}
+
+export async function getUploadPresets(): Promise<{ presets: UploadPresets }> {
+  const res = await fetch(`${API_URL}/upload/presets`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get upload presets');
+  }
+  return res.json();
+}
+
+// Upload image to Cloudinary using the config from backend
+export async function uploadImage(file: File, folder?: string): Promise<string> {
+  const config = await getUploadConfig(folder);
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', config.uploadPreset);
+  formData.append('folder', config.folder || 'afisha');
+  formData.append('timestamp', config.timestamp.toString());
+
+  if (config.signature && config.apiKey) {
+    formData.append('signature', config.signature);
+    formData.append('api_key', config.apiKey);
+  }
+
+  const res = await fetch(config.url, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to upload image');
+  }
+
+  const result = await res.json();
+  return result.secure_url;
+}
