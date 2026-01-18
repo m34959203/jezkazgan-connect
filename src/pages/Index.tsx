@@ -18,34 +18,34 @@ import {
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 
-// Достопримечательности городов
+// Достопримечательности городов (реальные фото из Wikimedia Commons)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
   jezkazgan: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Центральная площадь' },
-      { url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&h=600&fit=crop', title: 'Городской парк' },
-      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Музей истории' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Zhezkazgan_012_5765.jpg/1280px-Zhezkazgan_012_5765.jpg', title: 'Жезказган - вид на город' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Kengir_reservoir.jpg/1280px-Kengir_reservoir.jpg', title: 'Кенгирское водохранилище' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Zhezkazgan_006_5748.jpg/1280px-Zhezkazgan_006_5748.jpg', title: 'Площадь Металлургов' },
     ]
   },
   almaty: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=1600&h=600&fit=crop', title: 'Медеу' },
-      { url: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=1600&h=600&fit=crop', title: 'Кок-Тобе' },
-      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Центр города' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Medeu_skating_rink.jpg/1280px-Medeu_skating_rink.jpg', title: 'Каток Медеу' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Almaty_-_Pair_on_viewpoint_%28edit%29.jpg/1280px-Almaty_-_Pair_on_viewpoint_%28edit%29.jpg', title: 'Вид на Алматы с Кок-Тобе' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Almaty_city_view.jpg/1280px-Almaty_city_view.jpg', title: 'Панорама Алматы' },
     ]
   },
   astana: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1555217851-6141535bd771?w=1600&h=600&fit=crop', title: 'Байтерек' },
-      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Хан Шатыр' },
-      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Дворец мира' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Bajterek_panorama.jpg/1280px-Bajterek_panorama.jpg', title: 'Монумент Байтерек' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Khan_Shatyr_Entertainment_Center_2.jpg/1280px-Khan_Shatyr_Entertainment_Center_2.jpg', title: 'Хан Шатыр' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Central_Downtown_Astana_2.jpg/1280px-Central_Downtown_Astana_2.jpg', title: 'Центр Астаны' },
     ]
   },
   default: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Город' },
-      { url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&h=600&fit=crop', title: 'Природа' },
-      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Архитектура' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag-map_of_Kazakhstan.svg/1280px-Flag-map_of_Kazakhstan.svg.png', title: 'Казахстан' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Charyn_Canyon_Kazakhstan.jpg/1280px-Charyn_Canyon_Kazakhstan.jpg', title: 'Чарынский каньон' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Kolsai_Lakes%2C_Kazakhstan.jpg/1280px-Kolsai_Lakes%2C_Kazakhstan.jpg', title: 'Кольсайские озёра' },
     ]
   }
 };
