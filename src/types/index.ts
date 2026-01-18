@@ -27,6 +27,7 @@ export interface EntrepreneurProfile {
   instagram?: string;
   whatsapp?: string;
   isVerified: boolean;
+  isPremium?: boolean; // Премиум бизнес может быть отмечен как "Выбор Афиши"
   createdAt: Date;
 }
 
@@ -66,8 +67,9 @@ export interface Event {
   organizerId: string;
   organizerName: string;
   organizerLogo?: string;
+  organizerIsPremium?: boolean; // Организатор - премиум бизнес
   tags: string[];
-  isFeatured?: boolean;
+  isFeatured?: boolean; // Только для премиум бизнесов
   viewCount: number;
   saveCount: number;
   createdAt: Date;

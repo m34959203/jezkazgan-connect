@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar, MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar, MapPin, Loader2, AlertCircle, Star, Crown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAdminEvents, useApproveEvent, useRejectEvent } from '@/hooks/use-api';
+import { useAdminEvents, useApproveEvent, useRejectEvent, useToggleEventFeatured } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const categoryLabels: Record<string, string> = {
   concerts: 'Концерты',
@@ -54,6 +60,32 @@ export default function EventsPage() {
 
   const approveEvent = useApproveEvent();
   const rejectEvent = useRejectEvent();
+  const toggleFeatured = useToggleEventFeatured();
+
+  const handleToggleFeatured = async (eventId: string, currentFeatured: boolean, isPremium: boolean) => {
+    if (!isPremium && !currentFeatured) {
+      toast({
+        title: 'Недоступно',
+        description: 'Только события от премиум бизнесов могут быть отмечены как "Выбор Афиши"',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await toggleFeatured.mutateAsync({ id: eventId, isFeatured: !currentFeatured });
+      toast({
+        title: 'Успешно',
+        description: currentFeatured ? 'Событие убрано из "Выбор Афиши"' : 'Событие добавлено в "Выбор Афиши"',
+      });
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось изменить статус события',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleApprove = async (eventId: string) => {
     try {
@@ -227,6 +259,7 @@ export default function EventsPage() {
                 <TableHead>Дата</TableHead>
                 <TableHead>Город</TableHead>
                 <TableHead>Просмотры</TableHead>
+                <TableHead>Выбор Афиши</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -234,19 +267,37 @@ export default function EventsPage() {
             <TableBody>
               {filteredEvents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     События не найдены
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEvents.map((event) => (
+                filteredEvents.map((event) => {
+                  const isPremium = event.businessTier === 'premium';
+                  const isFeatured = event.isFeatured;
+
+                  return (
                   <TableRow key={event.id}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{event.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {event.businessName || 'Без организатора'}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        {isPremium && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Crown className="w-4 h-4 text-amber-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Премиум бизнес</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <div>
+                          <p className="font-medium">{event.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {event.businessName || 'Без организатора'}
+                          </p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -267,6 +318,32 @@ export default function EventsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{event.viewsCount}</TableCell>
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={isFeatured ? 'text-amber-500' : 'text-muted-foreground'}
+                              onClick={() => handleToggleFeatured(event.id, !!isFeatured, isPremium)}
+                              disabled={!isPremium && !isFeatured}
+                            >
+                              <Star className={`w-5 h-5 ${isFeatured ? 'fill-amber-500' : ''}`} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {!isPremium ? (
+                              <p>Только для премиум бизнесов</p>
+                            ) : isFeatured ? (
+                              <p>Убрать из "Выбор Афиши"</p>
+                            ) : (
+                              <p>Добавить в "Выбор Афиши"</p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
                     <TableCell>
                       {event.isApproved ? (
                         <Badge className="bg-green-100 text-green-800">
@@ -296,6 +373,15 @@ export default function EventsPage() {
                             <Edit className="w-4 h-4 mr-2" />
                             Редактировать
                           </DropdownMenuItem>
+                          {isPremium && (
+                            <DropdownMenuItem
+                              className={isFeatured ? 'text-amber-600' : ''}
+                              onClick={() => handleToggleFeatured(event.id, !!isFeatured, isPremium)}
+                            >
+                              <Star className={`w-4 h-4 mr-2 ${isFeatured ? 'fill-amber-500' : ''}`} />
+                              {isFeatured ? 'Убрать из "Выбор Афиши"' : 'Добавить в "Выбор Афиши"'}
+                            </DropdownMenuItem>
+                          )}
                           {!event.isApproved && (
                             <>
                               <DropdownMenuItem
@@ -323,7 +409,8 @@ export default function EventsPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

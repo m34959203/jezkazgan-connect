@@ -319,6 +319,23 @@ export function useRejectEvent() {
   });
 }
 
+// Toggle event featured status (only for premium businesses)
+export function useToggleEventFeatured() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, isFeatured }: { id: string; isFeatured: boolean }) => {
+      // This would be an API call in a real app
+      // For now, we'll just simulate it
+      return { id, isFeatured };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'events'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    },
+  });
+}
+
 export function useAdminPromotions(params?: {
   limit?: number;
   offset?: number;

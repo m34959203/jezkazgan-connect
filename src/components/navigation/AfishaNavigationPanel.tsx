@@ -58,6 +58,12 @@ function getDayName(date: Date): string {
   return days[date.getDay()];
 }
 
+// Форматирование месяца
+function getMonthName(date: Date): string {
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  return months[date.getMonth()];
+}
+
 // Проверка выходного дня
 function isWeekend(date: Date): boolean {
   const day = date.getDay();
@@ -68,6 +74,11 @@ function isWeekend(date: Date): boolean {
 function isToday(date: Date): boolean {
   const today = new Date();
   return date.toDateString() === today.toDateString();
+}
+
+// Проверка первого дня месяца или первого дня в списке
+function isFirstDayOfMonth(date: Date, index: number): boolean {
+  return date.getDate() === 1 || index === 0;
 }
 
 export function AfishaNavigationPanel({
@@ -153,7 +164,7 @@ export function AfishaNavigationPanel({
           {/* Кнопка прокрутки влево */}
           <button
             onClick={() => scrollDates('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-sm hover:bg-muted transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md hover:bg-muted hover:scale-110 active:scale-95 transition-all duration-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -161,38 +172,48 @@ export function AfishaNavigationPanel({
           {/* Даты */}
           <div
             ref={dateScrollRef}
-            className="flex gap-1 overflow-x-auto hide-scrollbar px-10 py-2"
+            className="flex gap-1 overflow-x-auto hide-scrollbar px-10 py-2 scroll-smooth"
           >
-            {dates.map((date) => {
+            {dates.map((date, index) => {
               const isSelected = filters.selectedDate?.toDateString() === date.toDateString();
               const weekend = isWeekend(date);
               const today = isToday(date);
+              const showMonth = isFirstDayOfMonth(date, index);
 
               return (
                 <button
                   key={date.toISOString()}
                   onClick={() => handleDateSelect(date)}
                   className={cn(
-                    'flex flex-col items-center min-w-[48px] px-2 py-2 rounded-lg transition-all',
+                    'flex flex-col items-center min-w-[52px] px-2 py-2 rounded-xl transition-all duration-200',
                     isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted',
-                    today && !isSelected && 'ring-2 ring-primary/30'
+                      ? 'bg-primary text-primary-foreground shadow-md scale-105'
+                      : 'hover:bg-muted hover:scale-102',
+                    today && !isSelected && 'ring-2 ring-primary/40 bg-primary/5'
                   )}
                 >
                   <span className={cn(
-                    'text-xs font-medium',
+                    'text-[10px] font-medium uppercase tracking-wide',
                     weekend && !isSelected ? 'text-destructive' : '',
                     isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
                   )}>
-                    {getDayName(date)}
+                    {showMonth ? getMonthName(date) : getDayName(date)}
                   </span>
                   <span className={cn(
-                    'text-lg font-semibold',
-                    isSelected ? 'text-primary-foreground' : ''
+                    'text-lg font-bold',
+                    isSelected ? 'text-primary-foreground' : '',
+                    weekend && !isSelected ? 'text-destructive' : ''
                   )}>
                     {date.getDate()}
                   </span>
+                  {!showMonth && (
+                    <span className={cn(
+                      'text-[9px] font-medium',
+                      isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground/60'
+                    )}>
+                      {getMonthName(date)}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -201,7 +222,7 @@ export function AfishaNavigationPanel({
           {/* Кнопка прокрутки вправо */}
           <button
             onClick={() => scrollDates('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-sm hover:bg-muted transition-colors"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md hover:bg-muted hover:scale-110 active:scale-95 transition-all duration-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -238,7 +259,7 @@ export function AfishaNavigationPanel({
             variant="outline"
             size="sm"
             className={cn(
-              'rounded-full gap-2',
+              'rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95',
               showSearch && 'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
             onClick={() => setShowSearch(!showSearch)}
@@ -250,7 +271,7 @@ export function AfishaNavigationPanel({
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full gap-2"
+            className="rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95"
           >
             <ArrowUpDown className="w-4 h-4" />
           </Button>
@@ -262,7 +283,7 @@ export function AfishaNavigationPanel({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'rounded-full gap-2',
+                  'rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95',
                   filters.category !== 'all' && 'bg-primary text-primary-foreground hover:bg-primary/90'
                 )}
               >
@@ -313,7 +334,7 @@ export function AfishaNavigationPanel({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'rounded-full gap-2',
+                  'rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95',
                   (filters.showDiscounts || filters.showFree) && 'bg-teal text-white hover:bg-teal/90'
                 )}
               >
@@ -351,7 +372,7 @@ export function AfishaNavigationPanel({
             variant="outline"
             size="sm"
             className={cn(
-              'rounded-full gap-2',
+              'rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95',
               filters.showFeatured && 'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
             onClick={() => onChange({ ...filters, showFeatured: !filters.showFeatured })}
@@ -365,7 +386,7 @@ export function AfishaNavigationPanel({
             variant="outline"
             size="sm"
             className={cn(
-              'rounded-full gap-2',
+              'rounded-full gap-2 transition-all duration-200 hover:scale-105 active:scale-95',
               filters.showChildren && 'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
             onClick={() => onChange({ ...filters, showChildren: !filters.showChildren })}
@@ -379,7 +400,7 @@ export function AfishaNavigationPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-full gap-1 text-muted-foreground hover:text-foreground"
+              className="rounded-full gap-1 text-muted-foreground hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95"
               onClick={clearFilters}
             >
               <X className="w-4 h-4" />
