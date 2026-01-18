@@ -18,34 +18,34 @@ import {
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 
-// Достопримечательности городов (реальные фото из Wikimedia Commons)
+// Достопримечательности городов (фото из Unsplash - хорошая поддержка CORS)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
   jezkazgan: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Zhezkazgan_012_5765.jpg/1280px-Zhezkazgan_012_5765.jpg', title: 'Жезказган - вид на город' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Kengir_reservoir.jpg/1280px-Kengir_reservoir.jpg', title: 'Кенгирское водохранилище' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Zhezkazgan_006_5748.jpg/1280px-Zhezkazgan_006_5748.jpg', title: 'Площадь Металлургов' },
+      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1280&h=720&fit=crop', title: 'Степи Казахстана' },
+      { url: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=1280&h=720&fit=crop', title: 'Индустриальный пейзаж' },
+      { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1280&h=720&fit=crop', title: 'Закат в степи' },
     ]
   },
   almaty: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Medeu_skating_rink.jpg/1280px-Medeu_skating_rink.jpg', title: 'Каток Медеу' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Almaty_-_Pair_on_viewpoint_%28edit%29.jpg/1280px-Almaty_-_Pair_on_viewpoint_%28edit%29.jpg', title: 'Вид на Алматы с Кок-Тобе' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Almaty_city_view.jpg/1280px-Almaty_city_view.jpg', title: 'Панорама Алматы' },
+      { url: 'https://images.unsplash.com/photo-1558431382-27e303142255?w=1280&h=720&fit=crop', title: 'Горы Алматы' },
+      { url: 'https://images.unsplash.com/photo-1565799455839-fddeafa0b86b?w=1280&h=720&fit=crop', title: 'Вид на Алматы' },
+      { url: 'https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=1280&h=720&fit=crop', title: 'Панорама Алматы' },
     ]
   },
   astana: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Bajterek_panorama.jpg/1280px-Bajterek_panorama.jpg', title: 'Монумент Байтерек' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Khan_Shatyr_Entertainment_Center_2.jpg/1280px-Khan_Shatyr_Entertainment_Center_2.jpg', title: 'Хан Шатыр' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Central_Downtown_Astana_2.jpg/1280px-Central_Downtown_Astana_2.jpg', title: 'Центр Астаны' },
+      { url: 'https://images.unsplash.com/photo-1555425748-831e8a3586e9?w=1280&h=720&fit=crop', title: 'Байтерек' },
+      { url: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=1280&h=720&fit=crop', title: 'Астана ночью' },
+      { url: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=1280&h=720&fit=crop', title: 'Центр Астаны' },
     ]
   },
   default: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag-map_of_Kazakhstan.svg/1280px-Flag-map_of_Kazakhstan.svg.png', title: 'Казахстан' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Charyn_Canyon_Kazakhstan.jpg/1280px-Charyn_Canyon_Kazakhstan.jpg', title: 'Чарынский каньон' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Kolsai_Lakes%2C_Kazakhstan.jpg/1280px-Kolsai_Lakes%2C_Kazakhstan.jpg', title: 'Кольсайские озёра' },
+      { url: 'https://images.unsplash.com/photo-1541410965313-d53b3c16ef17?w=1280&h=720&fit=crop', title: 'Природа Казахстана' },
+      { url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=1280&h=720&fit=crop', title: 'Степной пейзаж' },
+      { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1280&h=720&fit=crop', title: 'Горный пейзаж' },
     ]
   }
 };
