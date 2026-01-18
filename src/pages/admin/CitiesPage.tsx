@@ -43,7 +43,7 @@ export default function CitiesPage() {
   const createCity = useCreateCity();
   const updateCity = useUpdateCity();
 
-  const citiesList = cities || [];
+  const citiesList = cities?.cities || [];
 
   const filteredCities = citiesList.filter((city) =>
     city.name.toLowerCase().includes(search.toLowerCase()) ||
