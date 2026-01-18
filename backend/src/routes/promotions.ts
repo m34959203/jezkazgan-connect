@@ -3,8 +3,9 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq, and, gte, desc, sql } from 'drizzle-orm';
 import { db, promotions, businesses, cities, users } from '../db';
+import { authMiddleware, optionalAuthMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: AuthUser } }>();
 
 // Query params schema
 const listQuerySchema = z.object({
@@ -16,9 +17,9 @@ const listQuerySchema = z.object({
 });
 
 // GET /promotions - список акций
-app.get('/', zValidator('query', listQuerySchema), async (c) => {
+app.get('/', optionalAuthMiddleware, zValidator('query', listQuerySchema), async (c) => {
   const { cityId, businessId, includePremiumOnly, limit, offset } = c.req.valid('query');
-  const userId = c.req.header('X-User-Id');
+  const user = getCurrentUser(c);
 
   const conditions = [
     eq(promotions.isActive, true),
@@ -29,15 +30,7 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
   if (businessId) conditions.push(eq(promotions.businessId, businessId));
 
   // Проверить premium статус пользователя
-  let isPremiumUser = false;
-  if (userId) {
-    const user = await db
-      .select({ isPremium: users.isPremium })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    isPremiumUser = user[0]?.isPremium || false;
-  }
+  const isPremiumUser = user?.isPremium || false;
 
   // Если пользователь не premium и не включён флаг, скрыть premium акции
   if (!isPremiumUser && !includePremiumOnly) {
@@ -79,9 +72,9 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
 });
 
 // GET /promotions/:id - акция по ID
-app.get('/:id', async (c) => {
+app.get('/:id', optionalAuthMiddleware, async (c) => {
   const id = c.req.param('id');
-  const userId = c.req.header('X-User-Id');
+  const user = getCurrentUser(c);
 
   const result = await db
     .select({
@@ -126,17 +119,7 @@ app.get('/:id', async (c) => {
   const promo = result[0];
 
   // Проверить доступ к premium акции
-  if (promo.isPremiumOnly && userId) {
-    const user = await db
-      .select({ isPremium: users.isPremium })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user[0]?.isPremium) {
-      return c.json({ error: 'Premium subscription required' }, 403);
-    }
-  } else if (promo.isPremiumOnly) {
+  if (promo.isPremiumOnly && !user?.isPremium) {
     return c.json({ error: 'Premium subscription required' }, 403);
   }
 
@@ -161,10 +144,10 @@ const createPromotionSchema = z.object({
 });
 
 // POST /promotions - создать акцию (только для бизнеса)
-app.post('/', zValidator('json', createPromotionSchema), async (c) => {
-  const userId = c.req.header('X-User-Id');
+app.post('/', authMiddleware, zValidator('json', createPromotionSchema), async (c) => {
+  const user = getCurrentUser(c);
 
-  if (!userId) {
+  if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
@@ -172,7 +155,7 @@ app.post('/', zValidator('json', createPromotionSchema), async (c) => {
   const business = await db
     .select()
     .from(businesses)
-    .where(eq(businesses.ownerId, userId))
+    .where(eq(businesses.ownerId, user.id))
     .limit(1);
 
   if (!business.length) {
@@ -183,12 +166,12 @@ app.post('/', zValidator('json', createPromotionSchema), async (c) => {
 
   // Проверить лимит публикаций
   const limits = { free: 3, lite: 10, premium: Infinity };
-  const limit = limits[biz.tier as keyof typeof limits];
+  const postLimit = limits[biz.tier as keyof typeof limits];
 
-  if (biz.postsThisMonth >= limit) {
+  if (biz.postsThisMonth >= postLimit) {
     return c.json({
       error: 'Monthly post limit reached',
-      limit,
+      limit: postLimit,
       current: biz.postsThisMonth,
       tier: biz.tier,
     }, 403);

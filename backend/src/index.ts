@@ -20,10 +20,19 @@ app.use('*', cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:4173',
     'https://afisha.kz',
+    'https://www.afisha.kz',
     'https://jezkazgan-connect-production.up.railway.app',
+    'https://jezkazgan-connect.up.railway.app',
+    // Allow any railway.app subdomain for preview deployments
+    /https:\/\/.*\.up\.railway\.app$/,
   ],
   credentials: true,
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 86400, // 24 hours
 }));
 
 // Health check

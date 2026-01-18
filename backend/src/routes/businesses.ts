@@ -3,8 +3,9 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db, businesses, cities, users } from '../db';
+import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
-const app = new Hono();
+const app = new Hono<{ Variables: { user: AuthUser } }>();
 
 // Query params schema
 const listQuerySchema = z.object({
@@ -112,10 +113,10 @@ const createBusinessSchema = z.object({
 });
 
 // POST /businesses - создать бизнес
-app.post('/', zValidator('json', createBusinessSchema), async (c) => {
-  const userId = c.req.header('X-User-Id');
+app.post('/', authMiddleware, zValidator('json', createBusinessSchema), async (c) => {
+  const user = getCurrentUser(c);
 
-  if (!userId) {
+  if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
@@ -125,7 +126,7 @@ app.post('/', zValidator('json', createBusinessSchema), async (c) => {
   const existing = await db
     .select()
     .from(businesses)
-    .where(eq(businesses.ownerId, userId))
+    .where(eq(businesses.ownerId, user.id))
     .limit(1);
 
   if (existing.length) {
@@ -136,13 +137,13 @@ app.post('/', zValidator('json', createBusinessSchema), async (c) => {
   await db
     .update(users)
     .set({ role: 'business' })
-    .where(eq(users.id, userId));
+    .where(eq(users.id, user.id));
 
   const result = await db
     .insert(businesses)
     .values({
       ...data,
-      ownerId: userId,
+      ownerId: user.id,
       tier: 'free',
       postsThisMonth: 0,
     })
@@ -152,23 +153,28 @@ app.post('/', zValidator('json', createBusinessSchema), async (c) => {
 });
 
 // PUT /businesses/:id - обновить бизнес
-app.put('/:id', zValidator('json', createBusinessSchema.partial()), async (c) => {
+app.put('/:id', authMiddleware, zValidator('json', createBusinessSchema.partial()), async (c) => {
   const id = c.req.param('id');
-  const userId = c.req.header('X-User-Id');
+  const user = getCurrentUser(c);
 
-  if (!userId) {
+  if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
-  // Проверить владельца
+  // Проверить владельца (или админ/модератор может редактировать)
   const business = await db
     .select()
     .from(businesses)
-    .where(and(eq(businesses.id, id), eq(businesses.ownerId, userId)))
+    .where(eq(businesses.id, id))
     .limit(1);
 
   if (!business.length) {
-    return c.json({ error: 'Business not found or access denied' }, 404);
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  // Только владелец или админ/модератор может редактировать
+  if (business[0].ownerId !== user.id && user.role !== 'admin' && user.role !== 'moderator') {
+    return c.json({ error: 'Access denied' }, 403);
   }
 
   const data = c.req.valid('json');

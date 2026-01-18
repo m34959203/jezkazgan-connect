@@ -3,14 +3,13 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { sign, verify } from 'hono/jwt';
+import bcrypt from 'bcryptjs';
 import { db, users } from '../db';
+import { JWT_SECRET, authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const BCRYPT_ROUNDS = 10;
 
-const app = new Hono();
-
-// TODO: Добавить proper auth с Better Auth
-// Пока простая реализация для MVP
+const app = new Hono<{ Variables: { user: AuthUser } }>();
 
 // Register schema
 const registerSchema = z.object({
@@ -35,13 +34,14 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     return c.json({ error: 'Email already registered' }, 400);
   }
 
-  // TODO: Hash password properly
-  // Для MVP просто сохраняем (НЕ ДЕЛАТЬ ТАК В ПРОДАКШЕНЕ)
+  // Hash password with bcrypt
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
   const result = await db
     .insert(users)
     .values({
       email,
-      passwordHash: password, // TODO: bcrypt.hash(password)
+      passwordHash,
       name,
       phone,
     })
@@ -88,8 +88,14 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
-  // TODO: Proper password comparison
-  if (user[0].passwordHash !== password) {
+  // Verify password with bcrypt
+  // Support both hashed passwords and legacy plain text passwords
+  const storedPassword = user[0].passwordHash || '';
+  const isValidPassword = storedPassword.startsWith('$2')
+    ? await bcrypt.compare(password, storedPassword)
+    : storedPassword === password; // Legacy plain text fallback
+
+  if (!isValidPassword) {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
@@ -116,24 +122,14 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
 });
 
 // GET /auth/me - текущий пользователь
-app.get('/me', async (c) => {
-  const authHeader = c.req.header('Authorization');
+app.get('/me', authMiddleware, async (c) => {
+  const authUser = getCurrentUser(c);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authUser) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
-  const token = authHeader.substring(7);
-
-  let payload;
-  try {
-    payload = await verify(token, JWT_SECRET);
-  } catch {
-    return c.json({ error: 'Invalid token' }, 401);
-  }
-
-  const userId = payload.userId as string;
-
+  // Get full user data from database
   const user = await db
     .select({
       id: users.id,
@@ -147,7 +143,7 @@ app.get('/me', async (c) => {
       createdAt: users.createdAt,
     })
     .from(users)
-    .where(eq(users.id, userId))
+    .where(eq(users.id, authUser.id))
     .limit(1);
 
   if (!user.length) {
