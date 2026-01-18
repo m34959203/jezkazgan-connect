@@ -183,3 +183,269 @@ export async function register(data: {
   }
   return res.json();
 }
+
+// Admin API types
+export interface AdminStats {
+  users: number;
+  businesses: number;
+  events: number;
+  promotions: number;
+  pendingEvents: number;
+  pendingBusinesses: number;
+  newUsersThisMonth: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  avatar: string | null;
+  role: 'user' | 'business' | 'moderator' | 'admin';
+  isPremium: boolean;
+  premiumUntil: string | null;
+  createdAt: string;
+}
+
+export interface AdminBusiness {
+  id: string;
+  name: string;
+  category: string;
+  tier: 'free' | 'lite' | 'premium';
+  isVerified: boolean;
+  postsThisMonth: number;
+  createdAt: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  cityName: string | null;
+}
+
+export interface AdminEvent {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  isApproved: boolean;
+  viewsCount: number;
+  createdAt: string;
+  businessName: string | null;
+  cityName: string | null;
+}
+
+export interface AdminPromotion {
+  id: string;
+  title: string;
+  discount: string | null;
+  validFrom: string | null;
+  validUntil: string;
+  isActive: boolean;
+  viewsCount: number;
+  createdAt: string;
+  businessName: string | null;
+  cityName: string | null;
+}
+
+// Helper function to get auth headers
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+// Admin API functions
+export async function fetchAdminStats(): Promise<AdminStats> {
+  const res = await fetch(`${API_URL}/admin/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch admin stats');
+  return res.json();
+}
+
+export async function fetchAdminUsers(params?: {
+  search?: string;
+  role?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ users: AdminUser[]; total: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.role && params.role !== 'all') searchParams.set('role', params.role);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/admin/users${searchParams.toString() ? '?' + searchParams : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch admin users');
+  return res.json();
+}
+
+export async function updateAdminUser(id: string, data: {
+  role?: string;
+  isPremium?: boolean;
+}): Promise<AdminUser> {
+  const res = await fetch(`${API_URL}/admin/users/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update user');
+  return res.json();
+}
+
+export async function fetchAdminBusinesses(params?: {
+  search?: string;
+  tier?: string;
+  verified?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  businesses: AdminBusiness[];
+  total: number;
+  tierStats: { free: number; lite: number; premium: number };
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.tier && params.tier !== 'all') searchParams.set('tier', params.tier);
+  if (params?.verified && params.verified !== 'all') searchParams.set('verified', params.verified);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/admin/businesses${searchParams.toString() ? '?' + searchParams : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch admin businesses');
+  return res.json();
+}
+
+export async function updateAdminBusiness(id: string, data: {
+  isVerified?: boolean;
+  tier?: string;
+}): Promise<Business> {
+  const res = await fetch(`${API_URL}/admin/businesses/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update business');
+  return res.json();
+}
+
+export async function verifyBusiness(id: string): Promise<Business> {
+  const res = await fetch(`${API_URL}/admin/businesses/${id}/verify`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to verify business');
+  return res.json();
+}
+
+export async function fetchAdminEvents(params?: {
+  status?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  events: AdminEvent[];
+  total: number;
+  pendingCount: number;
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.category) searchParams.set('category', params.category);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/admin/events${searchParams.toString() ? '?' + searchParams : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch admin events');
+  return res.json();
+}
+
+export async function approveEvent(id: string): Promise<Event> {
+  const res = await fetch(`${API_URL}/admin/events/${id}/approve`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to approve event');
+  return res.json();
+}
+
+export async function rejectEvent(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/admin/events/${id}/reject`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to reject event');
+  return res.json();
+}
+
+export async function fetchAdminPromotions(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  promotions: AdminPromotion[];
+  total: number;
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/admin/promotions${searchParams.toString() ? '?' + searchParams : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch admin promotions');
+  return res.json();
+}
+
+export async function updateAdminPromotion(id: string, data: {
+  isActive?: boolean;
+}): Promise<Promotion> {
+  const res = await fetch(`${API_URL}/admin/promotions/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update promotion');
+  return res.json();
+}
+
+export async function fetchAdminCities(): Promise<{ cities: City[] }> {
+  const res = await fetch(`${API_URL}/admin/cities`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch admin cities');
+  return res.json();
+}
+
+export async function createAdminCity(data: {
+  name: string;
+  nameKz?: string;
+  slug: string;
+  region?: string;
+  population?: number;
+  isActive?: boolean;
+}): Promise<City> {
+  const res = await fetch(`${API_URL}/admin/cities`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create city');
+  return res.json();
+}
+
+export async function updateAdminCity(id: string, data: {
+  name?: string;
+  nameKz?: string;
+  slug?: string;
+  region?: string;
+  isActive?: boolean;
+}): Promise<City> {
+  const res = await fetch(`${API_URL}/admin/cities/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update city');
+  return res.json();
+}

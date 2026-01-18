@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, UserPlus, Shield, Ban, Mail } from 'lucide-react';
+import { Search, MoreHorizontal, UserPlus, Shield, Ban, Mail, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,60 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock users data
-const mockUsers = [
-  {
-    id: '1',
-    name: 'Администратор',
-    email: 'admin@afisha.kz',
-    role: 'admin',
-    city: 'Алматы',
-    isPremium: true,
-    status: 'active',
-    createdAt: '2026-01-15',
-  },
-  {
-    id: '2',
-    name: 'Айдар Касымов',
-    email: 'aidar@example.com',
-    role: 'user',
-    city: 'Алматы',
-    isPremium: true,
-    status: 'active',
-    createdAt: '2026-01-10',
-  },
-  {
-    id: '3',
-    name: 'Марат Сериков',
-    email: 'marat@business.kz',
-    role: 'business',
-    city: 'Астана',
-    isPremium: false,
-    status: 'active',
-    createdAt: '2026-01-08',
-  },
-  {
-    id: '4',
-    name: 'Дана Омарова',
-    email: 'dana@example.com',
-    role: 'user',
-    city: 'Караганда',
-    isPremium: false,
-    status: 'active',
-    createdAt: '2026-01-05',
-  },
-  {
-    id: '5',
-    name: 'Модератор',
-    email: 'mod@afisha.kz',
-    role: 'moderator',
-    city: 'Шымкент',
-    isPremium: false,
-    status: 'active',
-    createdAt: '2026-01-01',
-  },
-];
+import { useAdminUsers, useUpdateUser } from '@/hooks/use-api';
+import { useToast } from '@/hooks/use-toast';
 
 const roleLabels: Record<string, string> = {
   admin: 'Админ',
@@ -99,14 +47,67 @@ const roleColors: Record<string, string> = {
 export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const { toast } = useToast();
 
-  const filteredUsers = mockUsers.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesRole;
+  const { data, isLoading, error } = useAdminUsers({
+    search: search || undefined,
+    role: roleFilter !== 'all' ? roleFilter : undefined,
   });
+
+  const updateUser = useUpdateUser();
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    try {
+      await updateUser.mutateAsync({ id: userId, data: { role: newRole } });
+      toast({
+        title: 'Успешно',
+        description: 'Роль пользователя обновлена',
+      });
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить роль',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTogglePremium = async (userId: string, isPremium: boolean) => {
+    try {
+      await updateUser.mutateAsync({ id: userId, data: { isPremium: !isPremium } });
+      toast({
+        title: 'Успешно',
+        description: isPremium ? 'Premium отключен' : 'Premium включен',
+      });
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить подписку',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Ошибка загрузки</h2>
+        <p className="text-muted-foreground">Не удалось загрузить пользователей</p>
+      </div>
+    );
+  }
+
+  const users = data?.users ?? [];
+  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -158,7 +159,7 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>Список пользователей</CardTitle>
           <CardDescription>
-            Всего: {filteredUsers.length} пользователей
+            Всего: {total} пользователей
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,72 +168,90 @@ export default function UsersPage() {
               <TableRow>
                 <TableHead>Пользователь</TableHead>
                 <TableHead>Роль</TableHead>
-                <TableHead>Город</TableHead>
                 <TableHead>Подписка</TableHead>
                 <TableHead>Дата регистрации</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {user.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={roleColors[user.role]} variant="secondary">
-                      {roleLabels[user.role]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{user.city}</TableCell>
-                  <TableCell>
-                    {user.isPremium ? (
-                      <Badge className="bg-amber-100 text-amber-800">Premium</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">Free</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {user.createdAt}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Действия</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Написать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Shield className="w-4 h-4 mr-2" />
-                          Сменить роль
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Ban className="w-4 h-4 mr-2" />
-                          Заблокировать
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    Пользователи не найдены
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-sm font-medium text-primary">
+                            {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{user.name || 'Без имени'}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={roleColors[user.role]} variant="secondary">
+                        {roleLabels[user.role]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.isPremium ? (
+                        <Badge className="bg-amber-100 text-amber-800">Premium</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Free</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleDateString('ru-RU')}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Действия</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Написать
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">Сменить роль</DropdownMenuLabel>
+                          {Object.entries(roleLabels).map(([role, label]) => (
+                            <DropdownMenuItem
+                              key={role}
+                              onClick={() => handleUpdateRole(user.id, role)}
+                              disabled={user.role === role}
+                            >
+                              <Shield className="w-4 h-4 mr-2" />
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleTogglePremium(user.id, user.isPremium)}>
+                            {user.isPremium ? 'Отключить Premium' : 'Включить Premium'}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600">
+                            <Ban className="w-4 h-4 mr-2" />
+                            Заблокировать
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
