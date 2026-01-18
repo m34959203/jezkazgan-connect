@@ -8,7 +8,7 @@ import {
   Receipt,
   AlertCircle,
   Download,
-  Sparkles,
+  TrendingUp,
   Building2,
   BarChart3,
   Megaphone,
@@ -181,7 +181,7 @@ export default function BusinessSubscription() {
             <div className="flex flex-col sm:flex-row gap-2">
               {business.tier !== 'premium' && (
                 <Button onClick={() => handleUpgrade(business.tier === 'free' ? 'lite' : 'premium')}>
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <TrendingUp className="w-4 h-4 mr-2" />
                   Улучшить тариф
                 </Button>
               )}
