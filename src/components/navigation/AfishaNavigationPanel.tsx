@@ -41,8 +41,8 @@ interface AfishaNavigationPanelProps {
   onViewAll?: () => void;
 }
 
-// Генерация дат на 14 дней вперед
-function generateDates(startDate: Date, count: number = 14): Date[] {
+// Генерация дат на 30 дней вперед (как на afisha.ru)
+function generateDates(startDate: Date, count: number = 30): Date[] {
   const dates: Date[] = [];
   for (let i = 0; i < count; i++) {
     const date = new Date(startDate);
@@ -90,9 +90,39 @@ export function AfishaNavigationPanel({
   const [showSearch, setShowSearch] = useState(false);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [discountPopoverOpen, setDiscountPopoverOpen] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
   const dateScrollRef = useRef<HTMLDivElement>(null);
 
   const dates = useMemo(() => generateDates(new Date()), []);
+
+  // Ширина одного элемента даты (min-w-[52px] + padding + gap)
+  const DATE_ITEM_WIDTH = 56; // 52px + 4px gap
+
+  // Проверка возможности скролла
+  const checkScrollability = () => {
+    if (dateScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = dateScrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Инициализация и обработка изменения размера
+  useEffect(() => {
+    checkScrollability();
+    const scrollContainer = dateScrollRef.current;
+
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', checkScrollability);
+      window.addEventListener('resize', checkScrollability);
+
+      return () => {
+        scrollContainer.removeEventListener('scroll', checkScrollability);
+        window.removeEventListener('resize', checkScrollability);
+      };
+    }
+  }, []);
 
   const handleDateSelect = (date: Date) => {
     if (filters.selectedDate?.toDateString() === date.toDateString()) {
@@ -111,11 +141,19 @@ export function AfishaNavigationPanel({
     onChange({ ...filters, search });
   };
 
+  // Прокрутка на определенное количество элементов
   const scrollDates = (direction: 'left' | 'right') => {
     if (dateScrollRef.current) {
-      const scrollAmount = 200;
-      dateScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
+      const container = dateScrollRef.current;
+      const visibleItems = Math.floor(container.clientWidth / DATE_ITEM_WIDTH);
+      const scrollAmount = DATE_ITEM_WIDTH * Math.max(1, visibleItems - 1);
+
+      const newScrollLeft = direction === 'left'
+        ? Math.max(0, container.scrollLeft - scrollAmount)
+        : Math.min(container.scrollWidth - container.clientWidth, container.scrollLeft + scrollAmount);
+
+      container.scrollTo({
+        left: newScrollLeft,
         behavior: 'smooth'
       });
     }
@@ -164,7 +202,13 @@ export function AfishaNavigationPanel({
           {/* Кнопка прокрутки влево */}
           <button
             onClick={() => scrollDates('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md hover:bg-muted hover:scale-110 active:scale-95 transition-all duration-200"
+            disabled={!canScrollLeft}
+            className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md transition-all duration-200",
+              canScrollLeft
+                ? "hover:bg-muted hover:scale-110 active:scale-95 opacity-100"
+                : "opacity-0 pointer-events-none"
+            )}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -172,7 +216,7 @@ export function AfishaNavigationPanel({
           {/* Даты */}
           <div
             ref={dateScrollRef}
-            className="flex gap-1 overflow-x-auto hide-scrollbar px-10 py-2 scroll-smooth"
+            className="flex gap-1 overflow-x-auto hide-scrollbar px-10 py-2"
           >
             {dates.map((date, index) => {
               const isSelected = filters.selectedDate?.toDateString() === date.toDateString();
@@ -222,7 +266,13 @@ export function AfishaNavigationPanel({
           {/* Кнопка прокрутки вправо */}
           <button
             onClick={() => scrollDates('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md hover:bg-muted hover:scale-110 active:scale-95 transition-all duration-200"
+            disabled={!canScrollRight}
+            className={cn(
+              "absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-md transition-all duration-200",
+              canScrollRight
+                ? "hover:bg-muted hover:scale-110 active:scale-95 opacity-100"
+                : "opacity-0 pointer-events-none"
+            )}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
