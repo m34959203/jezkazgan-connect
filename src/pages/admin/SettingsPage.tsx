@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Save, Globe, Bell, CreditCard, Shield, Mail, Palette } from 'lucide-react';
+import { Save, Globe, Bell, CreditCard, Shield, Palette, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState({
     siteName: 'Afisha.kz',
     siteDescription: 'Афиша событий и бизнесов Казахстана',
@@ -431,6 +433,48 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label>Тема оформления</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setTheme('light')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        theme === 'light'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <Sun className="w-6 h-6" />
+                      <span className="text-sm font-medium">Светлая</span>
+                    </button>
+                    <button
+                      onClick={() => setTheme('dark')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        theme === 'dark'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <Moon className="w-6 h-6" />
+                      <span className="text-sm font-medium">Тёмная</span>
+                    </button>
+                    <button
+                      onClick={() => setTheme('system')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        theme === 'system'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <Monitor className="w-6 h-6" />
+                      <span className="text-sm font-medium">Системная</span>
+                    </button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Выберите тему оформления. Системная тема автоматически переключается в зависимости от настроек вашего устройства.
+                  </p>
+                </div>
+                <Separator />
                 <div className="space-y-2">
                   <Label>Основной цвет</Label>
                   <div className="flex gap-2">
@@ -442,19 +486,9 @@ export default function SettingsPage() {
                       />
                     ))}
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Тема по умолчанию</Label>
-                  <Select defaultValue="system">
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Светлая</SelectItem>
-                      <SelectItem value="dark">Тёмная</SelectItem>
-                      <SelectItem value="system">Системная</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Смена основного цвета требует перезагрузки приложения.
+                  </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
