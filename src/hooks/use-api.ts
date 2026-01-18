@@ -30,6 +30,12 @@ import {
   inviteTeamMember,
   updateTeamMemberRole,
   removeTeamMember,
+  fetchCityBanners,
+  createCityBanner,
+  updateCityBanner,
+  deleteCityBanner,
+  fetchAllBanners,
+  fetchPublicCityBanners,
   type City,
   type Event,
   type Business,
@@ -43,6 +49,7 @@ import {
   type BusinessPublications,
   type TeamData,
   type TeamMember,
+  type CityBanner,
 } from '@/lib/api';
 
 // Cities hooks
@@ -422,5 +429,99 @@ export function useRemoveTeamMember() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team'] });
     },
+  });
+}
+
+// City Banners hooks
+export function useCityBanners(cityId: string) {
+  return useQuery({
+    queryKey: ['admin', 'cityBanners', cityId],
+    queryFn: () => fetchCityBanners(cityId),
+    enabled: !!cityId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useCreateCityBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, data }: {
+      cityId: string;
+      data: {
+        title: string;
+        description?: string;
+        imageUrl: string;
+        link?: string;
+        linkType?: string;
+        position?: number;
+        isActive?: boolean;
+        businessId?: string;
+        startDate?: string;
+        endDate?: string;
+      };
+    }) => createCityBanner(cityId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityBanners', variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] });
+    },
+  });
+}
+
+export function useUpdateCityBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, bannerId, data }: {
+      cityId: string;
+      bannerId: string;
+      data: {
+        title?: string;
+        description?: string;
+        imageUrl?: string;
+        link?: string;
+        linkType?: string;
+        position?: number;
+        isActive?: boolean;
+        businessId?: string | null;
+        startDate?: string | null;
+        endDate?: string | null;
+      };
+    }) => updateCityBanner(cityId, bannerId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityBanners', variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] });
+    },
+  });
+}
+
+export function useDeleteCityBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, bannerId }: { cityId: string; bannerId: string }) =>
+      deleteCityBanner(cityId, bannerId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityBanners', variables.cityId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] });
+    },
+  });
+}
+
+export function useAllBanners() {
+  return useQuery({
+    queryKey: ['admin', 'banners'],
+    queryFn: fetchAllBanners,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// Public city banners hook (for displaying on main page)
+export function usePublicCityBanners(citySlug: string) {
+  return useQuery({
+    queryKey: ['cityBanners', citySlug],
+    queryFn: () => fetchPublicCityBanners(citySlug),
+    enabled: !!citySlug,
+    staleTime: 1000 * 60 * 5,
   });
 }

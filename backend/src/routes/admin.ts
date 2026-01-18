@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, users, businesses, events, promotions, cities } from '../db';
+import { db, users, businesses, events, promotions, cities, cityBanners } from '../db';
 import { eq, desc, sql, count, and, gte, like, or } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 
@@ -390,6 +390,167 @@ admin.patch('/cities/:id', async (c) => {
     return c.json(updated);
   } catch {
     return c.json({ error: 'Failed to update city' }, 500);
+  }
+});
+
+// ==================== CITY BANNERS ====================
+
+// Get all banners for a city
+admin.get('/cities/:cityId/banners', async (c) => {
+  const { cityId } = c.req.param();
+
+  try {
+    const result = await db
+      .select({
+        id: cityBanners.id,
+        cityId: cityBanners.cityId,
+        businessId: cityBanners.businessId,
+        title: cityBanners.title,
+        description: cityBanners.description,
+        imageUrl: cityBanners.imageUrl,
+        link: cityBanners.link,
+        linkType: cityBanners.linkType,
+        position: cityBanners.position,
+        isActive: cityBanners.isActive,
+        startDate: cityBanners.startDate,
+        endDate: cityBanners.endDate,
+        viewsCount: cityBanners.viewsCount,
+        clicksCount: cityBanners.clicksCount,
+        createdAt: cityBanners.createdAt,
+        businessName: businesses.name,
+      })
+      .from(cityBanners)
+      .leftJoin(businesses, eq(cityBanners.businessId, businesses.id))
+      .where(eq(cityBanners.cityId, cityId))
+      .orderBy(cityBanners.position);
+
+    // Get city info
+    const [city] = await db.select().from(cities).where(eq(cities.id, cityId));
+
+    return c.json({ banners: result, city });
+  } catch (error) {
+    console.error('City banners error:', error);
+    return c.json({ error: 'Failed to fetch city banners' }, 500);
+  }
+});
+
+// Create banner for a city
+admin.post('/cities/:cityId/banners', async (c) => {
+  const { cityId } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    // Get max position
+    const maxPositionResult = await db
+      .select({ maxPos: sql<number>`COALESCE(MAX(${cityBanners.position}), -1)` })
+      .from(cityBanners)
+      .where(eq(cityBanners.cityId, cityId));
+
+    const nextPosition = (maxPositionResult[0]?.maxPos ?? -1) + 1;
+
+    const [created] = await db
+      .insert(cityBanners)
+      .values({
+        cityId,
+        businessId: body.businessId || null,
+        title: body.title,
+        description: body.description || null,
+        imageUrl: body.imageUrl,
+        link: body.link || null,
+        linkType: body.linkType || 'external',
+        position: body.position ?? nextPosition,
+        isActive: body.isActive ?? true,
+        startDate: body.startDate ? new Date(body.startDate) : null,
+        endDate: body.endDate ? new Date(body.endDate) : null,
+      })
+      .returning();
+
+    return c.json(created);
+  } catch (error) {
+    console.error('Create banner error:', error);
+    return c.json({ error: 'Failed to create banner' }, 500);
+  }
+});
+
+// Update banner
+admin.patch('/cities/:cityId/banners/:bannerId', async (c) => {
+  const { bannerId } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+    if (body.link !== undefined) updateData.link = body.link;
+    if (body.linkType !== undefined) updateData.linkType = body.linkType;
+    if (body.position !== undefined) updateData.position = body.position;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.businessId !== undefined) updateData.businessId = body.businessId || null;
+    if (body.startDate !== undefined) updateData.startDate = body.startDate ? new Date(body.startDate) : null;
+    if (body.endDate !== undefined) updateData.endDate = body.endDate ? new Date(body.endDate) : null;
+
+    const [updated] = await db
+      .update(cityBanners)
+      .set(updateData)
+      .where(eq(cityBanners.id, bannerId))
+      .returning();
+
+    return c.json(updated);
+  } catch (error) {
+    console.error('Update banner error:', error);
+    return c.json({ error: 'Failed to update banner' }, 500);
+  }
+});
+
+// Delete banner
+admin.delete('/cities/:cityId/banners/:bannerId', async (c) => {
+  const { bannerId } = c.req.param();
+
+  try {
+    await db.delete(cityBanners).where(eq(cityBanners.id, bannerId));
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Delete banner error:', error);
+    return c.json({ error: 'Failed to delete banner' }, 500);
+  }
+});
+
+// Get all banners (for overview)
+admin.get('/banners', async (c) => {
+  try {
+    const result = await db
+      .select({
+        id: cityBanners.id,
+        cityId: cityBanners.cityId,
+        title: cityBanners.title,
+        imageUrl: cityBanners.imageUrl,
+        isActive: cityBanners.isActive,
+        viewsCount: cityBanners.viewsCount,
+        clicksCount: cityBanners.clicksCount,
+        createdAt: cityBanners.createdAt,
+        cityName: cities.name,
+        businessName: businesses.name,
+      })
+      .from(cityBanners)
+      .leftJoin(cities, eq(cityBanners.cityId, cities.id))
+      .leftJoin(businesses, eq(cityBanners.businessId, businesses.id))
+      .orderBy(desc(cityBanners.createdAt));
+
+    const [total] = await db.select({ count: count() }).from(cityBanners);
+    const [active] = await db.select({ count: count() }).from(cityBanners).where(eq(cityBanners.isActive, true));
+
+    return c.json({
+      banners: result,
+      total: total.count,
+      activeCount: active.count,
+    });
+  } catch (error) {
+    console.error('Banners error:', error);
+    return c.json({ error: 'Failed to fetch banners' }, 500);
   }
 });
 
