@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, TrendingUp, Gift, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
-import { EventFiltersComponent } from '@/components/events/EventFilters';
+import { AfishaNavigationPanel, AfishaFilters } from '@/components/navigation/AfishaNavigationPanel';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
 import { Button } from '@/components/ui/button';
 import { mockEvents, mockPromotions } from '@/data/mockData';
-import { EventFilters } from '@/types';
 import { useCities } from '@/hooks/use-api';
 import {
   Carousel,
@@ -55,11 +54,14 @@ export default function Index() {
   const [selectedCity, setSelectedCity] = useState<string>(() => {
     return localStorage.getItem('selectedCity') || 'jezkazgan';
   });
-  const [filters, setFilters] = useState<EventFilters>({
+  const [filters, setFilters] = useState<AfishaFilters>({
     search: '',
     category: 'all',
-    date: 'all',
-    price: 'all',
+    selectedDate: null,
+    showDiscounts: false,
+    showFeatured: false,
+    showChildren: false,
+    showFree: false,
   });
 
   // Загружаем города из API
@@ -110,31 +112,28 @@ export default function Index() {
         return false;
       }
 
-      // Дата
-      if (filters.date !== 'all') {
+      // Дата (конкретная дата из календаря)
+      if (filters.selectedDate) {
         const eventDate = new Date(event.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (filters.date === 'today') {
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          if (eventDate < today || eventDate >= tomorrow) return false;
-        } else if (filters.date === 'week') {
-          const weekEnd = new Date(today);
-          weekEnd.setDate(weekEnd.getDate() + 7);
-          if (eventDate < today || eventDate >= weekEnd) return false;
-        } else if (filters.date === 'month') {
-          const monthEnd = new Date(today);
-          monthEnd.setMonth(monthEnd.getMonth() + 1);
-          if (eventDate < today || eventDate >= monthEnd) return false;
-        }
+        const selectedDate = new Date(filters.selectedDate);
+        eventDate.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        if (eventDate.toDateString() !== selectedDate.toDateString()) return false;
       }
 
-      // Цена
-      if (filters.price !== 'all') {
-        if (filters.price === 'free' && event.price !== null) return false;
-        if (filters.price === 'paid' && event.price === null) return false;
+      // Бесплатные
+      if (filters.showFree && event.price !== null) {
+        return false;
+      }
+
+      // Выбор Афиши (Featured)
+      if (filters.showFeatured && !event.isFeatured) {
+        return false;
+      }
+
+      // Детские
+      if (filters.showChildren && event.category !== 'children') {
+        return false;
       }
 
       return true;
@@ -168,7 +167,7 @@ export default function Index() {
           <CarouselContent>
             {landmarks.images.map((image, index) => (
               <CarouselItem key={index}>
-                <div className="relative h-[400px] md:h-[500px] w-full">
+                <div className="relative h-[300px] md:h-[400px] w-full">
                   <img
                     src={image.url}
                     alt={image.title}
@@ -187,7 +186,7 @@ export default function Index() {
         {/* Контент поверх карусели */}
         <div className="absolute inset-0 flex flex-col justify-center pointer-events-none">
           <div className="container">
-            <div className="text-center max-w-3xl mx-auto mb-8">
+            <div className="text-center max-w-3xl mx-auto">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
                 <span className="text-gradient-gold font-display drop-shadow-lg">Афиша</span>
                 <br />
@@ -199,17 +198,19 @@ export default function Index() {
                 События, акции и сообщества твоего города. Узнавай первым о самом интересном!
               </p>
             </div>
-
-            {/* Фильтры */}
-            <div className="max-w-4xl mx-auto pointer-events-auto">
-              <EventFiltersComponent filters={filters} onChange={setFilters} />
-            </div>
           </div>
         </div>
       </section>
 
+      {/* Навигационная панель в стиле afisha.ru */}
+      <AfishaNavigationPanel
+        cityName={currentCity?.name || 'Казахстан'}
+        filters={filters}
+        onChange={setFilters}
+      />
+
       {/* Главные события */}
-      {featuredEvents.length > 0 && !filters.search && filters.category === 'all' && (
+      {featuredEvents.length > 0 && !filters.search && filters.category === 'all' && !filters.selectedDate && !filters.showFeatured && !filters.showChildren && !filters.showFree && (
         <section className="py-8 md:py-12">
           <div className="container">
             <div className="flex items-center justify-between mb-6">
@@ -235,7 +236,7 @@ export default function Index() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
               <h2 className="text-2xl font-bold">
-                {filters.search || filters.category !== 'all'
+                {filters.search || filters.category !== 'all' || filters.selectedDate || filters.showFeatured || filters.showChildren || filters.showFree
                   ? `Найдено: ${filteredEvents.length}`
                   : 'Все события'}
               </h2>
@@ -256,8 +257,11 @@ export default function Index() {
               <Button variant="outline" onClick={() => setFilters({
                 search: '',
                 category: 'all',
-                date: 'all',
-                price: 'all',
+                selectedDate: null,
+                showDiscounts: false,
+                showFeatured: false,
+                showChildren: false,
+                showFree: false,
               })}>
                 Сбросить фильтры
               </Button>

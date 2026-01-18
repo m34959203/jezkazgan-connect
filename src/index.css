@@ -221,6 +221,38 @@
     @apply placeholder:text-muted-foreground/60;
   }
 
+  /* Навигационная панель в стиле afisha */
+  .afisha-date-picker {
+    @apply flex gap-1 overflow-x-auto hide-scrollbar py-2;
+  }
+
+  .afisha-date-item {
+    @apply flex flex-col items-center min-w-[48px] px-2 py-2 rounded-lg transition-all cursor-pointer;
+    @apply hover:bg-muted;
+  }
+
+  .afisha-date-item.selected {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .afisha-date-item.weekend {
+    @apply text-destructive;
+  }
+
+  .afisha-filter-chip {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium;
+    @apply bg-muted text-foreground border border-border transition-all;
+    @apply hover:bg-muted/80 hover:border-primary/30;
+  }
+
+  .afisha-filter-chip.active {
+    @apply bg-primary text-primary-foreground border-primary;
+  }
+
+  .afisha-filter-chip.teal {
+    @apply bg-teal text-white border-teal;
+  }
+
   /* Навигация */
   .nav-link {
     @apply relative px-4 py-2 text-sm font-medium text-muted-foreground transition-colors;
