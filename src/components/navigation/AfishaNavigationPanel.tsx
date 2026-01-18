@@ -41,8 +41,8 @@ interface AfishaNavigationPanelProps {
   onViewAll?: () => void;
 }
 
-// Генерация дат на 30 дней вперед (как на afisha.ru)
-function generateDates(startDate: Date, count: number = 30): Date[] {
+// Генерация дат на 180 дней вперед
+function generateDates(startDate: Date, count: number = 180): Date[] {
   const dates: Date[] = [];
   for (let i = 0; i < count; i++) {
     const date = new Date(startDate);
