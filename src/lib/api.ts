@@ -206,6 +206,121 @@ export async function fetchCurrentUser(): Promise<User> {
 
 // User API functions (authenticated)
 
+// Fetch current user's business
+export async function fetchMyBusiness(): Promise<Business> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to fetch business');
+  }
+  return res.json();
+}
+
+// Business stats interface
+export interface BusinessStats {
+  events: {
+    total: number;
+    totalViews: number;
+    approved: number;
+    pending: number;
+  };
+  promotions: {
+    total: number;
+    totalViews: number;
+    active: number;
+  };
+  totalViews: number;
+  recentPublications: Array<{
+    id: string;
+    title: string;
+    type: 'event' | 'promotion';
+    status: string;
+    viewsCount: number;
+    createdAt: string;
+  }>;
+}
+
+// Fetch current user's business stats
+export async function fetchMyBusinessStats(): Promise<BusinessStats> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me/stats`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to fetch business stats');
+  }
+  return res.json();
+}
+
+// Business publications interface
+export interface BusinessPublications {
+  events: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    category: string;
+    image: string | null;
+    date: string;
+    location: string | null;
+    isApproved: boolean;
+    viewsCount: number;
+    createdAt: string;
+    type: 'event';
+    status: 'approved' | 'pending';
+  }>;
+  promotions: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    image: string | null;
+    discount: string | null;
+    validUntil: string;
+    isActive: boolean;
+    viewsCount: number;
+    createdAt: string;
+    type: 'promotion';
+    status: 'active' | 'expired';
+  }>;
+}
+
+// Fetch current user's business publications
+export async function fetchMyBusinessPublications(): Promise<BusinessPublications> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me/publications`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to fetch publications');
+  }
+  return res.json();
+}
+
 export async function createEvent(data: {
   cityId: string;
   businessId?: string;

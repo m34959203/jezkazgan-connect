@@ -8,6 +8,9 @@ import {
   fetchPromotions,
   login,
   register,
+  fetchMyBusiness,
+  fetchMyBusinessStats,
+  fetchMyBusinessPublications,
   fetchAdminStats,
   fetchAdminUsers,
   updateAdminUser,
@@ -31,6 +34,8 @@ import {
   type AdminBusiness,
   type AdminEvent,
   type AdminPromotion,
+  type BusinessStats,
+  type BusinessPublications,
 } from '@/lib/api';
 
 // Cities hooks
@@ -80,6 +85,34 @@ export function useBusinesses(params?: {
     queryKey: ['businesses', params],
     queryFn: () => fetchBusinesses(params),
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Current user's business hooks
+export function useMyBusiness() {
+  return useQuery<Business>({
+    queryKey: ['myBusiness'],
+    queryFn: fetchMyBusiness,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false, // Don't retry if user has no business
+  });
+}
+
+export function useMyBusinessStats() {
+  return useQuery<BusinessStats>({
+    queryKey: ['myBusinessStats'],
+    queryFn: fetchMyBusinessStats,
+    staleTime: 1000 * 60 * 2, // 2 minutes for fresher stats
+    retry: false,
+  });
+}
+
+export function useMyBusinessPublications() {
+  return useQuery<BusinessPublications>({
+    queryKey: ['myBusinessPublications'],
+    queryFn: fetchMyBusinessPublications,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: false,
   });
 }
 

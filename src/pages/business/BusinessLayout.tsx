@@ -19,17 +19,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useCurrentUser } from '@/hooks/use-api';
-
-// Mock business data - в реальности будет из API
-const mockBusiness = {
-  id: '1',
-  name: 'Ресторан "Тюльпан"',
-  tier: 'lite' as const, // 'free' | 'lite' | 'premium'
-  postsUsed: 7,
-  postsLimit: 10,
-  isVerified: true,
-};
+import { useCurrentUser, useMyBusiness } from '@/hooks/use-api';
 
 const tierConfig = {
   free: { label: 'Free', color: 'bg-gray-100 text-gray-800', limit: 3 },
@@ -60,13 +50,18 @@ const tierOrder = { free: 0, lite: 1, premium: 2 };
 export default function BusinessLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: user, isLoading: userLoading } = useCurrentUser();
+  const { data: business, isLoading: businessLoading } = useMyBusiness();
 
-  // В реальности данные бизнеса будут из API
-  const business = mockBusiness;
-  const tier = tierConfig[business.tier];
+  // Tier configuration with defaults
+  const businessTier = (business?.tier || 'free') as keyof typeof tierConfig;
+  const tier = tierConfig[businessTier];
 
-  if (isLoading) {
+  // Calculate posts limit based on tier
+  const postsLimit = tier.limit === Infinity ? 999 : tier.limit;
+  const postsUsed = business?.postsThisMonth || 0;
+
+  if (userLoading || businessLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -79,9 +74,14 @@ export default function BusinessLayout() {
     return <Navigate to="/auth" replace />;
   }
 
-  const postsPercentage = business.tier === 'premium'
+  // Если у пользователя нет бизнеса - перенаправляем на создание
+  if (!business) {
+    return <Navigate to="/create-business" replace />;
+  }
+
+  const postsPercentage = businessTier === 'premium'
     ? 100
-    : (business.postsUsed / business.postsLimit) * 100;
+    : (postsUsed / postsLimit) * 100;
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,11 +136,11 @@ export default function BusinessLayout() {
               </div>
 
               {/* Posts limit indicator */}
-              {sidebarOpen && business.tier !== 'premium' && (
+              {sidebarOpen && businessTier !== 'premium' && (
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Публикаций</span>
-                    <span>{business.postsUsed}/{business.postsLimit}</span>
+                    <span>{postsUsed}/{postsLimit}</span>
                   </div>
                   <Progress value={postsPercentage} className="h-1.5" />
                 </div>
@@ -151,7 +151,7 @@ export default function BusinessLayout() {
             <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
               {sidebarLinks.map((link) => {
                 // Check tier restriction
-                if (link.minTier && tierOrder[business.tier] < tierOrder[link.minTier]) {
+                if (link.minTier && tierOrder[businessTier] < tierOrder[link.minTier]) {
                   return (
                     <div
                       key={link.href}
@@ -216,7 +216,7 @@ export default function BusinessLayout() {
             </nav>
 
             {/* Upgrade banner */}
-            {sidebarOpen && business.tier !== 'premium' && (
+            {sidebarOpen && businessTier !== 'premium' && (
               <div className="p-4 border-t">
                 <div className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/30">
                   <div className="flex items-center gap-2 mb-2">
@@ -224,7 +224,7 @@ export default function BusinessLayout() {
                     <span className="font-medium text-sm">Улучшить тариф</span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">
-                    {business.tier === 'free'
+                    {businessTier === 'free'
                       ? 'Получите больше публикаций и статистику'
                       : 'Получите рекламный баннер и безлимит'}
                   </p>

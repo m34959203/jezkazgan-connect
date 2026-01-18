@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { db, businesses, cities, users } from '../db';
+import { db, businesses, cities, users, events, promotions } from '../db';
 import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
 const app = new Hono<{ Variables: { user: AuthUser } }>();
@@ -52,6 +52,201 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
     .offset(offset);
 
   return c.json(result);
+});
+
+// GET /businesses/me - бизнес текущего пользователя
+app.get('/me', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const result = await db
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      description: businesses.description,
+      category: businesses.category,
+      address: businesses.address,
+      phone: businesses.phone,
+      whatsapp: businesses.whatsapp,
+      instagram: businesses.instagram,
+      website: businesses.website,
+      logo: businesses.logo,
+      cover: businesses.cover,
+      isVerified: businesses.isVerified,
+      tier: businesses.tier,
+      tierUntil: businesses.tierUntil,
+      postsThisMonth: businesses.postsThisMonth,
+      createdAt: businesses.createdAt,
+      city: {
+        id: cities.id,
+        name: cities.name,
+        slug: cities.slug,
+      },
+    })
+    .from(businesses)
+    .leftJoin(cities, eq(businesses.cityId, cities.id))
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!result.length) {
+    return c.json({ error: 'Business not found', message: 'User does not have a business' }, 404);
+  }
+
+  return c.json(result[0]);
+});
+
+// GET /businesses/me/stats - статистика бизнеса текущего пользователя
+app.get('/me/stats', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  const businessId = business[0].id;
+
+  // Получить статистику событий
+  const eventsStats = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      totalViews: sql<number>`coalesce(sum(${events.viewsCount}), 0)::int`,
+      approved: sql<number>`count(*) filter (where ${events.isApproved} = true)::int`,
+      pending: sql<number>`count(*) filter (where ${events.isApproved} = false)::int`,
+    })
+    .from(events)
+    .where(eq(events.businessId, businessId));
+
+  // Получить статистику акций
+  const promotionsStats = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      totalViews: sql<number>`coalesce(sum(${promotions.viewsCount}), 0)::int`,
+      active: sql<number>`count(*) filter (where ${promotions.isActive} = true and ${promotions.validUntil} >= now())::int`,
+    })
+    .from(promotions)
+    .where(eq(promotions.businessId, businessId));
+
+  // Получить последние публикации
+  const recentEvents = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      type: sql<string>`'event'`,
+      status: sql<string>`case when ${events.isApproved} then 'approved' else 'pending' end`,
+      viewsCount: events.viewsCount,
+      createdAt: events.createdAt,
+    })
+    .from(events)
+    .where(eq(events.businessId, businessId))
+    .orderBy(desc(events.createdAt))
+    .limit(5);
+
+  const recentPromotions = await db
+    .select({
+      id: promotions.id,
+      title: promotions.title,
+      type: sql<string>`'promotion'`,
+      status: sql<string>`case when ${promotions.isActive} and ${promotions.validUntil} >= now() then 'active' else 'expired' end`,
+      viewsCount: promotions.viewsCount,
+      createdAt: promotions.createdAt,
+    })
+    .from(promotions)
+    .where(eq(promotions.businessId, businessId))
+    .orderBy(desc(promotions.createdAt))
+    .limit(5);
+
+  return c.json({
+    events: eventsStats[0],
+    promotions: promotionsStats[0],
+    totalViews: (eventsStats[0]?.totalViews || 0) + (promotionsStats[0]?.totalViews || 0),
+    recentPublications: [...recentEvents, ...recentPromotions]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 10),
+  });
+});
+
+// GET /businesses/me/publications - публикации бизнеса
+app.get('/me/publications', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select({ id: businesses.id })
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  const businessId = business[0].id;
+
+  // Получить события
+  const businessEvents = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      description: events.description,
+      category: events.category,
+      image: events.image,
+      date: events.date,
+      location: events.location,
+      isApproved: events.isApproved,
+      viewsCount: events.viewsCount,
+      createdAt: events.createdAt,
+    })
+    .from(events)
+    .where(eq(events.businessId, businessId))
+    .orderBy(desc(events.createdAt));
+
+  // Получить акции
+  const businessPromotions = await db
+    .select({
+      id: promotions.id,
+      title: promotions.title,
+      description: promotions.description,
+      image: promotions.image,
+      discount: promotions.discount,
+      validUntil: promotions.validUntil,
+      isActive: promotions.isActive,
+      viewsCount: promotions.viewsCount,
+      createdAt: promotions.createdAt,
+    })
+    .from(promotions)
+    .where(eq(promotions.businessId, businessId))
+    .orderBy(desc(promotions.createdAt));
+
+  return c.json({
+    events: businessEvents.map(e => ({
+      ...e,
+      type: 'event',
+      status: e.isApproved ? 'approved' : 'pending',
+    })),
+    promotions: businessPromotions.map(p => ({
+      ...p,
+      type: 'promotion',
+      status: p.isActive && new Date(p.validUntil) >= new Date() ? 'active' : 'expired',
+    })),
+  });
 });
 
 // GET /businesses/:id - бизнес по ID

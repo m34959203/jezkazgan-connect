@@ -43,62 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Mock data
-const mockBusiness = {
-  tier: 'lite' as const,
-  postsUsed: 7,
-  postsLimit: 10,
-};
-
-const mockPublications = [
-  {
-    id: '1',
-    type: 'event',
-    title: 'Мастер-класс по живописи',
-    status: 'approved',
-    views: 234,
-    date: '2026-01-25',
-    createdAt: '2026-01-15',
-  },
-  {
-    id: '2',
-    type: 'promotion',
-    title: 'Скидка 20% на все меню',
-    status: 'approved',
-    views: 567,
-    date: '2026-01-31',
-    createdAt: '2026-01-10',
-  },
-  {
-    id: '3',
-    type: 'event',
-    title: 'Живая музыка по пятницам',
-    status: 'pending',
-    views: 0,
-    date: '2026-02-01',
-    createdAt: '2026-01-17',
-  },
-  {
-    id: '4',
-    type: 'promotion',
-    title: 'Бизнес-ланч за 2000 ₸',
-    status: 'rejected',
-    views: 0,
-    date: '2026-01-20',
-    createdAt: '2026-01-12',
-    rejectionReason: 'Некорректная информация о ценах',
-  },
-  {
-    id: '5',
-    type: 'event',
-    title: 'Новогодний корпоратив',
-    status: 'expired',
-    views: 890,
-    date: '2025-12-31',
-    createdAt: '2025-12-01',
-  },
-];
+import { useMyBusiness, useMyBusinessPublications } from '@/hooks/use-api';
 
 const statusConfig = {
   pending: { label: 'На модерации', color: 'bg-amber-100 text-amber-800', icon: Clock },
@@ -117,19 +62,56 @@ export default function BusinessPublications() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const business = mockBusiness;
-  const postsRemaining = business.postsLimit - business.postsUsed;
-  const canPost = postsRemaining > 0 || business.tier === 'premium';
+  const { data: business, isLoading: businessLoading } = useMyBusiness();
+  const { data: publications, isLoading: publicationsLoading } = useMyBusinessPublications();
 
-  const filteredPublications = mockPublications.filter((pub) => {
+  // Tier limits
+  const tierLimits = { free: 3, lite: 10, premium: 999 };
+  const businessTier = (business?.tier || 'free') as keyof typeof tierLimits;
+  const postsLimit = tierLimits[businessTier];
+  const postsUsed = business?.postsThisMonth || 0;
+  const postsRemaining = postsLimit - postsUsed;
+  const canPost = postsRemaining > 0 || businessTier === 'premium';
+
+  // Combine events and promotions into a single list
+  const allPublications = [
+    ...(publications?.events || []).map((e) => ({
+      id: e.id,
+      type: 'event' as const,
+      title: e.title,
+      status: e.status,
+      views: e.viewsCount,
+      date: e.date,
+      createdAt: e.createdAt,
+    })),
+    ...(publications?.promotions || []).map((p) => ({
+      id: p.id,
+      type: 'promotion' as const,
+      title: p.title,
+      status: p.status,
+      views: p.viewsCount,
+      date: p.validUntil,
+      createdAt: p.createdAt,
+    })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const filteredPublications = allPublications.filter((pub) => {
     const matchesSearch = pub.title.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || pub.status === statusFilter;
     const matchesType = typeFilter === 'all' || pub.type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const activeCount = mockPublications.filter((p) => p.status === 'approved').length;
-  const pendingCount = mockPublications.filter((p) => p.status === 'pending').length;
+  const activeCount = allPublications.filter((p) => p.status === 'approved' || p.status === 'active').length;
+  const pendingCount = allPublications.filter((p) => p.status === 'pending').length;
+
+  if (businessLoading || publicationsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,16 +156,16 @@ export default function BusinessPublications() {
       </div>
 
       {/* Limit indicator */}
-      {business.tier !== 'premium' && (
+      {businessTier !== 'premium' && (
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Использовано публикаций</span>
               <span className="text-sm text-muted-foreground">
-                {business.postsUsed} из {business.postsLimit}
+                {postsUsed} из {postsLimit}
               </span>
             </div>
-            <Progress value={(business.postsUsed / business.postsLimit) * 100} className="h-2" />
+            <Progress value={(postsUsed / postsLimit) * 100} className="h-2" />
             {postsRemaining <= 2 && postsRemaining > 0 && (
               <p className="text-xs text-amber-600 mt-2">
                 Осталось мало публикаций. Рассмотрите улучшение тарифа.
@@ -197,7 +179,7 @@ export default function BusinessPublications() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{mockPublications.length}</div>
+            <div className="text-2xl font-bold">{allPublications.length}</div>
             <p className="text-sm text-muted-foreground">Всего</p>
           </CardContent>
         </Card>
@@ -216,7 +198,7 @@ export default function BusinessPublications() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {mockPublications.reduce((acc, p) => acc + p.views, 0).toLocaleString()}
+              {allPublications.reduce((acc, p) => acc + p.views, 0).toLocaleString()}
             </div>
             <p className="text-sm text-muted-foreground">Просмотров</p>
           </CardContent>

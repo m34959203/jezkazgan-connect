@@ -19,52 +19,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-
-// Mock data
-const mockBusiness = {
-  tier: 'lite' as const,
-  postsUsed: 7,
-  postsLimit: 10,
-};
-
-const mockStats = {
-  views: 1234,
-  viewsChange: 12,
-  calls: 89,
-  callsChange: 5,
-  whatsapp: 156,
-  whatsappChange: 23,
-  rating: 4.8,
-  reviewsCount: 24,
-};
-
-const mockRecentActivity = [
-  {
-    id: '1',
-    type: 'approved',
-    title: 'Акция "Скидка 20%" одобрена',
-    time: '2 часа назад',
-  },
-  {
-    id: '2',
-    type: 'review',
-    title: 'Новый отзыв от Айдар К.',
-    rating: 5,
-    time: 'вчера',
-  },
-  {
-    id: '3',
-    type: 'views',
-    title: 'Событие "Мастер-класс" - 45 просмотров',
-    time: '3 дня назад',
-  },
-  {
-    id: '4',
-    type: 'pending',
-    title: 'Событие "Живая музыка" на модерации',
-    time: '3 дня назад',
-  },
-];
+import { useMyBusiness, useMyBusinessStats } from '@/hooks/use-api';
+import { formatDistanceToNow } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 const activityIcons = {
   approved: CheckCircle,
@@ -89,14 +46,40 @@ const tierLabels = {
 };
 
 export default function BusinessDashboard() {
-  const business = mockBusiness;
-  const postsRemaining = business.postsLimit - business.postsUsed;
-  const postsPercentage = (business.postsUsed / business.postsLimit) * 100;
+  const { data: business, isLoading: businessLoading } = useMyBusiness();
+  const { data: stats, isLoading: statsLoading } = useMyBusinessStats();
+
+  // Tier limits
+  const tierLimits = { free: 3, lite: 10, premium: 999 };
+  const businessTier = (business?.tier || 'free') as keyof typeof tierLimits;
+  const postsLimit = tierLimits[businessTier];
+  const postsUsed = business?.postsThisMonth || 0;
+  const postsRemaining = postsLimit - postsUsed;
+  const postsPercentage = (postsUsed / postsLimit) * 100;
+
+  // Calculate total views from stats
+  const totalViews = stats?.totalViews || 0;
+
+  // Build recent activity from stats
+  const recentActivity = (stats?.recentPublications || []).map((pub) => ({
+    id: pub.id,
+    type: pub.status === 'approved' || pub.status === 'active' ? 'approved' : pub.status === 'pending' ? 'pending' : 'views',
+    title: `${pub.type === 'event' ? 'Событие' : 'Акция'} "${pub.title}" - ${pub.viewsCount} просмотров`,
+    time: formatDistanceToNow(new Date(pub.createdAt), { addSuffix: true, locale: ru }),
+  }));
+
+  if (businessLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Upgrade banner for Free/Lite */}
-      {business.tier !== 'premium' && (
+      {businessTier !== 'premium' && (
         <Card className="bg-gradient-to-r from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/20 border-amber-200">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
@@ -106,18 +89,18 @@ export default function BusinessDashboard() {
                 </div>
                 <div>
                   <p className="font-medium">
-                    Вы используете тариф {tierLabels[business.tier]}
+                    Вы используете тариф {tierLabels[businessTier]}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {business.tier === 'free'
-                      ? `Осталось ${postsRemaining} из ${business.postsLimit} публикаций. Перейдите на Lite для расширенной статистики.`
+                    {businessTier === 'free'
+                      ? `Осталось ${postsRemaining} из ${postsLimit} публикаций. Перейдите на Lite для расширенной статистики.`
                       : `Осталось ${postsRemaining} публикаций. Перейдите на Premium для безлимита и рекламного баннера.`}
                   </p>
                 </div>
               </div>
               <Button asChild>
                 <Link to="/business/subscription">
-                  {business.tier === 'free' ? 'Перейти на Lite' : 'Перейти на Premium'}
+                  {businessTier === 'free' ? 'Перейти на Lite' : 'Перейти на Premium'}
                 </Link>
               </Button>
             </div>
@@ -138,16 +121,13 @@ export default function BusinessDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Просмотры</p>
-                <p className="text-2xl font-bold">{mockStats.views.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <Eye className="w-5 h-5 text-blue-600" />
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-              <ArrowUpRight className="w-4 h-4" />
-              +{mockStats.viewsChange}% за 30 дней
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">Всего просмотров публикаций</p>
           </CardContent>
         </Card>
 
@@ -155,17 +135,16 @@ export default function BusinessDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Звонки</p>
-                <p className="text-2xl font-bold">{mockStats.calls}</p>
+                <p className="text-sm text-muted-foreground">События</p>
+                <p className="text-2xl font-bold">{stats?.events?.total || 0}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-green-600" />
+                <Calendar className="w-5 h-5 text-green-600" />
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-              <ArrowUpRight className="w-4 h-4" />
-              +{mockStats.callsChange}% за 30 дней
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {stats?.events?.approved || 0} одобрено, {stats?.events?.pending || 0} на модерации
+            </p>
           </CardContent>
         </Card>
 
@@ -173,17 +152,16 @@ export default function BusinessDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">WhatsApp</p>
-                <p className="text-2xl font-bold">{mockStats.whatsapp}</p>
+                <p className="text-sm text-muted-foreground">Акции</p>
+                <p className="text-2xl font-bold">{stats?.promotions?.total || 0}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                <Percent className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-              <ArrowUpRight className="w-4 h-4" />
-              +{mockStats.whatsappChange}% за 30 дней
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {stats?.promotions?.active || 0} активных
+            </p>
           </CardContent>
         </Card>
 
@@ -192,7 +170,7 @@ export default function BusinessDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Публикации</p>
-                <p className="text-2xl font-bold">{business.postsUsed}/{business.postsLimit}</p>
+                <p className="text-2xl font-bold">{postsUsed}/{postsLimit}</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-purple-600" />
@@ -244,35 +222,28 @@ export default function BusinessDashboard() {
           </CardContent>
         </Card>
 
-        {/* Rating card */}
+        {/* Stats summary card */}
         <Card>
           <CardHeader>
-            <CardTitle>Рейтинг</CardTitle>
+            <CardTitle>Сводка</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-amber-500">{mockStats.rating}</div>
-                <div className="flex items-center justify-center mt-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-4 h-4 ${star <= Math.round(mockStats.rating) ? 'fill-amber-500 text-amber-500' : 'text-gray-300'}`}
-                    />
-                  ))}
-                </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Всего публикаций</span>
+                <span className="font-medium">{(stats?.events?.total || 0) + (stats?.promotions?.total || 0)}</span>
               </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">
-                  На основе {mockStats.reviewsCount} отзывов
-                </p>
-                {business.tier !== 'free' && (
-                  <Button variant="link" className="px-0 h-auto" asChild>
-                    <Link to="/business/reviews">
-                      Посмотреть все отзывы
-                    </Link>
-                  </Button>
-                )}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Активных событий</span>
+                <span className="font-medium">{stats?.events?.approved || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Активных акций</span>
+                <span className="font-medium">{stats?.promotions?.active || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">На модерации</span>
+                <span className="font-medium">{stats?.events?.pending || 0}</span>
               </div>
             </div>
           </CardContent>
@@ -284,7 +255,7 @@ export default function BusinessDashboard() {
             <CardTitle>Просмотры за неделю</CardTitle>
           </CardHeader>
           <CardContent>
-            {business.tier === 'free' ? (
+            {businessTier === 'free' ? (
               <div className="h-32 flex flex-col items-center justify-center text-center">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
                   <TrendingUp className="w-6 h-6 text-muted-foreground" />
@@ -315,37 +286,37 @@ export default function BusinessDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Последняя активность</CardTitle>
-          <CardDescription>События и уведомления</CardDescription>
+          <CardDescription>Ваши публикации</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {mockRecentActivity.map((activity) => {
-              const Icon = activityIcons[activity.type as keyof typeof activityIcons];
-              const colorClass = activityColors[activity.type as keyof typeof activityColors];
+          {recentActivity.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>У вас пока нет публикаций</p>
+              <Button variant="link" size="sm" asChild>
+                <Link to="/business/publications/events/new">Создать первое событие</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentActivity.map((activity) => {
+                const Icon = activityIcons[activity.type as keyof typeof activityIcons] || Eye;
+                const colorClass = activityColors[activity.type as keyof typeof activityColors] || 'text-blue-600';
 
-              return (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center ${colorClass}`}>
-                    <Icon className="w-4 h-4" />
+                return (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center ${colorClass}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.title}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.title}</p>
-                    {activity.rating && (
-                      <div className="flex items-center gap-0.5 mt-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-3 h-3 ${star <= activity.rating! ? 'fill-amber-500 text-amber-500' : 'text-gray-300'}`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -31,84 +31,67 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-
-// Mock cities data
-const mockCities = [
-  {
-    id: '1',
-    name: 'Алматы',
-    slug: 'almaty',
-    region: 'Город республиканского значения',
-    isActive: true,
-    usersCount: 5420,
-    businessesCount: 89,
-    eventsCount: 34,
-  },
-  {
-    id: '2',
-    name: 'Астана',
-    slug: 'astana',
-    region: 'Город республиканского значения',
-    isActive: true,
-    usersCount: 4210,
-    businessesCount: 67,
-    eventsCount: 28,
-  },
-  {
-    id: '3',
-    name: 'Караганда',
-    slug: 'karaganda',
-    region: 'Карагандинская область',
-    isActive: true,
-    usersCount: 1850,
-    businessesCount: 34,
-    eventsCount: 12,
-  },
-  {
-    id: '4',
-    name: 'Шымкент',
-    slug: 'shymkent',
-    region: 'Город республиканского значения',
-    isActive: true,
-    usersCount: 2100,
-    businessesCount: 41,
-    eventsCount: 15,
-  },
-  {
-    id: '5',
-    name: 'Жезказган',
-    slug: 'jezkazgan',
-    region: 'Улытауская область',
-    isActive: true,
-    usersCount: 890,
-    businessesCount: 23,
-    eventsCount: 8,
-  },
-  {
-    id: '6',
-    name: 'Актау',
-    slug: 'aktau',
-    region: 'Мангистауская область',
-    isActive: false,
-    usersCount: 0,
-    businessesCount: 0,
-    eventsCount: 0,
-  },
-];
+import { useAdminCities, useCreateCity, useUpdateCity } from '@/hooks/use-api';
+import { toast } from 'sonner';
 
 export default function CitiesPage() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newCity, setNewCity] = useState({ name: '', slug: '', region: '' });
 
-  const filteredCities = mockCities.filter((city) =>
+  const { data: cities, isLoading } = useAdminCities();
+  const createCity = useCreateCity();
+  const updateCity = useUpdateCity();
+
+  const citiesList = cities || [];
+
+  const filteredCities = citiesList.filter((city) =>
     city.name.toLowerCase().includes(search.toLowerCase()) ||
-    city.region.toLowerCase().includes(search.toLowerCase())
+    (city.region || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeCities = mockCities.filter((c) => c.isActive).length;
-  const totalUsers = mockCities.reduce((acc, c) => acc + c.usersCount, 0);
-  const totalBusinesses = mockCities.reduce((acc, c) => acc + c.businessesCount, 0);
+  const activeCities = citiesList.filter((c) => c.isActive).length;
+  const totalPopulation = citiesList.reduce((acc, c) => acc + (c.population || 0), 0);
+
+  const handleCreateCity = async () => {
+    if (!newCity.name || !newCity.slug) {
+      toast.error('Заполните название и slug');
+      return;
+    }
+    try {
+      await createCity.mutateAsync({
+        name: newCity.name,
+        slug: newCity.slug,
+        region: newCity.region || undefined,
+        isActive: true,
+      });
+      toast.success('Город создан');
+      setDialogOpen(false);
+      setNewCity({ name: '', slug: '', region: '' });
+    } catch (error) {
+      toast.error('Ошибка при создании города');
+    }
+  };
+
+  const handleToggleCity = async (cityId: string, isActive: boolean) => {
+    try {
+      await updateCity.mutateAsync({
+        id: cityId,
+        data: { isActive: !isActive },
+      });
+      toast.success(isActive ? 'Город отключён' : 'Город включён');
+    } catch (error) {
+      toast.error('Ошибка при обновлении города');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -167,8 +150,8 @@ export default function CitiesPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Отмена
               </Button>
-              <Button onClick={() => setDialogOpen(false)}>
-                Добавить
+              <Button onClick={handleCreateCity} disabled={createCity.isPending}>
+                {createCity.isPending ? 'Создание...' : 'Добавить'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -176,12 +159,12 @@ export default function CitiesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
-              <div className="text-2xl font-bold">{mockCities.length}</div>
+              <div className="text-2xl font-bold">{citiesList.length}</div>
             </div>
             <p className="text-sm text-muted-foreground">Всего городов</p>
           </CardContent>
@@ -199,18 +182,9 @@ export default function CitiesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-600" />
-              <div className="text-2xl font-bold">{totalUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{totalPopulation.toLocaleString()}</div>
             </div>
-            <p className="text-sm text-muted-foreground">Пользователей</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-amber-600" />
-              <div className="text-2xl font-bold">{totalBusinesses}</div>
-            </div>
-            <p className="text-sm text-muted-foreground">Бизнесов</p>
+            <p className="text-sm text-muted-foreground">Население</p>
           </CardContent>
         </Card>
       </div>
@@ -245,9 +219,7 @@ export default function CitiesPage() {
                 <TableHead>Город</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Регион</TableHead>
-                <TableHead>Пользователей</TableHead>
-                <TableHead>Бизнесов</TableHead>
-                <TableHead>Событий</TableHead>
+                <TableHead>Население</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -271,11 +243,9 @@ export default function CitiesPage() {
                     </code>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {city.region}
+                    {city.region || '-'}
                   </TableCell>
-                  <TableCell>{city.usersCount.toLocaleString()}</TableCell>
-                  <TableCell>{city.businessesCount}</TableCell>
-                  <TableCell>{city.eventsCount}</TableCell>
+                  <TableCell>{(city.population || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     {city.isActive ? (
                       <Badge className="bg-green-100 text-green-800">
@@ -301,7 +271,7 @@ export default function CitiesPage() {
                           <Edit className="w-4 h-4 mr-2" />
                           Редактировать
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleCity(city.id, city.isActive)}>
                           {city.isActive ? (
                             <>
                               <ToggleLeft className="w-4 h-4 mr-2" />
