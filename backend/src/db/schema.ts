@@ -105,6 +105,20 @@ export const promotions = pgTable('promotions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Business Team Members (Сотрудники бизнеса)
+export const businessMemberRoleEnum = pgEnum('business_member_role', ['admin', 'editor', 'viewer']);
+
+export const businessMembers = pgTable('business_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').references(() => businesses.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  role: businessMemberRoleEnum('role').default('editor').notNull(),
+  invitedBy: uuid('invited_by').references(() => users.id).notNull(),
+  invitedAt: timestamp('invited_at').defaultNow().notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  isActive: boolean('is_active').default(true),
+});
+
 // Favorites (Избранное)
 export const favorites = pgTable('favorites', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -157,6 +171,13 @@ export const businessesRelations = relations(businesses, ({ one, many }) => ({
   city: one(cities, { fields: [businesses.cityId], references: [cities.id] }),
   events: many(events),
   promotions: many(promotions),
+  members: many(businessMembers),
+}));
+
+export const businessMembersRelations = relations(businessMembers, ({ one }) => ({
+  business: one(businesses, { fields: [businessMembers.businessId], references: [businesses.id] }),
+  user: one(users, { fields: [businessMembers.userId], references: [users.id] }),
+  inviter: one(users, { fields: [businessMembers.invitedBy], references: [users.id] }),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({

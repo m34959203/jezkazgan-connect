@@ -26,6 +26,10 @@ import {
   fetchAdminCities,
   createAdminCity,
   updateAdminCity,
+  fetchTeamMembers,
+  inviteTeamMember,
+  updateTeamMemberRole,
+  removeTeamMember,
   type City,
   type Event,
   type Business,
@@ -37,6 +41,8 @@ import {
   type AdminPromotion,
   type BusinessStats,
   type BusinessPublications,
+  type TeamData,
+  type TeamMember,
 } from '@/lib/api';
 
 // Cities hooks
@@ -370,6 +376,51 @@ export function useUpdateCity() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'cities'] });
       queryClient.invalidateQueries({ queryKey: ['cities'] });
+    },
+  });
+}
+
+// Team hooks (for business cabinet - Premium feature)
+export function useTeamMembers() {
+  return useQuery<TeamData>({
+    queryKey: ['team'],
+    queryFn: fetchTeamMembers,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: false,
+  });
+}
+
+export function useInviteTeamMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { email: string; role: 'admin' | 'editor' | 'viewer' }) =>
+      inviteTeamMember(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team'] });
+    },
+  });
+}
+
+export function useUpdateTeamMemberRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'admin' | 'editor' | 'viewer' }) =>
+      updateTeamMemberRole(id, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team'] });
+    },
+  });
+}
+
+export function useRemoveTeamMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => removeTeamMember(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team'] });
     },
   });
 }

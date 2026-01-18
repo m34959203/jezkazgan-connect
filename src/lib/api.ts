@@ -721,3 +721,76 @@ export async function updateAdminCity(id: string, data: {
   if (!res.ok) throw new Error('Failed to update city');
   return res.json();
 }
+
+// Team member types and API functions
+export interface TeamMember {
+  id: string;
+  role: 'admin' | 'editor' | 'viewer';
+  invitedAt: string;
+  acceptedAt: string | null;
+  isActive: boolean;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface TeamData {
+  members: TeamMember[];
+  maxMembers: number;
+  currentCount: number;
+}
+
+export async function fetchTeamMembers(): Promise<TeamData> {
+  const res = await fetch(`${API_URL}/team`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch team members');
+  }
+  return res.json();
+}
+
+export async function inviteTeamMember(data: {
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+}): Promise<TeamMember> {
+  const res = await fetch(`${API_URL}/team/invite`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to invite team member');
+  }
+  return res.json();
+}
+
+export async function updateTeamMemberRole(id: string, role: 'admin' | 'editor' | 'viewer'): Promise<TeamMember> {
+  const res = await fetch(`${API_URL}/team/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to update team member');
+  }
+  return res.json();
+}
+
+export async function removeTeamMember(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/team/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to remove team member');
+  }
+  return res.json();
+}

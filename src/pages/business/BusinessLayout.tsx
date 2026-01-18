@@ -13,7 +13,8 @@ import {
   Crown,
   Zap,
   Calendar,
-  Percent
+  Percent,
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ const sidebarLinks = [
     ]
   },
   { href: '/business/profile', label: 'Профиль', icon: Building2 },
+  { href: '/business/team', label: 'Команда', icon: Users, minTier: 'premium' },
   { href: '/business/stats', label: 'Статистика', icon: BarChart3, minTier: 'lite' },
   { href: '/business/banner', label: 'Реклама', icon: Megaphone, minTier: 'premium' },
   { href: '/business/subscription', label: 'Подписка', icon: CreditCard },
