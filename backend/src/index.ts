@@ -46,17 +46,26 @@ app.use('*', cors({
   maxAge: 86400, // 24 hours
 }));
 
-// Health check
+// Health check with version info
+const BUILD_VERSION = '2.0.0-jwt-auth';
+const BUILD_DATE = '2026-01-18';
+
 app.get('/', (c) => {
   return c.json({
     name: 'Afisha.kz API',
-    version: '1.0.0',
+    version: BUILD_VERSION,
+    buildDate: BUILD_DATE,
     status: 'ok',
+    authType: 'JWT',
   });
 });
 
 app.get('/health', (c) => {
-  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+  return c.json({
+    status: 'ok',
+    version: BUILD_VERSION,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Routes

@@ -121,6 +121,42 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
   });
 });
 
+// GET /auth/debug - debug token verification
+app.get('/debug', async (c) => {
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader) {
+    return c.json({ error: 'No Authorization header', headers: Object.fromEntries(c.req.raw.headers) });
+  }
+
+  if (!authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Invalid Authorization format', authHeader });
+  }
+
+  const token = authHeader.substring(7);
+
+  // Check if old format
+  if (token.startsWith('temp_token_')) {
+    return c.json({ error: 'Old temp_token format detected', token: token.substring(0, 30) + '...' });
+  }
+
+  try {
+    const payload = await verify(token, JWT_SECRET);
+    return c.json({
+      success: true,
+      payload,
+      jwtSecretUsed: JWT_SECRET === 'secret' ? 'default (secret)' : 'from env',
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Token verification failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      tokenPreview: token.substring(0, 50) + '...',
+      jwtSecretUsed: JWT_SECRET === 'secret' ? 'default (secret)' : 'from env',
+    });
+  }
+});
+
 // GET /auth/me - текущий пользователь
 app.get('/me', authMiddleware, async (c) => {
   const authUser = getCurrentUser(c);
