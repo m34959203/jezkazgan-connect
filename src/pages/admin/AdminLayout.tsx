@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -116,6 +117,17 @@ export default function AdminLayout() {
               </Link>
             );
           })}
+
+          {/* Back to site */}
+          <div className="pt-4 mt-4 border-t">
+            <Link
+              to="/"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              На сайт
+            </Link>
+          </div>
         </nav>
 
         {/* User section */}

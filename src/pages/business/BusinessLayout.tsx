@@ -14,7 +14,8 @@ import {
   Zap,
   Calendar,
   Percent,
-  Users
+  Users,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -238,6 +239,20 @@ export default function BusinessLayout() {
                 </div>
               </div>
             )}
+
+            {/* Back to site */}
+            <div className="p-2 border-t">
+              <Link
+                to="/"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+                  !sidebarOpen && "lg:justify-center lg:px-2"
+                )}
+              >
+                <ExternalLink className="w-5 h-5 shrink-0" />
+                {sidebarOpen && <span>На сайт</span>}
+              </Link>
+            </div>
 
             {/* Collapse button */}
             <div className="hidden lg:block p-2 border-t">
