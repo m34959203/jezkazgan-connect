@@ -10,6 +10,7 @@ import events from './routes/events';
 import businesses from './routes/businesses';
 import promotions from './routes/promotions';
 import admin from './routes/admin';
+import team from './routes/team';
 
 const app = new Hono();
 
@@ -75,6 +76,7 @@ app.route('/events', events);
 app.route('/businesses', businesses);
 app.route('/promotions', promotions);
 app.route('/admin', admin);
+app.route('/team', team);
 
 // 404 handler
 app.notFound((c) => {
