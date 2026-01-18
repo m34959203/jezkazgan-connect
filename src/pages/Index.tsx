@@ -18,34 +18,34 @@ import {
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 
-// Достопримечательности городов (реальные фото из Wikimedia Commons)
+// Достопримечательности городов Казахстана (реальные фото)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
   jezkazgan: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Zhezkazgan_012_5765.jpg/1280px-Zhezkazgan_012_5765.jpg', title: 'Жезказган - вид на город' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Kengir_reservoir.jpg/1280px-Kengir_reservoir.jpg', title: 'Кенгирское водохранилище' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Zhezkazgan_006_5748.jpg/1280px-Zhezkazgan_006_5748.jpg', title: 'Площадь Металлургов' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/e5/a5/9e/caption.jpg?w=1200&h=900&s=1', title: 'Жезказган - город' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0d/73/6c/5d/caption.jpg?w=1200&h=900&s=1', title: 'Кенгирское водохранилище' },
+      { url: 'https://www.orexca.com/img/kazakhstan/zhezkazgan/zhezkazgan_1.jpg', title: 'Центр Жезказгана' },
     ]
   },
   almaty: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Medeu_skating_rink.jpg/1280px-Medeu_skating_rink.jpg', title: 'Каток Медеу' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Almaty_-_Pair_on_viewpoint_%28edit%29.jpg/1280px-Almaty_-_Pair_on_viewpoint_%28edit%29.jpg', title: 'Вид на Алматы с Кок-Тобе' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Almaty_city_view.jpg/1280px-Almaty_city_view.jpg', title: 'Панорама Алматы' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/33/fc/a8/medeu.jpg?w=1200&h=900&s=1', title: 'Каток Медеу' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/10/a2/8e/c0/caption.jpg?w=1200&h=900&s=1', title: 'Вид на Алматы' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/e4/cb/e4/kok-tobe.jpg?w=1200&h=900&s=1', title: 'Кок-Тобе' },
     ]
   },
   astana: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Bajterek_panorama.jpg/1280px-Bajterek_panorama.jpg', title: 'Монумент Байтерек' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Khan_Shatyr_Entertainment_Center_2.jpg/1280px-Khan_Shatyr_Entertainment_Center_2.jpg', title: 'Хан Шатыр' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Central_Downtown_Astana_2.jpg/1280px-Central_Downtown_Astana_2.jpg', title: 'Центр Астаны' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/15/81/e0/photo0jpg.jpg?w=1200&h=900&s=1', title: 'Байтерек' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/13/f6/c5/28/khan-shatyr.jpg?w=1200&h=900&s=1', title: 'Хан Шатыр' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0e/92/a4/89/photo1jpg.jpg?w=1200&h=900&s=1', title: 'Астана центр' },
     ]
   },
   default: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Flag-map_of_Kazakhstan.svg/1280px-Flag-map_of_Kazakhstan.svg.png', title: 'Казахстан' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Charyn_Canyon_Kazakhstan.jpg/1280px-Charyn_Canyon_Kazakhstan.jpg', title: 'Чарынский каньон' },
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Kolsai_Lakes%2C_Kazakhstan.jpg/1280px-Kolsai_Lakes%2C_Kazakhstan.jpg', title: 'Кольсайские озёра' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/d9/c4/36/charyn-canyon.jpg?w=1200&h=900&s=1', title: 'Чарынский каньон' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/10/5c/16/0f/photo0jpg.jpg?w=1200&h=900&s=1', title: 'Кольсайские озёра' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/d3/d5/e7/caption.jpg?w=1200&h=900&s=1', title: 'Природа Казахстана' },
     ]
   }
 };
