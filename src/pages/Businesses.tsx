@@ -1,22 +1,55 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, X, Building2, Filter } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { BusinessCard } from '@/components/businesses/BusinessCard';
-import { mockBusinesses } from '@/data/mockData';
+import { useBusinesses } from '@/hooks/use-api';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { EntrepreneurProfile } from '@/types';
 
-const categories = ['Все', 'Рестораны', 'Кафе', 'Спорт', 'Красота', 'Образование', 'Услуги'];
+const categoryMapping: Record<string, string> = {
+  'restaurants': 'Рестораны',
+  'cafes': 'Кафе',
+  'sports': 'Спорт',
+  'beauty': 'Красота',
+  'education': 'Образование',
+  'services': 'Услуги',
+  'shopping': 'Магазины',
+  'entertainment': 'Развлечения',
+  'other': 'Другое',
+};
+
+const categories = ['Все', 'Рестораны', 'Кафе', 'Спорт', 'Красота', 'Образование', 'Услуги', 'Магазины', 'Развлечения'];
 
 export default function Businesses() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
+  const { data: businesses, isLoading } = useBusinesses();
 
-  const filteredBusinesses = mockBusinesses.filter((biz) => {
+  // Transform API data to match EntrepreneurProfile type
+  const transformedBusinesses: EntrepreneurProfile[] = useMemo(() => {
+    if (!businesses) return [];
+    return businesses.map((biz) => ({
+      id: biz.id,
+      userId: '',
+      businessName: biz.name,
+      description: biz.description || '',
+      category: categoryMapping[biz.category] || biz.category,
+      logo: biz.logo || undefined,
+      coverImage: undefined,
+      address: biz.address || '',
+      phone: biz.phone || '',
+      instagram: biz.instagram || undefined,
+      isVerified: biz.isVerified,
+      createdAt: new Date(),
+    }));
+  }, [businesses]);
+
+  const filteredBusinesses = transformedBusinesses.filter((biz) => {
     // Поиск
     if (search) {
       const searchLower = search.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         biz.businessName.toLowerCase().includes(searchLower) ||
         biz.description.toLowerCase().includes(searchLower) ||
         biz.category.toLowerCase().includes(searchLower);
@@ -30,6 +63,18 @@ export default function Businesses() {
 
     return true;
   });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container py-8 md:py-12">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

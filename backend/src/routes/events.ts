@@ -88,9 +88,11 @@ app.get('/:id', async (c) => {
       maxPrice: events.maxPrice,
       isFree: events.isFree,
       isFeatured: events.isFeatured,
+      isApproved: events.isApproved,
       viewsCount: events.viewsCount,
       savesCount: events.savesCount,
       createdAt: events.createdAt,
+      creatorId: events.creatorId,
       city: {
         id: cities.id,
         name: cities.name,
@@ -113,13 +115,41 @@ app.get('/:id', async (c) => {
     return c.json({ error: 'Event not found' }, 404);
   }
 
-  // Increment views
-  await db
-    .update(events)
-    .set({ viewsCount: sql`${events.viewsCount} + 1` })
-    .where(eq(events.id, id));
+  const event = result[0];
 
-  return c.json(result[0]);
+  // Проверка: неодобренные события видны только создателю
+  if (!event.isApproved) {
+    // Попробуем получить токен для проверки пользователя
+    const authHeader = c.req.header('Authorization');
+    let userId: string | null = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const { verify } = await import('hono/jwt');
+        const { JWT_SECRET, JWT_ALG } = await import('../middleware/auth');
+        const token = authHeader.substring(7);
+        const payload = await verify(token, JWT_SECRET, JWT_ALG);
+        userId = payload.userId as string;
+      } catch {
+        // Token invalid, treat as unauthenticated
+      }
+    }
+
+    // Если пользователь не создатель - не показываем
+    if (userId !== event.creatorId) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+  }
+
+  // Increment views only for approved events
+  if (event.isApproved) {
+    await db
+      .update(events)
+      .set({ viewsCount: sql`${events.viewsCount} + 1` })
+      .where(eq(events.id, id));
+  }
+
+  return c.json(event);
 });
 
 // Create event schema
@@ -148,6 +178,24 @@ app.post('/', authMiddleware, zValidator('json', createEventSchema), async (c) =
   }
 
   const data = c.req.valid('json');
+
+  // Если указан businessId, проверить что он принадлежит пользователю
+  if (data.businessId) {
+    const business = await db
+      .select({ ownerId: businesses.ownerId })
+      .from(businesses)
+      .where(eq(businesses.id, data.businessId))
+      .limit(1);
+
+    if (!business.length) {
+      return c.json({ error: 'Business not found' }, 404);
+    }
+
+    // Только владелец бизнеса, админ или модератор может создавать события от имени бизнеса
+    if (business[0].ownerId !== user.id && user.role !== 'admin' && user.role !== 'moderator') {
+      return c.json({ error: 'Access denied', message: 'You can only create events for your own business' }, 403);
+    }
+  }
 
   const result = await db
     .insert(events)
