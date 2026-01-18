@@ -162,7 +162,7 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {isBusiness ? (
+                  {isBusiness && (
                     <>
                       <DropdownMenuItem asChild>
                         <Link to="/business" className="flex items-center">
@@ -172,7 +172,8 @@ export function Header() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
-                  ) : (
+                  )}
+                  {!isBusiness && !isAdmin && (
                     <>
                       <DropdownMenuItem asChild>
                         <Link to="/create-business" className="flex items-center">
@@ -240,7 +241,7 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              {isBusiness ? (
+              {isBusiness && (
                 <Link
                   to="/business"
                   className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
@@ -249,7 +250,8 @@ export function Header() {
                   <Building2 className="w-4 h-4" />
                   Кабинет бизнеса
                 </Link>
-              ) : user && (
+              )}
+              {user && !isBusiness && !isAdmin && (
                 <Link
                   to="/create-business"
                   className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
