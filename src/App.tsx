@@ -26,6 +26,13 @@ import AdminModeration from "./pages/admin/ModerationPage";
 import AdminAnalytics from "./pages/admin/AnalyticsPage";
 import AdminSettings from "./pages/admin/SettingsPage";
 
+// Business cabinet pages
+import BusinessLayout from "./pages/business/BusinessLayout";
+import BusinessDashboard from "./pages/business/Dashboard";
+import BusinessPublications from "./pages/business/Publications";
+import BusinessSubscription from "./pages/business/Subscription";
+import BusinessBanner from "./pages/business/Banner";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -56,6 +63,14 @@ const App = () => (
             <Route path="moderation" element={<AdminModeration />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="settings" element={<AdminSettings />} />
+          </Route>
+
+          {/* Business cabinet routes */}
+          <Route path="/business" element={<BusinessLayout />}>
+            <Route index element={<BusinessDashboard />} />
+            <Route path="publications" element={<BusinessPublications />} />
+            <Route path="subscription" element={<BusinessSubscription />} />
+            <Route path="banner" element={<BusinessBanner />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
