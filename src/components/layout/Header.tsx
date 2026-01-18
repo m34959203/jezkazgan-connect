@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown, Shield, LogOut } from 'lucide-react';
+import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown, Shield, LogOut, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -38,6 +38,7 @@ export function Header() {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
   const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
+  const isBusiness = user?.role === 'business';
 
   // Текущий город
   const currentCity = cities?.find(c => c.slug === selectedCity);
@@ -161,6 +162,17 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {isBusiness && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/business" className="flex items-center">
+                          <Building2 className="w-4 h-4 mr-2" />
+                          Кабинет бизнеса
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   {isAdmin && (
                     <>
                       <DropdownMenuItem asChild>
@@ -218,6 +230,16 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
+              {isBusiness && (
+                <Link
+                  to="/business"
+                  className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Building2 className="w-4 h-4" />
+                  Кабинет бизнеса
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   to="/admin"
