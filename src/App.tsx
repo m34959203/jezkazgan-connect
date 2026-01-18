@@ -11,6 +11,7 @@ import Businesses from "./pages/Businesses";
 import Community from "./pages/Community";
 import EventDetails from "./pages/EventDetails";
 import Auth from "./pages/Auth";
+import CreateBusiness from "./pages/CreateBusiness";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/community" element={<Community />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/create-business" element={<CreateBusiness />} />
 
           {/* Admin routes */}
           <Route path="/admin" element={<AdminLayout />}>
