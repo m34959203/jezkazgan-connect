@@ -4,6 +4,7 @@ import { db, users } from '../db';
 import { eq } from 'drizzle-orm';
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+export const JWT_ALG = 'HS256';
 
 export interface AuthUser {
   id: string;
@@ -37,7 +38,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
   }
 
   try {
-    const payload = await verify(token, JWT_SECRET);
+    const payload = await verify(token, JWT_SECRET, JWT_ALG);
     const userId = payload.userId as string;
     console.log('[Auth] Token verified for user:', userId);
 
@@ -104,7 +105,7 @@ export const optionalAuthMiddleware = async (c: Context, next: Next) => {
     const token = authHeader.substring(7);
 
     try {
-      const payload = await verify(token, JWT_SECRET);
+      const payload = await verify(token, JWT_SECRET, JWT_ALG);
       const userId = payload.userId as string;
 
       const user = await db

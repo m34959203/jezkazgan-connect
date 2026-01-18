@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { sign, verify } from 'hono/jwt';
 import bcrypt from 'bcryptjs';
 import { db, users } from '../db';
-import { JWT_SECRET, authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
+import { JWT_SECRET, JWT_ALG, authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -59,7 +59,8 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
       role: result[0].role,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
     },
-    JWT_SECRET
+    JWT_SECRET,
+    JWT_ALG
   );
 
   return c.json({
@@ -106,7 +107,8 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
       role: user[0].role,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
     },
-    JWT_SECRET
+    JWT_SECRET,
+    JWT_ALG
   );
 
   return c.json({
@@ -141,11 +143,12 @@ app.get('/debug', async (c) => {
   }
 
   try {
-    const payload = await verify(token, JWT_SECRET);
+    const payload = await verify(token, JWT_SECRET, JWT_ALG);
     return c.json({
       success: true,
       payload,
       jwtSecretUsed: JWT_SECRET === 'secret' ? 'default (secret)' : 'from env',
+      algorithm: JWT_ALG,
     });
   } catch (error) {
     return c.json({
