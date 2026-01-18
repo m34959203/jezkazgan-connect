@@ -38,6 +38,26 @@ export const cities = pgTable('cities', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// City Banners (рекламные баннеры для городов)
+export const cityBanners = pgTable('city_banners', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  cityId: uuid('city_id').references(() => cities.id).notNull(),
+  businessId: uuid('business_id').references(() => businesses.id), // опционально - привязка к премиум бизнесу
+  title: text('title').notNull(),
+  description: text('description'),
+  imageUrl: text('image_url').notNull(),
+  link: text('link'), // внешняя ссылка или внутренняя
+  linkType: text('link_type').default('external'), // 'external', 'business', 'event', 'promotion'
+  position: integer('position').default(0), // для сортировки
+  isActive: boolean('is_active').default(true),
+  startDate: timestamp('start_date'),
+  endDate: timestamp('end_date'),
+  viewsCount: integer('views_count').default(0),
+  clicksCount: integer('clicks_count').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Businesses
 export const businesses = pgTable('businesses', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -164,6 +184,12 @@ export const citiesRelations = relations(cities, ({ many }) => ({
   events: many(events),
   promotions: many(promotions),
   communities: many(communities),
+  banners: many(cityBanners),
+}));
+
+export const cityBannersRelations = relations(cityBanners, ({ one }) => ({
+  city: one(cities, { fields: [cityBanners.cityId], references: [cities.id] }),
+  business: one(businesses, { fields: [cityBanners.businessId], references: [businesses.id] }),
 }));
 
 export const businessesRelations = relations(businesses, ({ one, many }) => ({

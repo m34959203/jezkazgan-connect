@@ -722,6 +722,118 @@ export async function updateAdminCity(id: string, data: {
   return res.json();
 }
 
+// City Banner types and API functions
+export interface CityBanner {
+  id: string;
+  cityId: string;
+  businessId: string | null;
+  title: string;
+  description: string | null;
+  imageUrl: string;
+  link: string | null;
+  linkType: string;
+  position: number;
+  isActive: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  viewsCount: number;
+  clicksCount: number;
+  createdAt: string;
+  businessName?: string | null;
+  cityName?: string | null;
+}
+
+export async function fetchCityBanners(cityId: string): Promise<{ banners: CityBanner[]; city: City }> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/banners`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch city banners');
+  return res.json();
+}
+
+export async function createCityBanner(cityId: string, data: {
+  title: string;
+  description?: string;
+  imageUrl: string;
+  link?: string;
+  linkType?: string;
+  position?: number;
+  isActive?: boolean;
+  businessId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<CityBanner> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/banners`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create banner');
+  return res.json();
+}
+
+export async function updateCityBanner(cityId: string, bannerId: string, data: {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  link?: string;
+  linkType?: string;
+  position?: number;
+  isActive?: boolean;
+  businessId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+}): Promise<CityBanner> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/banners/${bannerId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update banner');
+  return res.json();
+}
+
+export async function deleteCityBanner(cityId: string, bannerId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/banners/${bannerId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete banner');
+  return res.json();
+}
+
+export async function fetchAllBanners(): Promise<{
+  banners: CityBanner[];
+  total: number;
+  activeCount: number;
+}> {
+  const res = await fetch(`${API_URL}/admin/banners`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch banners');
+  return res.json();
+}
+
+// Public API for fetching city banners
+export async function fetchPublicCityBanners(citySlug: string): Promise<{
+  banners: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    imageUrl: string;
+    link: string | null;
+    linkType: string;
+    position: number;
+    businessId: string | null;
+    businessName: string | null;
+  }>;
+  city: City;
+}> {
+  const res = await fetch(`${API_URL}/cities/${citySlug}/banners`);
+  if (!res.ok) throw new Error('Failed to fetch city banners');
+  return res.json();
+}
+
 // Team member types and API functions
 export interface TeamMember {
   id: string;

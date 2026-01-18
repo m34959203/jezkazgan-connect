@@ -22,6 +22,7 @@ import AdminBusinesses from "./pages/admin/BusinessesPage";
 import AdminEvents from "./pages/admin/EventsPage";
 import AdminPromotions from "./pages/admin/PromotionsPage";
 import AdminCities from "./pages/admin/CitiesPage";
+import AdminCityBanners from "./pages/admin/CityBannersPage";
 import AdminFinance from "./pages/admin/FinancePage";
 import AdminModeration from "./pages/admin/ModerationPage";
 import AdminAnalytics from "./pages/admin/AnalyticsPage";
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="events" element={<AdminEvents />} />
             <Route path="promotions" element={<AdminPromotions />} />
             <Route path="cities" element={<AdminCities />} />
+            <Route path="cities/:cityId/banners" element={<AdminCityBanners />} />
             <Route path="finance" element={<AdminFinance />} />
             <Route path="moderation" element={<AdminModeration />} />
             <Route path="analytics" element={<AdminAnalytics />} />

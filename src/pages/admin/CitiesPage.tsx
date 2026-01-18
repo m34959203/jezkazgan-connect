@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, Plus, Edit, Trash2, MapPin, Users, Building2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, MoreHorizontal, Plus, Edit, Trash2, MapPin, Users, Building2, ToggleLeft, ToggleRight, Image } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ import { useAdminCities, useCreateCity, useUpdateCity } from '@/hooks/use-api';
 import { toast } from 'sonner';
 
 export default function CitiesPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newCity, setNewCity] = useState({ name: '', slug: '', region: '' });
@@ -267,6 +269,10 @@ export default function CitiesPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Действия</DropdownMenuLabel>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate(`/admin/cities/${city.id}/banners`)}>
+                          <Image className="w-4 h-4 mr-2" />
+                          Баннеры
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Edit className="w-4 h-4 mr-2" />
                           Редактировать
