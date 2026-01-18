@@ -81,11 +81,30 @@ export default function CreateBusiness() {
       // Refresh user data and redirect
       window.location.href = '/business';
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Не удалось создать бизнес';
+
+      // Check if it's an auth error
+      const isAuthError = errorMessage.includes('Unauthorized') ||
+                          errorMessage.includes('401') ||
+                          errorMessage.includes('Token expired') ||
+                          errorMessage.includes('Not authenticated');
+
       toast({
-        title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось создать бизнес',
+        title: isAuthError ? 'Ошибка авторизации' : 'Ошибка',
+        description: isAuthError
+          ? 'Пожалуйста, выйдите из аккаунта и войдите заново.'
+          : errorMessage,
         variant: 'destructive',
       });
+
+      // If auth error, redirect to login after a delay
+      if (isAuthError) {
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/auth';
+        }, 2000);
+      }
     } finally {
       setIsSubmitting(false);
     }

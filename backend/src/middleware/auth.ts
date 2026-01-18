@@ -21,14 +21,25 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const authHeader = c.req.header('Authorization');
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('[Auth] Missing or invalid Authorization header');
     return c.json({ error: 'Unauthorized', message: 'Missing or invalid Authorization header' }, 401);
   }
 
   const token = authHeader.substring(7);
 
+  // Check if this is an old temp_token (not a JWT)
+  if (token.startsWith('temp_token_')) {
+    console.log('[Auth] Received old temp_token format - user needs to re-login');
+    return c.json({
+      error: 'Unauthorized',
+      message: 'Token expired. Please log out and log in again.'
+    }, 401);
+  }
+
   try {
     const payload = await verify(token, JWT_SECRET);
     const userId = payload.userId as string;
+    console.log('[Auth] Token verified for user:', userId);
 
     const user = await db
       .select({
@@ -49,6 +60,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     c.set('user', user[0] as AuthUser);
     await next();
   } catch (error) {
+    console.log('[Auth] Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
     return c.json({ error: 'Unauthorized', message: 'Invalid or expired token' }, 401);
   }
 };
