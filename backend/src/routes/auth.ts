@@ -2,7 +2,10 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+import { sign, verify } from 'hono/jwt';
 import { db, users } from '../db';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 const app = new Hono();
 
@@ -49,10 +52,19 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
       role: users.role,
     });
 
-  // TODO: Generate JWT token
+  // Generate JWT token
+  const token = await sign(
+    {
+      userId: result[0].id,
+      role: result[0].role,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
+    },
+    JWT_SECRET
+  );
+
   return c.json({
     user: result[0],
-    token: `temp_token_${result[0].id}`, // TODO: JWT
+    token,
   }, 201);
 });
 
@@ -81,7 +93,16 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
-  // TODO: Generate JWT token
+  // Generate JWT token
+  const token = await sign(
+    {
+      userId: user[0].id,
+      role: user[0].role,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
+    },
+    JWT_SECRET
+  );
+
   return c.json({
     user: {
       id: user[0].id,
@@ -90,17 +111,28 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
       role: user[0].role,
       isPremium: user[0].isPremium,
     },
-    token: `temp_token_${user[0].id}`, // TODO: JWT
+    token,
   });
 });
 
 // GET /auth/me - текущий пользователь
 app.get('/me', async (c) => {
-  const userId = c.req.header('X-User-Id');
+  const authHeader = c.req.header('Authorization');
 
-  if (!userId) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
+
+  const token = authHeader.substring(7);
+
+  let payload;
+  try {
+    payload = await verify(token, JWT_SECRET);
+  } catch {
+    return c.json({ error: 'Invalid token' }, 401);
+  }
+
+  const userId = payload.userId as string;
 
   const user = await db
     .select({
