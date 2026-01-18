@@ -173,17 +173,6 @@ export function Header() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  {!isBusiness && !isAdmin && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/create-business" className="flex items-center">
-                          <Building2 className="w-4 h-4 mr-2" />
-                          Создать бизнес
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
                   {isAdmin && (
                     <>
                       <DropdownMenuItem asChild>
@@ -249,16 +238,6 @@ export function Header() {
                 >
                   <Building2 className="w-4 h-4" />
                   Кабинет бизнеса
-                </Link>
-              )}
-              {user && !isBusiness && !isAdmin && (
-                <Link
-                  to="/create-business"
-                  className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Building2 className="w-4 h-4" />
-                  Создать бизнес
                 </Link>
               )}
               {isAdmin && (
