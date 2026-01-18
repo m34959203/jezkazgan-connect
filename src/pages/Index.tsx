@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, TrendingUp, Gift } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Gift, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
 import { EventFiltersComponent } from '@/components/events/EventFilters';
@@ -9,6 +9,46 @@ import { Button } from '@/components/ui/button';
 import { mockEvents, mockPromotions } from '@/data/mockData';
 import { EventFilters } from '@/types';
 import { useCities } from '@/hooks/use-api';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
+
+// Достопримечательности городов
+const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
+  jezkazgan: {
+    images: [
+      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Центральная площадь' },
+      { url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&h=600&fit=crop', title: 'Городской парк' },
+      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Музей истории' },
+    ]
+  },
+  almaty: {
+    images: [
+      { url: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=1600&h=600&fit=crop', title: 'Медеу' },
+      { url: 'https://images.unsplash.com/photo-1565967511849-76a60a516170?w=1600&h=600&fit=crop', title: 'Кок-Тобе' },
+      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Центр города' },
+    ]
+  },
+  astana: {
+    images: [
+      { url: 'https://images.unsplash.com/photo-1555217851-6141535bd771?w=1600&h=600&fit=crop', title: 'Байтерек' },
+      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Хан Шатыр' },
+      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Дворец мира' },
+    ]
+  },
+  default: {
+    images: [
+      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1600&h=600&fit=crop', title: 'Город' },
+      { url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&h=600&fit=crop', title: 'Природа' },
+      { url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&h=600&fit=crop', title: 'Архитектура' },
+    ]
+  }
+};
 
 export default function Index() {
   const [selectedCity, setSelectedCity] = useState<string>(() => {
@@ -103,27 +143,66 @@ export default function Index() {
   const featuredEvents = mockEvents.filter(e => e.isFeatured);
   const topPromotions = mockPromotions.slice(0, 3);
 
+  // Получаем фото для текущего города
+  const landmarks = cityLandmarks[selectedCity] || cityLandmarks.default;
+
   return (
     <Layout>
-      {/* Hero секция */}
-      <section className="hero-gradient py-12 md:py-16">
-        <div className="container">
-          <div className="text-center max-w-3xl mx-auto mb-8">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-              <span className="text-gradient-gold font-display">Афиша</span>
-              <br />
-              <span className="text-foreground">
-                {currentCity?.name || 'Казахстан'}
-              </span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              События, акции и сообщества твоего города. Узнавай первым о самом интересном!
-            </p>
-          </div>
+      {/* Hero секция с каруселью */}
+      <section className="relative">
+        {/* Карусель фотографий */}
+        <Carousel
+          opts={{
+            loop: true,
+            align: 'start',
+          }}
+          plugins={[
+            Autoplay({
+              delay: 5000,
+              stopOnInteraction: false,
+            }),
+          ]}
+          className="w-full"
+        >
+          <CarouselContent>
+            {landmarks.images.map((image, index) => (
+              <CarouselItem key={index}>
+                <div className="relative h-[400px] md:h-[500px] w-full">
+                  <img
+                    src={image.url}
+                    alt={image.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Затемнение для читаемости текста */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="left-4 bg-white/20 hover:bg-white/40 border-0 text-white" />
+          <CarouselNext className="right-4 bg-white/20 hover:bg-white/40 border-0 text-white" />
+        </Carousel>
 
-          {/* Фильтры */}
-          <div className="max-w-4xl mx-auto">
-            <EventFiltersComponent filters={filters} onChange={setFilters} />
+        {/* Контент поверх карусели */}
+        <div className="absolute inset-0 flex flex-col justify-center pointer-events-none">
+          <div className="container">
+            <div className="text-center max-w-3xl mx-auto mb-8">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+                <span className="text-gradient-gold font-display drop-shadow-lg">Афиша</span>
+                <br />
+                <span className="text-white drop-shadow-lg">
+                  {currentCity?.name || 'Казахстан'}
+                </span>
+              </h1>
+              <p className="text-lg text-white/90 max-w-xl mx-auto drop-shadow">
+                События, акции и сообщества твоего города. Узнавай первым о самом интересном!
+              </p>
+            </div>
+
+            {/* Фильтры */}
+            <div className="max-w-4xl mx-auto pointer-events-auto">
+              <EventFiltersComponent filters={filters} onChange={setFilters} />
+            </div>
           </div>
         </div>
       </section>
