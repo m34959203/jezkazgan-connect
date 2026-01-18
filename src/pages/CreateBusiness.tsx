@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { useCities } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
-import { createBusiness } from '@/lib/api';
+import { createBusiness, fetchCurrentUser } from '@/lib/api';
 
 const businessCategories = [
   { value: 'restaurants', label: 'Рестораны' },
@@ -78,7 +78,15 @@ export default function CreateBusiness() {
         description: 'Добро пожаловать в бизнес-кабинет',
       });
 
-      // Refresh user data and redirect
+      // Fetch fresh user data with updated role and save to localStorage
+      try {
+        const updatedUser = await fetchCurrentUser();
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (e) {
+        // Ignore errors, the redirect will refresh anyway
+      }
+
+      // Redirect to business cabinet
       window.location.href = '/business';
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Не удалось создать бизнес';
