@@ -18,34 +18,34 @@ import {
 } from '@/components/ui/carousel';
 import Autoplay from 'embla-carousel-autoplay';
 
-// Достопримечательности городов (фото из Unsplash - хорошая поддержка CORS)
+// Достопримечательности городов Казахстана (реальные фото)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
   jezkazgan: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=1280&h=720&fit=crop', title: 'Степи Казахстана' },
-      { url: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=1280&h=720&fit=crop', title: 'Индустриальный пейзаж' },
-      { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1280&h=720&fit=crop', title: 'Закат в степи' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/e5/a5/9e/caption.jpg?w=1200&h=900&s=1', title: 'Жезказган - город' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0d/73/6c/5d/caption.jpg?w=1200&h=900&s=1', title: 'Кенгирское водохранилище' },
+      { url: 'https://www.orexca.com/img/kazakhstan/zhezkazgan/zhezkazgan_1.jpg', title: 'Центр Жезказгана' },
     ]
   },
   almaty: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1558431382-27e303142255?w=1280&h=720&fit=crop', title: 'Горы Алматы' },
-      { url: 'https://images.unsplash.com/photo-1565799455839-fddeafa0b86b?w=1280&h=720&fit=crop', title: 'Вид на Алматы' },
-      { url: 'https://images.unsplash.com/photo-1596402184320-417e7178b2cd?w=1280&h=720&fit=crop', title: 'Панорама Алматы' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/33/fc/a8/medeu.jpg?w=1200&h=900&s=1', title: 'Каток Медеу' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/10/a2/8e/c0/caption.jpg?w=1200&h=900&s=1', title: 'Вид на Алматы' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/e4/cb/e4/kok-tobe.jpg?w=1200&h=900&s=1', title: 'Кок-Тобе' },
     ]
   },
   astana: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1555425748-831e8a3586e9?w=1280&h=720&fit=crop', title: 'Байтерек' },
-      { url: 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=1280&h=720&fit=crop', title: 'Астана ночью' },
-      { url: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=1280&h=720&fit=crop', title: 'Центр Астаны' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/15/81/e0/photo0jpg.jpg?w=1200&h=900&s=1', title: 'Байтерек' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/13/f6/c5/28/khan-shatyr.jpg?w=1200&h=900&s=1', title: 'Хан Шатыр' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0e/92/a4/89/photo1jpg.jpg?w=1200&h=900&s=1', title: 'Астана центр' },
     ]
   },
   default: {
     images: [
-      { url: 'https://images.unsplash.com/photo-1541410965313-d53b3c16ef17?w=1280&h=720&fit=crop', title: 'Природа Казахстана' },
-      { url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=1280&h=720&fit=crop', title: 'Степной пейзаж' },
-      { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1280&h=720&fit=crop', title: 'Горный пейзаж' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/d9/c4/36/charyn-canyon.jpg?w=1200&h=900&s=1', title: 'Чарынский каньон' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/10/5c/16/0f/photo0jpg.jpg?w=1200&h=900&s=1', title: 'Кольсайские озёра' },
+      { url: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/d3/d5/e7/caption.jpg?w=1200&h=900&s=1', title: 'Природа Казахстана' },
     ]
   }
 };
