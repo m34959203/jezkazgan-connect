@@ -16,18 +16,29 @@ const app = new Hono();
 // Middleware
 app.use('*', logger());
 app.use('*', prettyJSON());
+
+// CORS configuration with dynamic origin checking
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173',
+  'https://afisha.kz',
+  'https://www.afisha.kz',
+  'https://jezkazgan-connect-production.up.railway.app',
+  'https://jezkazgan-connect.up.railway.app',
+];
+
 app.use('*', cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:4173',
-    'https://afisha.kz',
-    'https://www.afisha.kz',
-    'https://jezkazgan-connect-production.up.railway.app',
-    'https://jezkazgan-connect.up.railway.app',
+  origin: (origin) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return allowedOrigins[0];
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) return origin;
     // Allow any railway.app subdomain for preview deployments
-    /https:\/\/.*\.up\.railway\.app$/,
-  ],
+    if (/^https:\/\/.*\.up\.railway\.app$/.test(origin)) return origin;
+    // Deny other origins
+    return allowedOrigins[0];
+  },
   credentials: true,
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
