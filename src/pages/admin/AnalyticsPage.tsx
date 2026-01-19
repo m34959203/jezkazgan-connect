@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { TrendingUp, TrendingDown, Users, Building2, Calendar, Eye, Download, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Users, Building2, Calendar, Eye, Download, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,64 +11,95 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { fetchAdminAnalytics, type AdminAnalyticsData } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
-// Mock analytics data
-const overviewStats = [
-  {
-    title: 'Посещения',
-    value: '45,231',
-    change: '+12.5%',
-    trend: 'up' as const,
-    description: 'за последние 30 дней',
-  },
-  {
-    title: 'Уникальных пользователей',
-    value: '12,847',
-    change: '+8.2%',
-    trend: 'up' as const,
-    description: 'за последние 30 дней',
-  },
-  {
-    title: 'Новые регистрации',
-    value: '523',
-    change: '+23.1%',
-    trend: 'up' as const,
-    description: 'за последние 30 дней',
-  },
-  {
-    title: 'Среднее время на сайте',
-    value: '4:32',
-    change: '-5.3%',
-    trend: 'down' as const,
-    description: 'минут',
-  },
-];
-
-const topCities = [
-  { name: 'Алматы', users: 5420, percentage: 38 },
-  { name: 'Астана', users: 4210, percentage: 29 },
-  { name: 'Шымкент', users: 2100, percentage: 15 },
-  { name: 'Караганда', users: 1850, percentage: 13 },
-  { name: 'Жезказган', users: 890, percentage: 6 },
-];
-
-const topCategories = [
-  { name: 'Рестораны', views: 12500, events: 45 },
-  { name: 'Развлечения', views: 9800, events: 32 },
-  { name: 'Спорт', views: 7600, events: 28 },
-  { name: 'Красота', views: 5400, events: 19 },
-  { name: 'Образование', views: 3200, events: 12 },
-];
-
-const conversionMetrics = [
-  { name: 'Просмотр → Регистрация', rate: 4.2, change: '+0.5%' },
-  { name: 'Регистрация → Бизнес', rate: 12.5, change: '+2.1%' },
-  { name: 'Free → Lite', rate: 8.3, change: '-1.2%' },
-  { name: 'Lite → Premium', rate: 15.7, change: '+3.4%' },
-];
+const categoryLabels: Record<string, string> = {
+  concerts: 'Концерты',
+  theater: 'Театр',
+  sports: 'Спорт',
+  exhibitions: 'Выставки',
+  festivals: 'Фестивали',
+  education: 'Образование',
+  children: 'Детям',
+  other: 'Другое',
+};
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState('30days');
+  const [period, setPeriod] = useState('30');
+  const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [period]);
+
+  const loadAnalytics = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchAdminAnalytics(parseInt(period));
+      setAnalytics(data);
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить аналитику',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Не удалось загрузить данные</p>
+        <Button onClick={loadAnalytics} className="mt-4">Повторить</Button>
+      </div>
+    );
+  }
+
+  const overviewStats = [
+    {
+      title: 'Всего пользователей',
+      value: analytics.overview.totalUsers.toLocaleString(),
+      change: `+${analytics.overview.newUsers}`,
+      trend: 'up' as const,
+      description: `новых за ${period} дней`,
+    },
+    {
+      title: 'Бизнесов',
+      value: analytics.overview.totalBusinesses.toLocaleString(),
+      change: `+${analytics.overview.newBusinesses}`,
+      trend: 'up' as const,
+      description: `новых за ${period} дней`,
+    },
+    {
+      title: 'Событий',
+      value: analytics.overview.totalEvents.toLocaleString(),
+      change: '',
+      trend: 'up' as const,
+      description: 'всего на платформе',
+    },
+    {
+      title: 'Просмотров',
+      value: analytics.overview.totalViews.toLocaleString(),
+      change: '',
+      trend: 'up' as const,
+      description: 'событий и акций',
+    },
+  ];
+
+  const totalBusinesses = analytics.tierDistribution.free + analytics.tierDistribution.lite + analytics.tierDistribution.premium;
 
   return (
     <div className="space-y-6">
@@ -86,10 +117,10 @@ export default function AnalyticsPage() {
               <SelectValue placeholder="Период" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7days">7 дней</SelectItem>
-              <SelectItem value="30days">30 дней</SelectItem>
-              <SelectItem value="90days">90 дней</SelectItem>
-              <SelectItem value="year">Год</SelectItem>
+              <SelectItem value="7">7 дней</SelectItem>
+              <SelectItem value="30">30 дней</SelectItem>
+              <SelectItem value="90">90 дней</SelectItem>
+              <SelectItem value="365">Год</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline">
@@ -109,16 +140,12 @@ export default function AnalyticsPage() {
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
                   <div className="text-2xl font-bold">{stat.value}</div>
                 </div>
-                <div className={`flex items-center gap-1 text-sm ${
-                  stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.trend === 'up' ? (
+                {stat.change && (
+                  <div className="flex items-center gap-1 text-sm text-green-600">
                     <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {stat.change}
-                </div>
+                    {stat.change}
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
             </CardContent>
@@ -132,23 +159,27 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Пользователи по городам
+              Бизнесы по городам
             </CardTitle>
-            <CardDescription>Распределение активных пользователей</CardDescription>
+            <CardDescription>Распределение зарегистрированных бизнесов</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topCities.map((city) => (
-                <div key={city.name} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{city.name}</span>
-                    <span className="text-muted-foreground">
-                      {city.users.toLocaleString()} ({city.percentage}%)
-                    </span>
+              {analytics.usersByCity.length > 0 ? (
+                analytics.usersByCity.map((city) => (
+                  <div key={city.name} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{city.name}</span>
+                      <span className="text-muted-foreground">
+                        {city.count.toLocaleString()} ({city.percentage}%)
+                      </span>
+                    </div>
+                    <Progress value={city.percentage} className="h-2" />
                   </div>
-                  <Progress value={city.percentage} className="h-2" />
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Нет данных</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -164,29 +195,75 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topCategories.map((category, index) => (
-                <div key={category.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {category.events} событий
-                      </p>
+              {analytics.eventsByCategory.length > 0 ? (
+                analytics.eventsByCategory.map((category, index) => (
+                  <div key={category.category} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-medium">{categoryLabels[category.category] || category.category}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {category.count} событий
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{category.views.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">просмотров</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">{category.views.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">просмотров</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">Нет данных</p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Tier distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Распределение по тарифам
+          </CardTitle>
+          <CardDescription>Бизнесы по типам подписки</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Free</p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold">{analytics.tierDistribution.free}</span>
+                <Badge variant="secondary">
+                  {totalBusinesses > 0 ? Math.round((analytics.tierDistribution.free / totalBusinesses) * 100) : 0}%
+                </Badge>
+              </div>
+            </div>
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+              <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Lite</p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-blue-700 dark:text-blue-300">{analytics.tierDistribution.lite}</span>
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {totalBusinesses > 0 ? Math.round((analytics.tierDistribution.lite / totalBusinesses) * 100) : 0}%
+                </Badge>
+              </div>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
+              <p className="text-sm text-amber-600 dark:text-amber-400 mb-1">Premium</p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">{analytics.tierDistribution.premium}</span>
+                <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                  {totalBusinesses > 0 ? Math.round((analytics.tierDistribution.premium / totalBusinesses) * 100) : 0}%
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Conversion metrics */}
       <Card>
@@ -195,24 +272,24 @@ export default function AnalyticsPage() {
             <TrendingUp className="w-5 h-5" />
             Метрики конверсии
           </CardTitle>
-          <CardDescription>Воронка пользователей</CardDescription>
+          <CardDescription>Premium-пользователи и бизнесы</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {conversionMetrics.map((metric) => (
-              <div key={metric.name} className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">{metric.name}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">{metric.rate}%</span>
-                  <Badge
-                    variant="secondary"
-                    className={metric.change.startsWith('+') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                  >
-                    {metric.change}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Premium пользователей</p>
+              <span className="text-2xl font-bold">{analytics.conversionMetrics.premiumUsers}</span>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">Premium бизнесов</p>
+              <span className="text-2xl font-bold">{analytics.conversionMetrics.premiumBusinesses}</span>
+            </div>
+            <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+              <p className="text-sm text-green-600 dark:text-green-400 mb-1">Конверсия в Premium</p>
+              <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                {analytics.conversionMetrics.conversionRate}%
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -230,25 +307,29 @@ export default function AnalyticsPage() {
                 <span className="font-medium">Рост</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Регистрации выросли на 23% после запуска email-рассылки
+                {analytics.overview.newUsers > 0
+                  ? `${analytics.overview.newUsers} новых пользователей за последние ${period} дней`
+                  : 'Нет новых регистраций за выбранный период'}
               </p>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="flex items-center gap-2 text-amber-600 mb-2">
                 <Building2 className="w-4 h-4" />
-                <span className="font-medium">Внимание</span>
+                <span className="font-medium">Бизнес</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                8 бизнесов с Lite подпиской не публиковали контент более 2 недель
+                {analytics.overview.newBusinesses > 0
+                  ? `${analytics.overview.newBusinesses} новых бизнесов зарегистрировано`
+                  : 'Нет новых бизнесов за выбранный период'}
               </p>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="flex items-center gap-2 text-blue-600 mb-2">
                 <Calendar className="w-4 h-4" />
-                <span className="font-medium">Рекомендация</span>
+                <span className="font-medium">Контент</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Концерты и фестивали показывают лучший CTR - рекомендуем больше такого контента
+                {analytics.overview.totalEvents} событий и {analytics.overview.totalPromotions} акций на платформе
               </p>
             </div>
           </div>
