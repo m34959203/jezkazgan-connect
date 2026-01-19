@@ -1128,10 +1128,13 @@ export async function uploadImage(file: File, folder?: string): Promise<string> 
     body: formData,
   });
 
+  const result = await res.json();
+
   if (!res.ok) {
-    throw new Error('Failed to upload image');
+    const errorMessage = result?.error?.message || 'Failed to upload image';
+    console.error('Cloudinary error:', result);
+    throw new Error(errorMessage);
   }
 
-  const result = await res.json();
   return result.secure_url;
 }

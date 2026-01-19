@@ -74,13 +74,20 @@ export function ImageUpload({
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки';
+      console.error('Upload error:', err);
+
       if (message.includes('not configured')) {
         setError('Загрузка файлов временно недоступна. Используйте ссылку на изображение');
         setUploadAvailable(false);
+      } else if (message.includes('Upload preset') || message.includes('preset')) {
+        setError('Ошибка конфигурации загрузки. Обратитесь к администратору');
+      } else if (message.includes('File size') || message.includes('too large')) {
+        setError(`Файл слишком большой. Максимум ${maxSize} МБ`);
+      } else if (message.includes('Invalid image') || message.includes('format')) {
+        setError('Неподдерживаемый формат изображения');
       } else {
-        setError('Ошибка загрузки изображения. Попробуйте еще раз');
+        setError(`Ошибка: ${message}`);
       }
-      console.error('Upload error:', err);
     } finally {
       setIsUploading(false);
     }
