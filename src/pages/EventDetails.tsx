@@ -185,9 +185,6 @@ export default function EventDetails() {
                 </div>
 
                 <div className="space-y-3">
-                  <Button className="w-full btn-glow" size="lg">
-                    Купить билет
-                  </Button>
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" size="lg">
                       <Bookmark className="w-5 h-5 mr-2" />
