@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar, MapPin, Loader2, AlertCircle, Star, Crown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function EventsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -400,11 +402,11 @@ export default function EventsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Действия</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/events/${event.id}`)}>
                             <Eye className="w-4 h-4 mr-2" />
                             Просмотреть
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/admin/events/${event.id}/edit`)}>
                             <Edit className="w-4 h-4 mr-2" />
                             Редактировать
                           </DropdownMenuItem>
