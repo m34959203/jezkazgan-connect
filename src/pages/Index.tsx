@@ -1,13 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, TrendingUp, Gift, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Gift, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { EventCard } from '@/components/events/EventCard';
 import { AfishaNavigationPanel, AfishaFilters } from '@/components/navigation/AfishaNavigationPanel';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
 import { Button } from '@/components/ui/button';
-import { mockEvents, mockPromotions } from '@/data/mockData';
-import { useCities } from '@/hooks/use-api';
+import { useCities, useEvents, usePromotions } from '@/hooks/use-api';
 import {
   Carousel,
   CarouselContent,
@@ -70,6 +69,16 @@ export default function Index() {
   // Текущий город
   const currentCity = cities?.find(c => c.slug === selectedCity);
 
+  // Загружаем события и акции из API
+  const { data: events = [], isLoading: eventsLoading } = useEvents({
+    cityId: currentCity?.id,
+    category: filters.category !== 'all' ? filters.category : undefined,
+    featured: filters.showFeatured || undefined,
+  });
+  const { data: promotions = [], isLoading: promotionsLoading } = usePromotions({
+    cityId: currentCity?.id,
+  });
+
   // Слушаем изменения в localStorage (когда город меняется в Header)
   useEffect(() => {
     const handleStorageChange = () => {
@@ -93,23 +102,17 @@ export default function Index() {
     };
   }, [selectedCity]);
 
-  // Фильтрация событий
+  // Фильтрация событий (дополнительная фильтрация на клиенте)
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    return events.filter((event) => {
       // Поиск
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesSearch =
           event.title.toLowerCase().includes(searchLower) ||
-          event.organizerName.toLowerCase().includes(searchLower) ||
-          event.location.toLowerCase().includes(searchLower) ||
-          event.tags.some(tag => tag.toLowerCase().includes(searchLower));
+          (event.business?.name || '').toLowerCase().includes(searchLower) ||
+          event.location.toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
-      }
-
-      // Категория
-      if (filters.category !== 'all' && event.category !== filters.category) {
-        return false;
       }
 
       // Дата (конкретная дата из календаря)
@@ -122,12 +125,7 @@ export default function Index() {
       }
 
       // Бесплатные
-      if (filters.showFree && event.price !== null) {
-        return false;
-      }
-
-      // Выбор Афиши (Featured)
-      if (filters.showFeatured && !event.isFeatured) {
+      if (filters.showFree && !event.isFree) {
         return false;
       }
 
@@ -138,10 +136,10 @@ export default function Index() {
 
       return true;
     });
-  }, [filters]);
+  }, [events, filters]);
 
-  const featuredEvents = mockEvents.filter(e => e.isFeatured);
-  const topPromotions = mockPromotions.slice(0, 3);
+  const featuredEvents = events.filter(e => e.isFeatured);
+  const topPromotions = promotions.slice(0, 3);
 
   // Получаем фото для текущего города
   const landmarks = cityLandmarks[selectedCity] || cityLandmarks.default;
