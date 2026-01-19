@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Percent, Calendar, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Percent, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createPromotion } from '@/lib/api';
@@ -159,20 +160,12 @@ export default function CreatePromotion() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image">Ссылка на изображение</Label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="image"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  className="pl-10"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                />
-              </div>
-            </div>
+            <ImageUpload
+              value={image}
+              onChange={setImage}
+              folder="afisha/promotions"
+              label="Изображение акции"
+            />
           </CardContent>
         </Card>
 

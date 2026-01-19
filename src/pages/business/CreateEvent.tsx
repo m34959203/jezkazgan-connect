@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createEvent } from '@/lib/api';
@@ -171,20 +172,12 @@ export default function CreateEvent() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image">Ссылка на изображение</Label>
-              <div className="relative">
-                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="image"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  className="pl-10"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                />
-              </div>
-            </div>
+            <ImageUpload
+              value={image}
+              onChange={setImage}
+              folder="afisha/events"
+              label="Изображение события"
+            />
           </CardContent>
         </Card>
 
