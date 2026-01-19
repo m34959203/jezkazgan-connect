@@ -1,8 +1,9 @@
 # Afisha.kz - Прогресс разработки
 
-**Версия документа:** 1.8
+**Версия документа:** 2.0
 **Дата обновления:** Январь 2026
-**Ветка разработки:** `claude/add-image-upload-YQOR0`
+**Версия приложения:** 2.2.0-premium
+**Ветка разработки:** `claude/auto-publish-ai-images-vWa7y`
 
 ---
 
@@ -131,6 +132,7 @@ Railway Platform
 | Статистика | `/business/stats` | ✅ | Аналитика (Lite+) |
 | Подписка | `/business/subscription` | ✅ | Тарифы, оплата |
 | Баннер | `/business/banner` | ✅ | Рекламный баннер (Premium) |
+| **Авто-публикации** | `/business/autopublish` | ✅ | Соцсети (Premium) |
 | Настройки | `/business/settings` | ✅ | Настройки аккаунта |
 
 **Навигация:**
@@ -152,6 +154,9 @@ Railway Platform
 | Баннеры городов | ✅ | Рекламные баннеры на главной |
 | Управление фото карусели | ✅ | CRUD через админку |
 | Сохранение событий | ✅ | Избранное для пользователей |
+| **ИИ генерация изображений** | ✅ | Nano Banana AI (Premium) |
+| **Авто-публикации в соцсети** | ✅ | Telegram, VK, Instagram (Premium) |
+| **Видео формат для событий** | ✅ | YouTube, Vimeo, MP4 (Premium) |
 
 ---
 
@@ -228,7 +233,7 @@ Railway Platform
 3. **Улучшение навигации в кабинетах**:
    - Ссылки "На сайт" для быстрого возврата на главную
 
-### Этап 8: Загрузка изображений и управление контентом (Текущий)
+### Этап 8: Загрузка изображений и управление контентом
 
 1. **Cloudinary интеграция** — загрузка изображений:
    - Компонент `ImageUpload` с drag-and-drop
@@ -258,6 +263,35 @@ Railway Platform
    - API для добавления/удаления из избранного
    - Страница избранного для пользователей
 
+### Этап 9: Business Premium функции (Текущий)
+
+1. **ИИ генерация изображений (Nano Banana):**
+   - Сервис `nanobanana.ts` — интеграция с AI API (OpenAI DALL-E совместимый)
+   - API routes `/ai/*` — генерация, история, подсказки
+   - Компонент `AiImageGenerator` — UI с промптами и историей
+   - Стили: banner, promo, event, poster, social
+   - Автоперевод русских промптов на английский
+   - История генераций с повторным использованием
+
+2. **Авто-публикации в соцсети:**
+   - Сервис `autopublish.ts` — публикация в Telegram, VK, Instagram
+   - API routes `/autopublish/*` — настройки, тестирование, публикация
+   - Таблица `auto_publish_settings` — настройки для каждой платформы
+   - Таблица `auto_publish_history` — история публикаций
+   - Страница `/business/autopublish` — управление подключениями
+   - Поддержка: Telegram Bot API, VK API, Instagram Graph API
+
+3. **Видео формат для событий:**
+   - Поля `videoUrl`, `videoThumbnail` в таблице events
+   - Компонент `VideoUpload` — загрузка YouTube/Vimeo/MP4
+   - Автоматическое извлечение превью для YouTube
+   - Проверка Premium тарифа при создании события с видео
+
+4. **Обновление страницы подписки:**
+   - Добавлены новые Premium функции в список возможностей
+   - Расширен блок преимуществ Premium
+   - Иконки для AI, авто-публикаций, видео
+
 ---
 
 ## Структура кода
@@ -271,7 +305,9 @@ src/
 │   │   ├── Header.tsx           # Навигация, меню пользователя
 │   │   └── Footer.tsx           # Обновлённые области
 │   ├── ui/                      # shadcn/ui компоненты + Carousel
-│   │   └── image-upload.tsx     # Компонент загрузки изображений
+│   │   ├── image-upload.tsx     # Компонент загрузки изображений
+│   │   ├── video-upload.tsx     # Компонент загрузки видео (Premium)
+│   │   └── ai-image-generator.tsx # AI генерация изображений (Premium)
 │   └── ThemeProvider.tsx        # Управление темой
 ├── hooks/
 │   └── use-api.ts               # React Query hooks (admin + team)
@@ -286,19 +322,20 @@ src/
 │   │   ├── CityBannersPage.tsx  # Баннеры города
 │   │   ├── CityPhotosPage.tsx   # Фото карусели
 │   │   └── ...
-│   ├── business/                # 12 страниц кабинета
+│   ├── business/                # 13 страниц кабинета
 │   │   ├── BusinessLayout.tsx   # Sidebar с лимитами + "На сайт"
 │   │   ├── Dashboard.tsx
 │   │   ├── Publications.tsx
 │   │   ├── Events.tsx           # Список событий
-│   │   ├── CreateEvent.tsx      # Создание события
+│   │   ├── CreateEvent.tsx      # Создание события (+ видео, AI)
 │   │   ├── Promotions.tsx       # Список акций
 │   │   ├── CreatePromotion.tsx  # Создание акции
 │   │   ├── Profile.tsx          # Профиль бизнеса
 │   │   ├── Team.tsx             # Управление командой (Premium)
-│   │   ├── Subscription.tsx     # Тарифы
+│   │   ├── Subscription.tsx     # Тарифы (обновлено Premium функциями)
 │   │   ├── Settings.tsx         # Настройки
-│   │   └── Banner.tsx           # Рекламный баннер
+│   │   ├── Banner.tsx           # Рекламный баннер
+│   │   └── AutoPublish.tsx      # Авто-публикации в соцсети (Premium)
 │   ├── Index.tsx                # Главная с фото-каруселью
 │   └── ...                      # Публичные страницы
 └── App.tsx                      # Роутинг
@@ -315,13 +352,19 @@ backend/src/
 ├── routes/
 │   ├── auth.ts                  # /auth (login, register, me, profile)
 │   ├── cities.ts                # /cities (+ banners, photos)
-│   ├── events.ts                # /events
+│   ├── events.ts                # /events (+ videoUrl, videoThumbnail)
 │   ├── businesses.ts            # /businesses
 │   ├── promotions.ts            # /promotions
 │   ├── admin.ts                 # /admin/* (+ analytics, moderation, delete)
 │   ├── team.ts                  # /team/* (Premium feature)
 │   ├── favorites.ts             # /favorites (избранное)
-│   └── upload.ts                # /upload (Cloudinary config)
+│   ├── upload.ts                # /upload (Cloudinary config)
+│   ├── ai.ts                    # /ai/* (AI генерация, Premium)
+│   └── autopublish.ts           # /autopublish/* (соцсети, Premium)
+├── services/
+│   ├── cloudinary.ts            # Cloudinary интеграция
+│   ├── nanobanana.ts            # AI генерация изображений
+│   └── autopublish.ts           # Публикация в соцсети
 ├── middleware/
 │   └── auth.ts                  # JWT middleware
 └── index.ts                     # Hono app entry
@@ -421,6 +464,27 @@ backend/src/
 | `PUT /team/:id` | PUT | Изменить роль |
 | `DELETE /team/:id` | DELETE | Удалить сотрудника |
 
+### AI Генерация изображений (требуется JWT, тариф Premium)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /ai/status` | GET | Статус AI сервиса |
+| `GET /ai/suggestions` | GET | Подсказки для промптов |
+| `POST /ai/generate` | POST | Генерация изображения |
+| `GET /ai/history` | GET | История генераций |
+| `PATCH /ai/:id/used` | PATCH | Отметить использование |
+
+### Авто-публикации (требуется JWT, тариф Premium)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /autopublish/settings` | GET | Настройки платформ |
+| `POST /autopublish/settings` | POST | Создать/обновить настройки |
+| `POST /autopublish/test-connection` | POST | Тестирование подключения |
+| `POST /autopublish/publish` | POST | Публикация контента |
+| `GET /autopublish/history` | GET | История публикаций |
+| `DELETE /autopublish/settings/:platform` | DELETE | Удалить настройки платформы |
+
 ---
 
 ## База данных
@@ -453,7 +517,8 @@ businesses (
 -- События
 events (
   id, cityId, businessId, creatorId, title, description,
-  category, image, date, endDate, location, address,
+  category, image, videoUrl, videoThumbnail,  -- NEW: видео формат
+  date, endDate, location, address,
   price, maxPrice, isFree, isFeatured, isApproved,
   viewsCount, savesCount, createdAt
 )
@@ -487,10 +552,35 @@ city_photos (
   position, isActive, createdAt, updatedAt
 )
 
--- Избранное (NEW)
+-- Избранное
 favorites (
   id, userId, eventId, businessId, promotionId,
   createdAt
+)
+
+-- Настройки авто-публикации (NEW - Premium)
+auto_publish_settings (
+  id, businessId, platform: telegram|instagram|vk|facebook,
+  isEnabled, telegramBotToken, telegramChannelId,
+  instagramAccessToken, instagramBusinessAccountId,
+  vkAccessToken, vkGroupId,
+  publishEvents, publishPromotions, autoPublishOnCreate,
+  createdAt, updatedAt
+)
+
+-- История авто-публикаций (NEW - Premium)
+auto_publish_history (
+  id, businessId, platform, contentType, contentId,
+  status: pending|published|failed,
+  externalPostId, externalPostUrl, errorMessage,
+  publishedAt, createdAt
+)
+
+-- AI генерация изображений (NEW - Premium)
+ai_image_generations (
+  id, businessId, userId, prompt, style,
+  generatedImageUrl, status: pending|generating|completed|failed,
+  errorMessage, usedFor, usedForId, creditsUsed, createdAt
 )
 ```
 
@@ -521,7 +611,7 @@ favorites (
 | Lite | 50,000 ₸/мес | 10/мес | - | - |
 | Premium | 200,000 ₸/мес | Безлимит | Да | До 5 |
 
-### Детали тарифов (обновлено)
+### Детали тарифов (обновлено v2.2.0)
 
 | Функция | Free | Lite | Premium |
 |---------|------|------|---------|
@@ -534,6 +624,9 @@ favorites (
 | Значок "Проверено" | - | ✅ | ✅ |
 | Рекламный баннер | - | - | ✅ |
 | Команда сотрудников | - | - | До 5 |
+| **ИИ генерация изображений** | - | - | ✅ Nano Banana |
+| **Авто-публикации в соцсети** | - | - | ✅ TG/VK/IG |
+| **Видео формат для событий** | - | - | ✅ YouTube/Vimeo |
 
 ### ROI анализ
 
@@ -560,6 +653,9 @@ favorites (
 - [x] Баннеры городов в админке
 - [x] Управление фото карусели в админке
 - [x] Избранное (сохранение событий)
+- [x] **ИИ генерация изображений (Nano Banana)** ← NEW
+- [x] **Авто-публикации в соцсети (Telegram/VK/Instagram)** ← NEW
+- [x] **Видео формат для событий** ← NEW
 - [ ] Оплата тарифов (интеграция Kaspi/карты)
 - [ ] Email уведомления
 
@@ -626,4 +722,4 @@ favorites (
 
 ---
 
-*Последнее обновление: Январь 2026*
+*Последнее обновление: 19 января 2026 (v2.2.0-premium)*

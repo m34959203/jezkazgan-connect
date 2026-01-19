@@ -103,6 +103,8 @@ export const events = pgTable('events', {
   description: text('description'),
   category: eventCategoryEnum('category').notNull(),
   image: text('image'),
+  videoUrl: text('video_url'), // Business Premium: видео формат для событий
+  videoThumbnail: text('video_thumbnail'), // Превью для видео
   date: timestamp('date').notNull(),
   endDate: timestamp('end_date'),
   location: text('location'),
@@ -183,6 +185,64 @@ export const communityMembers = pgTable('community_members', {
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
 });
 
+// Business Premium: Настройки авто-публикации в соцсетях
+export const socialPlatformEnum = pgEnum('social_platform', ['telegram', 'instagram', 'vk', 'facebook']);
+
+export const autoPublishSettings = pgTable('auto_publish_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').references(() => businesses.id).notNull(),
+  platform: socialPlatformEnum('platform').notNull(),
+  isEnabled: boolean('is_enabled').default(false),
+  // Telegram settings
+  telegramBotToken: text('telegram_bot_token'),
+  telegramChannelId: text('telegram_channel_id'),
+  // Instagram settings (через официальный API)
+  instagramAccessToken: text('instagram_access_token'),
+  instagramBusinessAccountId: text('instagram_business_account_id'),
+  // VK settings
+  vkAccessToken: text('vk_access_token'),
+  vkGroupId: text('vk_group_id'),
+  // Настройки публикации
+  publishEvents: boolean('publish_events').default(true),
+  publishPromotions: boolean('publish_promotions').default(true),
+  autoPublishOnCreate: boolean('auto_publish_on_create').default(false), // Автоматически при создании
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Business Premium: История авто-публикаций
+export const autoPublishHistoryStatusEnum = pgEnum('auto_publish_status', ['pending', 'published', 'failed']);
+
+export const autoPublishHistory = pgTable('auto_publish_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').references(() => businesses.id).notNull(),
+  platform: socialPlatformEnum('platform').notNull(),
+  contentType: text('content_type').notNull(), // 'event' | 'promotion'
+  contentId: uuid('content_id').notNull(), // ID события или акции
+  status: autoPublishHistoryStatusEnum('status').default('pending').notNull(),
+  externalPostId: text('external_post_id'), // ID поста в соцсети
+  externalPostUrl: text('external_post_url'), // Ссылка на пост
+  errorMessage: text('error_message'),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Business Premium: ИИ генерация изображений (Nano Banana)
+export const aiImageGenerations = pgTable('ai_image_generations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').references(() => businesses.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  prompt: text('prompt').notNull(),
+  style: text('style'), // 'banner', 'promo', 'event', 'logo'
+  generatedImageUrl: text('generated_image_url'),
+  status: text('status').default('pending').notNull(), // 'pending', 'generating', 'completed', 'failed'
+  errorMessage: text('error_message'),
+  usedFor: text('used_for'), // 'event', 'promotion', 'banner' - где было использовано
+  usedForId: uuid('used_for_id'), // ID события/акции где использовано
+  creditsUsed: integer('credits_used').default(1),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   businesses: many(businesses),
@@ -215,6 +275,9 @@ export const businessesRelations = relations(businesses, ({ one, many }) => ({
   events: many(events),
   promotions: many(promotions),
   members: many(businessMembers),
+  autoPublishSettings: many(autoPublishSettings),
+  autoPublishHistory: many(autoPublishHistory),
+  aiImageGenerations: many(aiImageGenerations),
 }));
 
 export const businessMembersRelations = relations(businessMembers, ({ one }) => ({
@@ -240,4 +303,18 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
   city: one(cities, { fields: [communities.cityId], references: [cities.id] }),
   creator: one(users, { fields: [communities.creatorId], references: [users.id] }),
   members: many(communityMembers),
+}));
+
+// Business Premium Relations
+export const autoPublishSettingsRelations = relations(autoPublishSettings, ({ one }) => ({
+  business: one(businesses, { fields: [autoPublishSettings.businessId], references: [businesses.id] }),
+}));
+
+export const autoPublishHistoryRelations = relations(autoPublishHistory, ({ one }) => ({
+  business: one(businesses, { fields: [autoPublishHistory.businessId], references: [businesses.id] }),
+}));
+
+export const aiImageGenerationsRelations = relations(aiImageGenerations, ({ one }) => ({
+  business: one(businesses, { fields: [aiImageGenerations.businessId], references: [businesses.id] }),
+  user: one(users, { fields: [aiImageGenerations.userId], references: [users.id] }),
 }));
