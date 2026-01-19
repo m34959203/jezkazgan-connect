@@ -58,6 +58,18 @@ export const cityBanners = pgTable('city_banners', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// City Photos (фото для карусели на главной странице)
+export const cityPhotos = pgTable('city_photos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  cityId: uuid('city_id').references(() => cities.id).notNull(),
+  title: text('title').notNull(),
+  imageUrl: text('image_url').notNull(),
+  position: integer('position').default(0), // для сортировки
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Businesses
 export const businesses = pgTable('businesses', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -185,6 +197,11 @@ export const citiesRelations = relations(cities, ({ many }) => ({
   promotions: many(promotions),
   communities: many(communities),
   banners: many(cityBanners),
+  photos: many(cityPhotos),
+}));
+
+export const cityPhotosRelations = relations(cityPhotos, ({ one }) => ({
+  city: one(cities, { fields: [cityPhotos.cityId], references: [cities.id] }),
 }));
 
 export const cityBannersRelations = relations(cityBanners, ({ one }) => ({

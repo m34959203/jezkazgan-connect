@@ -6,7 +6,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { AfishaNavigationPanel, AfishaFilters } from '@/components/navigation/AfishaNavigationPanel';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
 import { Button } from '@/components/ui/button';
-import { useCities, useEvents, usePromotions } from '@/hooks/use-api';
+import { useCities, useEvents, usePromotions, usePublicCityPhotos } from '@/hooks/use-api';
 import {
   Carousel,
   CarouselContent,
@@ -289,8 +289,23 @@ export default function Index() {
   const featuredEvents = events.filter(e => e.isFeatured);
   const topPromotions = promotions.slice(0, 3);
 
-  // Получаем фото для текущего города
-  const landmarks = cityLandmarks[selectedCity] || cityLandmarks.default;
+  // Загружаем фото из API для текущего города
+  const { data: cityPhotosData } = usePublicCityPhotos(selectedCity);
+
+  // Получаем фото для текущего города (API или fallback на хардкод)
+  const landmarks = useMemo(() => {
+    // Если есть фото из API, используем их
+    if (cityPhotosData?.photos && cityPhotosData.photos.length > 0) {
+      return {
+        images: cityPhotosData.photos.map(photo => ({
+          url: photo.imageUrl,
+          title: photo.title,
+        }))
+      };
+    }
+    // Иначе используем хардкод
+    return cityLandmarks[selectedCity] || cityLandmarks.default;
+  }, [cityPhotosData, selectedCity]);
 
   return (
     <Layout>

@@ -1287,3 +1287,80 @@ export async function deleteAdminCity(id: string): Promise<{ success: boolean; m
   }
   return res.json();
 }
+
+// ============================================
+// City Photos API (Carousel)
+// ============================================
+
+export interface CityPhoto {
+  id: string;
+  cityId: string;
+  title: string;
+  imageUrl: string;
+  position: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchCityPhotos(cityId: string): Promise<{ photos: CityPhoto[]; city: City }> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/photos`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch city photos');
+  return res.json();
+}
+
+export async function createCityPhoto(cityId: string, data: {
+  title: string;
+  imageUrl: string;
+  position?: number;
+  isActive?: boolean;
+}): Promise<CityPhoto> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/photos`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create photo');
+  return res.json();
+}
+
+export async function updateCityPhoto(cityId: string, photoId: string, data: {
+  title?: string;
+  imageUrl?: string;
+  position?: number;
+  isActive?: boolean;
+}): Promise<CityPhoto> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/photos/${photoId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update photo');
+  return res.json();
+}
+
+export async function deleteCityPhoto(cityId: string, photoId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/admin/cities/${cityId}/photos/${photoId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete photo');
+  return res.json();
+}
+
+// Public API for fetching city photos
+export async function fetchPublicCityPhotos(citySlug: string): Promise<{
+  photos: Array<{
+    id: string;
+    title: string;
+    imageUrl: string;
+    position: number;
+  }>;
+  city: City;
+}> {
+  const res = await fetch(`${API_URL}/cities/${citySlug}/photos`);
+  if (!res.ok) throw new Error('Failed to fetch city photos');
+  return res.json();
+}

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { eq, and, or, isNull, gte, lte, sql } from 'drizzle-orm';
-import { db, cities, cityBanners, businesses } from '../db';
+import { db, cities, cityBanners, cityPhotos, businesses } from '../db';
 
 const app = new Hono();
 
@@ -92,6 +92,46 @@ app.get('/:slug/banners', async (c) => {
     return c.json({ banners: result, city });
   } catch (error) {
     console.error('City banners fetch error:', error);
+    return c.json({ error: 'Database error', details: String(error) }, 500);
+  }
+});
+
+// GET /cities/:slug/photos - фото для карусели города (публичный)
+app.get('/:slug/photos', async (c) => {
+  const slug = c.req.param('slug');
+
+  try {
+    // Сначала получим город по slug
+    const [city] = await db
+      .select()
+      .from(cities)
+      .where(eq(cities.slug, slug))
+      .limit(1);
+
+    if (!city) {
+      return c.json({ error: 'City not found' }, 404);
+    }
+
+    // Получаем активные фото для этого города
+    const photos = await db
+      .select({
+        id: cityPhotos.id,
+        title: cityPhotos.title,
+        imageUrl: cityPhotos.imageUrl,
+        position: cityPhotos.position,
+      })
+      .from(cityPhotos)
+      .where(
+        and(
+          eq(cityPhotos.cityId, city.id),
+          eq(cityPhotos.isActive, true)
+        )
+      )
+      .orderBy(cityPhotos.position);
+
+    return c.json({ photos, city });
+  } catch (error) {
+    console.error('City photos fetch error:', error);
     return c.json({ error: 'Database error', details: String(error) }, 500);
   }
 });
