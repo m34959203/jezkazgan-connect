@@ -65,12 +65,18 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return '';
     return new Intl.DateTimeFormat('ru-RU', {
       day: 'numeric',
       month: 'short',
-    }).format(date);
+    }).format(dateObj);
   };
+
+  // Parse date safely
+  const eventDate = typeof event.date === 'string' ? new Date(event.date) : event.date;
+  const isValidDate = eventDate && !isNaN(eventDate.getTime());
 
   const formatPrice = (price: number | null, maxPrice?: number) => {
     if (price === null) return 'Бесплатно';
@@ -204,14 +210,16 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
           />
           
           {/* Дата */}
-          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-1.5 text-center shadow-sm">
-            <div className="text-lg font-bold text-foreground leading-none">
-              {new Date(event.date).getDate()}
+          {isValidDate && (
+            <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-1.5 text-center shadow-sm">
+              <div className="text-lg font-bold text-foreground leading-none">
+                {eventDate.getDate()}
+              </div>
+              <div className="text-xs text-muted-foreground uppercase">
+                {new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(eventDate)}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground uppercase">
-              {new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(event.date)}
-            </div>
-          </div>
+          )}
 
           {/* Категория */}
           <div className="absolute top-3 right-3">
