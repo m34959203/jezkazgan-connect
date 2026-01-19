@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
-import { Upload, X, Link as LinkIcon, Loader2, ImageIcon } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, X, Link as LinkIcon, Loader2, ImageIcon, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { uploadImage } from '@/lib/api';
+import { uploadImage, getUploadConfig } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface ImageUploadProps {
@@ -30,7 +30,25 @@ export function ImageUpload({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInputValue, setUrlInputValue] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [uploadAvailable, setUploadAvailable] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if file upload is available (Cloudinary configured)
+  useEffect(() => {
+    let cancelled = false;
+
+    getUploadConfig(folder)
+      .then(() => {
+        if (!cancelled) setUploadAvailable(true);
+      })
+      .catch(() => {
+        if (!cancelled) setUploadAvailable(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [folder]);
 
   const handleFileSelect = useCallback(async (file: File) => {
     setError(null);
@@ -53,8 +71,15 @@ export function ImageUpload({
     try {
       const url = await uploadImage(file, folder);
       onChange(url);
+      setError(null);
     } catch (err) {
-      setError('Ошибка загрузки изображения. Попробуйте еще раз');
+      const message = err instanceof Error ? err.message : 'Ошибка загрузки';
+      if (message.includes('not configured')) {
+        setError('Загрузка файлов временно недоступна. Используйте ссылку на изображение');
+        setUploadAvailable(false);
+      } else {
+        setError('Ошибка загрузки изображения. Попробуйте еще раз');
+      }
       console.error('Upload error:', err);
     } finally {
       setIsUploading(false);
@@ -92,6 +117,7 @@ export function ImageUpload({
       onChange(urlInputValue.trim());
       setShowUrlInput(false);
       setUrlInputValue('');
+      setError(null);
     }
   };
 
@@ -99,6 +125,44 @@ export function ImageUpload({
     onChange('');
     setError(null);
   };
+
+  // If upload is not available, show URL-only mode
+  if (uploadAvailable === false && !value && !showUrlInput) {
+    return (
+      <div className={cn('space-y-2', className)}>
+        <Label>{label}</Label>
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Загрузка файлов временно недоступна. Вы можете указать ссылку на изображение.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                className="pl-9"
+                value={urlInputValue}
+                onChange={(e) => setUrlInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleUrlSubmit();
+                  }
+                }}
+              />
+            </div>
+            <Button type="button" onClick={handleUrlSubmit} disabled={!urlInputValue.trim()}>
+              Добавить
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -187,6 +251,12 @@ export function ImageUpload({
               <>
                 <Loader2 className="h-10 w-10 text-muted-foreground animate-spin mb-3" />
                 <p className="text-sm text-muted-foreground">Загрузка...</p>
+              </>
+            ) : uploadAvailable === null ? (
+              // Loading state
+              <>
+                <Loader2 className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
+                <p className="text-sm text-muted-foreground">Проверка...</p>
               </>
             ) : (
               <>
