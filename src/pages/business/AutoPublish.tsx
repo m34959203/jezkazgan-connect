@@ -68,6 +68,8 @@ export default function AutoPublish() {
     instagramBusinessAccountId: '',
     vkAccessToken: '',
     vkGroupId: '',
+    facebookAccessToken: '',
+    facebookPageId: '',
     publishEvents: true,
     publishPromotions: true,
     autoPublishOnCreate: false,
@@ -112,6 +114,8 @@ export default function AutoPublish() {
       instagramBusinessAccountId: '',
       vkAccessToken: '',
       vkGroupId: '',
+      facebookAccessToken: '',
+      facebookPageId: '',
       publishEvents: true,
       publishPromotions: true,
       autoPublishOnCreate: false,
@@ -271,7 +275,7 @@ export default function AutoPublish() {
   }
 
   const configuredPlatforms = settings.filter((s) => s.isConfigured);
-  const availablePlatforms = (['telegram', 'vk', 'instagram'] as SocialPlatform[]).filter(
+  const availablePlatforms = (['telegram', 'vk', 'instagram', 'facebook'] as SocialPlatform[]).filter(
     (p) => !configuredPlatforms.find((s) => s.platform === p)
   );
 
@@ -372,8 +376,8 @@ export default function AutoPublish() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {(['telegram', 'vk', 'instagram'] as SocialPlatform[]).map((platform) => {
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {(['telegram', 'vk', 'instagram', 'facebook'] as SocialPlatform[]).map((platform) => {
                   const isConfigured = configuredPlatforms.find((s) => s.platform === platform);
 
                   return (
@@ -607,6 +611,37 @@ export default function AutoPublish() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Требуется Instagram Business аккаунт, подключенный к Facebook
+                  </p>
+                </div>
+              </>
+            )}
+
+            {selectedPlatform === 'facebook' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="facebookAccessToken">Page Access Token</Label>
+                  <Input
+                    id="facebookAccessToken"
+                    type="password"
+                    placeholder="EAA..."
+                    value={formData.facebookAccessToken}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, facebookAccessToken: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facebookPageId">Page ID</Label>
+                  <Input
+                    id="facebookPageId"
+                    placeholder="123456789..."
+                    value={formData.facebookPageId}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, facebookPageId: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Требуется Page Access Token с правами pages_manage_posts
                   </p>
                 </div>
               </>

@@ -202,6 +202,9 @@ export const autoPublishSettings = pgTable('auto_publish_settings', {
   // VK settings
   vkAccessToken: text('vk_access_token'),
   vkGroupId: text('vk_group_id'),
+  // Facebook settings
+  facebookAccessToken: text('facebook_access_token'),
+  facebookPageId: text('facebook_page_id'),
   // Настройки публикации
   publishEvents: boolean('publish_events').default(true),
   publishPromotions: boolean('publish_promotions').default(true),
@@ -223,6 +226,7 @@ export const autoPublishHistory = pgTable('auto_publish_history', {
   externalPostId: text('external_post_id'), // ID поста в соцсети
   externalPostUrl: text('external_post_url'), // Ссылка на пост
   errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0), // Количество попыток
   publishedAt: timestamp('published_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

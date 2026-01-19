@@ -77,6 +77,7 @@ app.get('/settings', authMiddleware, async (c) => {
       hasTelegramConfig: autoPublishSettings.telegramBotToken,
       hasInstagramConfig: autoPublishSettings.instagramAccessToken,
       hasVkConfig: autoPublishSettings.vkAccessToken,
+      hasFacebookConfig: autoPublishSettings.facebookAccessToken,
       createdAt: autoPublishSettings.createdAt,
       updatedAt: autoPublishSettings.updatedAt,
     })
@@ -94,7 +95,8 @@ app.get('/settings', authMiddleware, async (c) => {
     isConfigured:
       (s.platform === 'telegram' && !!s.hasTelegramConfig) ||
       (s.platform === 'instagram' && !!s.hasInstagramConfig) ||
-      (s.platform === 'vk' && !!s.hasVkConfig),
+      (s.platform === 'vk' && !!s.hasVkConfig) ||
+      (s.platform === 'facebook' && !!s.hasFacebookConfig),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   }));
@@ -115,6 +117,9 @@ const settingsSchema = z.object({
   // VK
   vkAccessToken: z.string().optional(),
   vkGroupId: z.string().optional(),
+  // Facebook
+  facebookAccessToken: z.string().optional(),
+  facebookPageId: z.string().optional(),
   // Publishing options
   publishEvents: z.boolean().default(true),
   publishPromotions: z.boolean().default(true),
@@ -229,6 +234,8 @@ app.post('/test-connection', authMiddleware, zValidator('json', testConnectionSc
     instagramBusinessAccountId: s.instagramBusinessAccountId || undefined,
     vkAccessToken: s.vkAccessToken || undefined,
     vkGroupId: s.vkGroupId || undefined,
+    facebookAccessToken: s.facebookAccessToken || undefined,
+    facebookPageId: s.facebookPageId || undefined,
   };
 
   const result = await testConnection(platform, credentials);
@@ -330,6 +337,8 @@ app.post('/publish', authMiddleware, zValidator('json', publishSchema), async (c
       credentials.instagramBusinessAccountId = s.instagramBusinessAccountId;
     if (s.vkAccessToken) credentials.vkAccessToken = s.vkAccessToken;
     if (s.vkGroupId) credentials.vkGroupId = s.vkGroupId;
+    if (s.facebookAccessToken) credentials.facebookAccessToken = s.facebookAccessToken;
+    if (s.facebookPageId) credentials.facebookPageId = s.facebookPageId;
   }
 
   // Publish to platforms
@@ -351,6 +360,7 @@ app.post('/publish', authMiddleware, zValidator('json', publishSchema), async (c
       externalPostId: result.postId || null,
       externalPostUrl: result.postUrl || null,
       errorMessage: result.error || null,
+      retryCount: result.retryCount || 0,
       publishedAt: result.success ? new Date() : null,
     });
   }

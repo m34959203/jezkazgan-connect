@@ -1493,6 +1493,7 @@ export interface AutoPublishHistoryItem {
   externalPostId: string | null;
   externalPostUrl: string | null;
   errorMessage: string | null;
+  retryCount: number;
   publishedAt: string | null;
   createdAt: string;
 }
@@ -1517,6 +1518,8 @@ export async function saveAutoPublishSettings(data: {
   instagramBusinessAccountId?: string;
   vkAccessToken?: string;
   vkGroupId?: string;
+  facebookAccessToken?: string;
+  facebookPageId?: string;
   publishEvents?: boolean;
   publishPromotions?: boolean;
   autoPublishOnCreate?: boolean;
