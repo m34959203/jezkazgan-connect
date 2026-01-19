@@ -17,34 +17,34 @@ import {
 import Autoplay from 'embla-carousel-autoplay';
 
 // Достопримечательности городов Казахстана
-// Используем source.unsplash.com для надежной загрузки
+// Фото из Wikimedia Commons (лицензия CC)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
   jezkazgan: {
     images: [
-      { url: 'https://source.unsplash.com/1280x720/?kazakhstan,steppe', title: 'Степи Казахстана' },
-      { url: 'https://source.unsplash.com/1280x720/?kazakhstan,desert', title: 'Пустыня' },
-      { url: 'https://source.unsplash.com/1280x720/?industrial,mining', title: 'Индустриальный город' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Zhezkazgan_view.jpg/1280px-Zhezkazgan_view.jpg', title: 'Вид на Жезказган' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Kengir_Reservoir.jpg/1280px-Kengir_Reservoir.jpg', title: 'Кенгирское водохранилище' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Metallurgov_Square_Zhezkazgan.jpg/1280px-Metallurgov_Square_Zhezkazgan.jpg', title: 'Площадь Металлургов' },
     ]
   },
   almaty: {
     images: [
-      { url: 'https://source.unsplash.com/1280x720/?almaty,mountains', title: 'Горы Алматы' },
-      { url: 'https://source.unsplash.com/1280x720/?almaty,city', title: 'Город Алматы' },
-      { url: 'https://source.unsplash.com/1280x720/?tian-shan,mountains', title: 'Тянь-Шань' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Medeu_skating_rink.jpg/1280px-Medeu_skating_rink.jpg', title: 'Каток Медеу' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Kok_tobe_almaty.jpg/1280px-Kok_tobe_almaty.jpg', title: 'Кок-Тобе' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Almaty_-_panorama.jpg/1280px-Almaty_-_panorama.jpg', title: 'Панорама Алматы' },
     ]
   },
   astana: {
     images: [
-      { url: 'https://source.unsplash.com/1280x720/?astana,architecture', title: 'Архитектура Астаны' },
-      { url: 'https://source.unsplash.com/1280x720/?nur-sultan,modern', title: 'Современный город' },
-      { url: 'https://source.unsplash.com/1280x720/?kazakhstan,tower', title: 'Башня' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Bayterek_tower_Astana_1.jpg/800px-Bayterek_tower_Astana_1.jpg', title: 'Байтерек' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Khan_Shatyr_Entertainment_Center_in_Astana.jpg/1280px-Khan_Shatyr_Entertainment_Center_in_Astana.jpg', title: 'Хан Шатыр' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Central_Downtown_Astana_2.jpg/1280px-Central_Downtown_Astana_2.jpg', title: 'Центр Астаны' },
     ]
   },
   default: {
     images: [
-      { url: 'https://source.unsplash.com/1280x720/?kazakhstan,nature', title: 'Природа Казахстана' },
-      { url: 'https://source.unsplash.com/1280x720/?central-asia,landscape', title: 'Ландшафт' },
-      { url: 'https://source.unsplash.com/1280x720/?kazakhstan,canyon', title: 'Каньон' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Kazakhstan_location_map.svg/1280px-Kazakhstan_location_map.svg.png', title: 'Карта Казахстана' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Charyn_Canyon.jpg/1280px-Charyn_Canyon.jpg', title: 'Чарынский каньон' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Kolsai_Lake_1.jpg/1280px-Kolsai_Lake_1.jpg', title: 'Кольсайские озёра' },
     ]
   }
 };
