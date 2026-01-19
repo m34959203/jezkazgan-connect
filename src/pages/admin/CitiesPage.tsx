@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MoreHorizontal, Plus, Edit, Trash2, MapPin, Users, Building2, ToggleLeft, ToggleRight, Image } from 'lucide-react';
+import { Search, MoreHorizontal, Plus, Edit, Trash2, MapPin, Users, Building2, ToggleLeft, ToggleRight, Image, Images } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -272,6 +272,10 @@ export default function CitiesPage() {
                         <DropdownMenuItem onClick={() => navigate(`/admin/cities/${city.id}/banners`)}>
                           <Image className="w-4 h-4 mr-2" />
                           Баннеры
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/admin/cities/${city.id}/photos`)}>
+                          <Images className="w-4 h-4 mr-2" />
+                          Фото карусели
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Edit className="w-4 h-4 mr-2" />

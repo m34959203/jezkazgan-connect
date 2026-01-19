@@ -36,6 +36,11 @@ import {
   deleteCityBanner,
   fetchAllBanners,
   fetchPublicCityBanners,
+  fetchCityPhotos,
+  createCityPhoto,
+  updateCityPhoto,
+  deleteCityPhoto,
+  fetchPublicCityPhotos,
   type City,
   type Event,
   type Business,
@@ -538,6 +543,77 @@ export function usePublicCityBanners(citySlug: string) {
   return useQuery({
     queryKey: ['cityBanners', citySlug],
     queryFn: () => fetchPublicCityBanners(citySlug),
+    enabled: !!citySlug,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// City Photos hooks (for carousel)
+export function useCityPhotos(cityId: string) {
+  return useQuery({
+    queryKey: ['admin', 'cityPhotos', cityId],
+    queryFn: () => fetchCityPhotos(cityId),
+    enabled: !!cityId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useCreateCityPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, data }: {
+      cityId: string;
+      data: {
+        title: string;
+        imageUrl: string;
+        position?: number;
+        isActive?: boolean;
+      };
+    }) => createCityPhoto(cityId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityPhotos', variables.cityId] });
+    },
+  });
+}
+
+export function useUpdateCityPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, photoId, data }: {
+      cityId: string;
+      photoId: string;
+      data: {
+        title?: string;
+        imageUrl?: string;
+        position?: number;
+        isActive?: boolean;
+      };
+    }) => updateCityPhoto(cityId, photoId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityPhotos', variables.cityId] });
+    },
+  });
+}
+
+export function useDeleteCityPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cityId, photoId }: { cityId: string; photoId: string }) =>
+      deleteCityPhoto(cityId, photoId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cityPhotos', variables.cityId] });
+    },
+  });
+}
+
+// Public city photos hook (for displaying on main page carousel)
+export function usePublicCityPhotos(citySlug: string) {
+  return useQuery({
+    queryKey: ['cityPhotos', citySlug],
+    queryFn: () => fetchPublicCityPhotos(citySlug),
     enabled: !!citySlug,
     staleTime: 1000 * 60 * 5,
   });

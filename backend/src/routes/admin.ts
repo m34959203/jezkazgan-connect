@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, users, businesses, events, promotions, cities, cityBanners } from '../db';
+import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos } from '../db';
 import { eq, desc, sql, count, and, gte, like, or } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 
@@ -826,6 +826,9 @@ admin.delete('/cities/:id', async (c) => {
     // Delete banners
     await db.delete(cityBanners).where(eq(cityBanners.cityId, id));
 
+    // Delete photos
+    await db.delete(cityPhotos).where(eq(cityPhotos.cityId, id));
+
     // Delete city
     await db.delete(cities).where(eq(cities.id, id));
 
@@ -833,6 +836,102 @@ admin.delete('/cities/:id', async (c) => {
   } catch (error) {
     console.error('Delete city error:', error);
     return c.json({ error: 'Failed to delete city' }, 500);
+  }
+});
+
+// ==================== CITY PHOTOS (Carousel) ====================
+
+// Get all photos for a city
+admin.get('/cities/:cityId/photos', async (c) => {
+  const { cityId } = c.req.param();
+
+  try {
+    const result = await db
+      .select()
+      .from(cityPhotos)
+      .where(eq(cityPhotos.cityId, cityId))
+      .orderBy(cityPhotos.position);
+
+    // Get city info
+    const [city] = await db.select().from(cities).where(eq(cities.id, cityId));
+
+    return c.json({ photos: result, city });
+  } catch (error) {
+    console.error('City photos error:', error);
+    return c.json({ error: 'Failed to fetch city photos' }, 500);
+  }
+});
+
+// Create photo for a city
+admin.post('/cities/:cityId/photos', async (c) => {
+  const { cityId } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    // Get max position
+    const maxPositionResult = await db
+      .select({ maxPos: sql<number>`COALESCE(MAX(${cityPhotos.position}), -1)` })
+      .from(cityPhotos)
+      .where(eq(cityPhotos.cityId, cityId));
+
+    const nextPosition = (maxPositionResult[0]?.maxPos ?? -1) + 1;
+
+    const [created] = await db
+      .insert(cityPhotos)
+      .values({
+        cityId,
+        title: body.title,
+        imageUrl: body.imageUrl,
+        position: body.position ?? nextPosition,
+        isActive: body.isActive ?? true,
+      })
+      .returning();
+
+    return c.json(created);
+  } catch (error) {
+    console.error('Create photo error:', error);
+    return c.json({ error: 'Failed to create photo' }, 500);
+  }
+});
+
+// Update photo
+admin.patch('/cities/:cityId/photos/:photoId', async (c) => {
+  const { photoId } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+    if (body.position !== undefined) updateData.position = body.position;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+
+    const [updated] = await db
+      .update(cityPhotos)
+      .set(updateData)
+      .where(eq(cityPhotos.id, photoId))
+      .returning();
+
+    return c.json(updated);
+  } catch (error) {
+    console.error('Update photo error:', error);
+    return c.json({ error: 'Failed to update photo' }, 500);
+  }
+});
+
+// Delete photo
+admin.delete('/cities/:cityId/photos/:photoId', async (c) => {
+  const { photoId } = c.req.param();
+
+  try {
+    await db.delete(cityPhotos).where(eq(cityPhotos.id, photoId));
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Delete photo error:', error);
+    return c.json({ error: 'Failed to delete photo' }, 500);
   }
 });
 
