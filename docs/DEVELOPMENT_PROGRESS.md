@@ -1,8 +1,8 @@
 # Afisha.kz - Прогресс разработки
 
-**Версия документа:** 1.7
+**Версия документа:** 1.8
 **Дата обновления:** Январь 2026
-**Ветка разработки:** `claude/fix-auth-401-error-puWyd`
+**Ветка разработки:** `claude/add-image-upload-YQOR0`
 
 ---
 
@@ -106,6 +106,8 @@ Railway Platform
 | События | `/admin/events` | ✅ | Модерация, одобрение/отклонение |
 | Акции | `/admin/promotions` | ✅ | Модерация акций |
 | Города | `/admin/cities` | ✅ | Управление городами |
+| Баннеры города | `/admin/cities/:id/banners` | ✅ | Рекламные баннеры |
+| Фото карусели | `/admin/cities/:id/photos` | ✅ | Фото для главной страницы |
 | Финансы | `/admin/finance` | ✅ | Статистика доходов |
 | Модерация | `/admin/moderation` | ✅ | Очередь модерации |
 | Аналитика | `/admin/analytics` | ✅ | Графики и отчёты |
@@ -146,6 +148,10 @@ Railway Platform
 | Адаптивный дизайн | ✅ | Mobile-first |
 | Команда сотрудников | ✅ | До 5 человек (Premium) |
 | Фото-карусель | ✅ | Embla Carousel + Autoplay |
+| Загрузка изображений | ✅ | Cloudinary интеграция |
+| Баннеры городов | ✅ | Рекламные баннеры на главной |
+| Управление фото карусели | ✅ | CRUD через админку |
+| Сохранение событий | ✅ | Избранное для пользователей |
 
 ---
 
@@ -207,7 +213,7 @@ Railway Platform
 7. **Обновление структуры тарифов** — переработаны фичи тарифов
 8. **Навигация** — добавлены ссылки "На сайт" в кабинетах
 
-### Этап 7: UI/UX улучшения (Текущий)
+### Этап 7: UI/UX улучшения
 
 1. **Фото-карусель на главной** — замена градиентного фона:
    - Автоматическая смена слайдов каждые 5 секунд
@@ -222,6 +228,36 @@ Railway Platform
 3. **Улучшение навигации в кабинетах**:
    - Ссылки "На сайт" для быстрого возврата на главную
 
+### Этап 8: Загрузка изображений и управление контентом (Текущий)
+
+1. **Cloudinary интеграция** — загрузка изображений:
+   - Компонент `ImageUpload` с drag-and-drop
+   - Предпросмотр и удаление изображений
+   - Автоматическая загрузка в Cloudinary
+   - Поддержка разных папок (events, promotions, cities)
+   - Unsigned upload preset для безопасности
+2. **Баннеры городов** — рекламная система:
+   - Таблица `city_banners` в БД
+   - CRUD API для управления баннерами
+   - Админ-страница `/admin/cities/:id/banners`
+   - Публичный API для показа баннеров
+   - Счётчики просмотров и кликов
+3. **Фото карусели** — управление через админку:
+   - Таблица `city_photos` в БД
+   - CRUD API для управления фото
+   - Админ-страница `/admin/cities/:id/photos`
+   - Публичный API `/cities/:slug/photos`
+   - Приоритет API над хардкодом на главной
+   - Загрузка фото через Cloudinary
+4. **Страница события** — улучшения:
+   - Рабочие кнопки "Сохранить" и "Поделиться"
+   - Удалена кнопка "Купить билет" (платформа для афиши)
+   - Подключение к реальному API
+5. **Избранное** — функционал сохранения:
+   - Таблица `favorites` в БД
+   - API для добавления/удаления из избранного
+   - Страница избранного для пользователей
+
 ---
 
 ## Структура кода
@@ -235,6 +271,7 @@ src/
 │   │   ├── Header.tsx           # Навигация, меню пользователя
 │   │   └── Footer.tsx           # Обновлённые области
 │   ├── ui/                      # shadcn/ui компоненты + Carousel
+│   │   └── image-upload.tsx     # Компонент загрузки изображений
 │   └── ThemeProvider.tsx        # Управление темой
 ├── hooks/
 │   └── use-api.ts               # React Query hooks (admin + team)
@@ -242,9 +279,12 @@ src/
 │   ├── api.ts                   # API функции (admin + team)
 │   └── utils.ts
 ├── pages/
-│   ├── admin/                   # 10 страниц админки
+│   ├── admin/                   # 12 страниц админки
 │   │   ├── AdminLayout.tsx      # + ссылка "На сайт"
 │   │   ├── Dashboard.tsx
+│   │   ├── CitiesPage.tsx       # Управление городами
+│   │   ├── CityBannersPage.tsx  # Баннеры города
+│   │   ├── CityPhotosPage.tsx   # Фото карусели
 │   │   └── ...
 │   ├── business/                # 12 страниц кабинета
 │   │   ├── BusinessLayout.tsx   # Sidebar с лимитами + "На сайт"
@@ -270,16 +310,20 @@ src/
 backend/src/
 ├── db/
 │   ├── index.ts                 # Подключение к Neon
-│   ├── schema.ts                # Drizzle схема (+ businessMembers)
+│   ├── schema.ts                # Drizzle схема (+ cityBanners, cityPhotos)
 │   └── seed.ts                  # Seed данные
 ├── routes/
-│   ├── auth.ts                  # /auth (login, register, me)
-│   ├── cities.ts                # /cities
+│   ├── auth.ts                  # /auth (login, register, me, profile)
+│   ├── cities.ts                # /cities (+ banners, photos)
 │   ├── events.ts                # /events
 │   ├── businesses.ts            # /businesses
 │   ├── promotions.ts            # /promotions
-│   ├── admin.ts                 # /admin/* (JWT protected)
-│   └── team.ts                  # /team/* (Premium feature)
+│   ├── admin.ts                 # /admin/* (+ analytics, moderation, delete)
+│   ├── team.ts                  # /team/* (Premium feature)
+│   ├── favorites.ts             # /favorites (избранное)
+│   └── upload.ts                # /upload (Cloudinary config)
+├── middleware/
+│   └── auth.ts                  # JWT middleware
 └── index.ts                     # Hono app entry
 ```
 
@@ -294,6 +338,8 @@ backend/src/
 | `GET /` | GET | Health check |
 | `GET /cities` | GET | Список городов |
 | `GET /cities/:slug` | GET | Город по slug |
+| `GET /cities/:slug/banners` | GET | Баннеры города |
+| `GET /cities/:slug/photos` | GET | Фото карусели города |
 | `GET /events` | GET | События (cityId, category, featured) |
 | `GET /events/:id` | GET | Детали события |
 | `GET /businesses` | GET | Бизнесы (cityId, category) |
@@ -301,25 +347,70 @@ backend/src/
 | `POST /auth/login` | POST | Авторизация |
 | `POST /auth/register` | POST | Регистрация |
 | `GET /auth/me` | GET | Текущий пользователь (JWT) |
+| `POST /auth/change-password` | POST | Смена пароля |
+| `PATCH /auth/profile` | PATCH | Обновление профиля |
 
 ### Админ (требуется JWT, роль admin/moderator)
 
 | Endpoint | Метод | Описание |
 |----------|-------|----------|
 | `GET /admin/stats` | GET | Статистика платформы |
+| `GET /admin/analytics` | GET | Расширенная аналитика |
+| `GET /admin/moderation` | GET | Очередь модерации |
 | `GET /admin/users` | GET | Список пользователей |
 | `PATCH /admin/users/:id` | PATCH | Обновить пользователя |
+| `DELETE /admin/users/:id` | DELETE | Удалить пользователя |
 | `GET /admin/businesses` | GET | Список бизнесов + tier stats |
 | `PATCH /admin/businesses/:id` | PATCH | Обновить бизнес |
 | `PATCH /admin/businesses/:id/verify` | PATCH | Верифицировать |
+| `DELETE /admin/businesses/:id` | DELETE | Удалить бизнес |
 | `GET /admin/events` | GET | События на модерации |
 | `PATCH /admin/events/:id/approve` | PATCH | Одобрить событие |
 | `PATCH /admin/events/:id/reject` | PATCH | Отклонить событие |
+| `DELETE /admin/events/:id` | DELETE | Удалить событие |
 | `GET /admin/promotions` | GET | Все акции |
 | `PATCH /admin/promotions/:id` | PATCH | Обновить акцию |
+| `DELETE /admin/promotions/:id` | DELETE | Удалить акцию |
 | `GET /admin/cities` | GET | Все города |
 | `POST /admin/cities` | POST | Создать город |
 | `PATCH /admin/cities/:id` | PATCH | Обновить город |
+| `DELETE /admin/cities/:id` | DELETE | Удалить город |
+
+### Баннеры городов (требуется JWT, роль admin)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /admin/cities/:cityId/banners` | GET | Список баннеров города |
+| `POST /admin/cities/:cityId/banners` | POST | Создать баннер |
+| `PATCH /admin/cities/:cityId/banners/:id` | PATCH | Обновить баннер |
+| `DELETE /admin/cities/:cityId/banners/:id` | DELETE | Удалить баннер |
+| `GET /admin/banners` | GET | Все баннеры (обзор) |
+
+### Фото карусели (требуется JWT, роль admin)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /admin/cities/:cityId/photos` | GET | Список фото города |
+| `POST /admin/cities/:cityId/photos` | POST | Добавить фото |
+| `PATCH /admin/cities/:cityId/photos/:id` | PATCH | Обновить фото |
+| `DELETE /admin/cities/:cityId/photos/:id` | DELETE | Удалить фото |
+
+### Избранное (требуется JWT)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /favorites` | GET | Список избранного |
+| `GET /favorites/check` | GET | Проверить избранное |
+| `POST /favorites` | POST | Добавить в избранное |
+| `POST /favorites/toggle` | POST | Переключить избранное |
+| `DELETE /favorites/:id` | DELETE | Удалить из избранного |
+
+### Загрузка изображений (требуется JWT)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /upload/config` | GET | Конфигурация Cloudinary |
+| `GET /upload/presets` | GET | Пресеты загрузки |
 
 ### Команда (требуется JWT, роль business, тариф Premium)
 
@@ -375,11 +466,31 @@ promotions (
   createdAt
 )
 
--- Сотрудники бизнеса (NEW)
+-- Сотрудники бизнеса
 business_members (
   id, businessId, userId,
   role: admin|editor|viewer,
   invitedBy, invitedAt, acceptedAt, isActive
+)
+
+-- Баннеры городов (NEW)
+city_banners (
+  id, cityId, businessId, title, description,
+  imageUrl, link, linkType, position,
+  isActive, startDate, endDate,
+  viewsCount, clicksCount, createdAt, updatedAt
+)
+
+-- Фото карусели (NEW)
+city_photos (
+  id, cityId, title, imageUrl,
+  position, isActive, createdAt, updatedAt
+)
+
+-- Избранное (NEW)
+favorites (
+  id, userId, eventId, businessId, promotionId,
+  createdAt
 )
 ```
 
@@ -445,9 +556,12 @@ business_members (
 - [x] Команда сотрудников (Premium)
 - [x] Фото-карусель на главной странице
 - [x] Улучшение Header меню
+- [x] Загрузка изображений (Cloudinary)
+- [x] Баннеры городов в админке
+- [x] Управление фото карусели в админке
+- [x] Избранное (сохранение событий)
 - [ ] Оплата тарифов (интеграция Kaspi/карты)
 - [ ] Email уведомления
-- [ ] Загрузка изображений (S3/Cloudinary)
 
 ### Приоритет 2 (После MVP)
 
@@ -467,16 +581,37 @@ business_members (
 
 ## Внешние ресурсы
 
-### Фото городов (Wikimedia Commons)
+### Cloudinary (Хранение изображений)
 
-Фотографии достопримечательностей городов на главной странице используют лицензионные изображения из Wikimedia Commons:
+Все изображения загружаются в Cloudinary с использованием unsigned upload preset:
+
+| Настройка | Значение |
+|-----------|----------|
+| Cloud Name | `dlulp8x9o` |
+| Upload Preset | `afisha_unsigned` |
+| Папки | `afisha/events`, `afisha/promotions`, `afisha/cities`, `afisha/businesses` |
+
+**Компонент ImageUpload:**
+- Drag-and-drop загрузка
+- Предпросмотр изображения
+- Автоматическая оптимизация
+- Поддержка форматов: JPG, PNG, WebP, GIF
+
+### Фото городов (Cloudinary + API)
+
+Фотографии достопримечательностей городов загружены в Cloudinary и управляются через админку:
 
 | Город | Достопримечательности |
 |-------|----------------------|
-| Жезказган | Вид на город, Кенгирское водохранилище, Площадь Металлургов |
-| Алматы | Каток Медеу, Кок-Тобе, Панорама города |
-| Астана | Байтерек, Хан Шатыр, Центр города |
-| По умолчанию | Карта Казахстана, Чарынский каньон, Кольсайские озёра |
+| Жезказган | Горы Улытау, Степь Сарыарка, Река Кенгир |
+| Алматы | Каток Медеу, Вознесенский собор, Чарынский каньон |
+| Астана | Назарбаев Университет, Астана Арена |
+| Актау | Набережная, Каспийское море |
+| Кокшетау | Бурабай, Природа |
+
+**Приоритет загрузки фото:**
+1. API `/cities/:slug/photos` — управляемые фото из БД
+2. Хардкод `cityLandmarks` — fallback фото из Cloudinary
 
 Изображения автоматически меняются в карусели каждые 5 секунд с использованием Embla Carousel + Autoplay.
 
