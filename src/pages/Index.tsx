@@ -17,162 +17,182 @@ import {
 import Autoplay from 'embla-carousel-autoplay';
 
 // Достопримечательности городов Казахстана
-// Фото из Pexels (бесплатные, без атрибуции) и Wikimedia Commons (CC лицензия)
+// Фото загружены в Cloudinary из Wikimedia Commons (CC лицензия)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
-  // Все города используют общие фото Казахстана из Pexels
-  // Pexels CDN формат: https://images.pexels.com/photos/{ID}/pexels-photo-{ID}.jpeg?auto=compress&cs=tinysrgb&w=1280
+  // Жезказган - использует общие фото Казахстана
   jezkazgan: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Казахстан' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Ночной город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Чарынский каньон' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Алматы - крупнейший город
   almaty: {
     images: [
-      { url: 'https://upload.wikimedia.org/wikipedia/commons/8/8e/Bandy_in_Medeu_Kazakhstan.JPG', title: 'Каток Медеу' },
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Алматы' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Каток Медеу' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Вознесенский собор' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Чарынский каньон' },
     ]
   },
+  // Астана - столица
   astana: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Астана' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Ночная Астана' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Столица' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854423/afisha/cities/astana_university.jpg', title: 'Назарбаев Университет' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854428/afisha/cities/astana_arena.jpg', title: 'Астана Арена' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
     ]
   },
+  // Шымкент - третий по величине город
   shymkent: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Шымкент' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854482/afisha/cities/shymkent_city.jpg', title: 'Шымкент' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Природа' },
     ]
   },
+  // Караганда
   karaganda: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Караганда' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Актобе
   aktobe: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Актобе' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Тараз
   taraz: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Тараз' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Павлодар
   pavlodar: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Павлодар' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Усть-Каменогорск
   'ust-kamenogorsk': {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Усть-Каменогорск' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Семей
   semey: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Семей' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Атырау
   atyrau: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Атырау' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Костанай
   kostanay: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Костанай' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Кызылорда
   kyzylorda: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Кызылорда' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Уральск
   uralsk: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Уральск' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Петропавловск
   petropavlovsk: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Петропавловск' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Актау - город на Каспии
   aktau: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Актау' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854485/afisha/cities/aktau_city.jpg', title: 'Актау' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
     ]
   },
+  // Талдыкорган
   taldykorgan: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Талдыкорган' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Кокшетау - край озёр
   kokshetau: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Кокшетау' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854484/afisha/cities/kokshetau_burabay.jpg', title: 'Бурабай' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Природа' },
     ]
   },
+  // Туркестан - духовная столица
   turkestan: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Туркестан' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
     ]
   },
+  // Экибастуз
   ekibastuz: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Экибастуз' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Конаев
   konaev: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Конаев' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Казахстан' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Город' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   },
+  // Fallback для любых других городов
   default: {
     images: [
-      { url: 'https://images.pexels.com/photos/31710241/pexels-photo-31710241.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Казахстан' },
-      { url: 'https://images.pexels.com/photos/31608923/pexels-photo-31608923.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Город' },
-      { url: 'https://images.pexels.com/photos/31612914/pexels-photo-31612914.jpeg?auto=compress&cs=tinysrgb&w=1280', title: 'Панорама' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Чарынский каньон' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Медеу' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
     ]
   }
 };
