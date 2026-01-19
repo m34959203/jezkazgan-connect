@@ -12,15 +12,19 @@ import {
   isAiGenerationAvailable,
   generatePromptSuggestions,
   translatePromptForAI,
+  getProviderInfo,
 } from '../services/nanobanana';
 
 const app = new Hono<{ Variables: { user: AuthUser } }>();
 
-// Check if AI generation is available
+// Check if AI generation is available and get provider info
 app.get('/status', async (c) => {
+  const providerInfo = getProviderInfo();
   return c.json({
     available: isAiGenerationAvailable(),
-    provider: process.env.NANOBANANA_API_URL ? 'nanobanana' : 'openai',
+    provider: providerInfo.provider,
+    model: providerInfo.model,
+    isFree: providerInfo.isFree,
   });
 });
 

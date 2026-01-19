@@ -32,6 +32,7 @@ import {
   generateAiImage,
   fetchAiGenerationHistory,
   type AiGenerationHistory,
+  type AiStatus,
 } from '@/lib/api';
 
 interface AiImageGeneratorProps {
@@ -63,7 +64,7 @@ export function AiImageGenerator({
   className,
 }: AiImageGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState<string>('promo');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -76,9 +77,15 @@ export function AiImageGenerator({
   // Check if AI is available
   useEffect(() => {
     checkAiGenerationStatus()
-      .then((status) => setIsAvailable(status.available))
-      .catch(() => setIsAvailable(false));
+      .then((status) => setAiStatus(status))
+      .catch(() => setAiStatus({ available: false, provider: 'huggingface', model: '', isFree: true }));
   }, []);
+
+  const providerLabels: Record<string, string> = {
+    openai: 'OpenAI DALL-E',
+    huggingface: 'Hugging Face (бесплатно)',
+    replicate: 'Replicate',
+  };
 
   // Load suggestions when dialog opens
   useEffect(() => {
@@ -176,7 +183,7 @@ export function AiImageGenerator({
           type="button"
           variant="outline"
           className={cn('gap-2', className)}
-          disabled={isAvailable === false}
+          disabled={aiStatus?.available === false}
         >
           <Wand2 className="w-4 h-4" />
           Сгенерировать с ИИ
@@ -187,10 +194,15 @@ export function AiImageGenerator({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="w-5 h-5" />
-            Генерация изображения с Nano Banana AI
+            Генерация изображения с ИИ
           </DialogTitle>
-          <DialogDescription>
-            Опишите желаемое изображение, и ИИ создаст его для вас
+          <DialogDescription className="flex items-center gap-2">
+            <span>Опишите желаемое изображение, и ИИ создаст его для вас</span>
+            {aiStatus && (
+              <Badge variant={aiStatus.isFree ? 'secondary' : 'outline'} className="text-xs">
+                {providerLabels[aiStatus.provider] || aiStatus.provider}
+              </Badge>
+            )}
           </DialogDescription>
         </DialogHeader>
 
