@@ -19,6 +19,7 @@ import Autoplay from 'embla-carousel-autoplay';
 // Достопримечательности городов Казахстана
 // Фото из Wikimedia Commons (лицензия CC)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
+  // Жезказган - Улытауская область
   jezkazgan: {
     images: [
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Zhezkazgan_view.jpg/1280px-Zhezkazgan_view.jpg', title: 'Вид на Жезказган' },
@@ -26,6 +27,7 @@ const cityLandmarks: Record<string, { images: { url: string; title: string }[] }
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Metallurgov_Square_Zhezkazgan.jpg/1280px-Metallurgov_Square_Zhezkazgan.jpg', title: 'Площадь Металлургов' },
     ]
   },
+  // Алматы - крупнейший город
   almaty: {
     images: [
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Medeu_skating_rink.jpg/1280px-Medeu_skating_rink.jpg', title: 'Каток Медеу' },
@@ -33,6 +35,7 @@ const cityLandmarks: Record<string, { images: { url: string; title: string }[] }
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Almaty_-_panorama.jpg/1280px-Almaty_-_panorama.jpg', title: 'Панорама Алматы' },
     ]
   },
+  // Астана - столица
   astana: {
     images: [
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Bayterek_tower_Astana_1.jpg/800px-Bayterek_tower_Astana_1.jpg', title: 'Байтерек' },
@@ -40,6 +43,151 @@ const cityLandmarks: Record<string, { images: { url: string; title: string }[] }
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Central_Downtown_Astana_2.jpg/1280px-Central_Downtown_Astana_2.jpg', title: 'Центр Астаны' },
     ]
   },
+  // Шымкент - третий по величине город
+  shymkent: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Shymkent_Plaza.jpg/1280px-Shymkent_Plaza.jpg', title: 'Шымкент Плаза' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Shymkent_city_center.jpg/1280px-Shymkent_city_center.jpg', title: 'Центр Шымкента' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Ordabasy_Square_Shymkent.jpg/1280px-Ordabasy_Square_Shymkent.jpg', title: 'Площадь Ордабасы' },
+    ]
+  },
+  // Караганда - индустриальный центр
+  karaganda: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Karagandy_city%2C_Kazakhstan.jpg/1280px-Karagandy_city%2C_Kazakhstan.jpg', title: 'Караганда' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Karaganda_Miners_Palace.jpg/1280px-Karaganda_Miners_Palace.jpg', title: 'Дворец горняков' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Central_Park_Karaganda.jpg/1280px-Central_Park_Karaganda.jpg', title: 'Центральный парк' },
+    ]
+  },
+  // Актобе
+  aktobe: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Aktobe_city_view.jpg/1280px-Aktobe_city_view.jpg', title: 'Вид на Актобе' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Rixos_Hotel_Aktobe.jpg/1280px-Rixos_Hotel_Aktobe.jpg', title: 'Отель Риксос' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Aktobe_Mosque.jpg/1280px-Aktobe_Mosque.jpg', title: 'Мечеть Актобе' },
+    ]
+  },
+  // Тараз - древний город
+  taraz: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Aisha_Bibi_Mausoleum.jpg/1280px-Aisha_Bibi_Mausoleum.jpg', title: 'Мавзолей Айша-Биби' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Taraz_City_Center.jpg/1280px-Taraz_City_Center.jpg', title: 'Центр Тараза' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Karakhan_Mausoleum_Taraz.jpg/1280px-Karakhan_Mausoleum_Taraz.jpg', title: 'Мавзолей Карахана' },
+    ]
+  },
+  // Павлодар
+  pavlodar: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Pavlodar_City.jpg/1280px-Pavlodar_City.jpg', title: 'Павлодар' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Irtysh_River_Pavlodar.jpg/1280px-Irtysh_River_Pavlodar.jpg', title: 'Река Иртыш' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Mashkhur_Zhusup_Mosque_Pavlodar.jpg/1280px-Mashkhur_Zhusup_Mosque_Pavlodar.jpg', title: 'Мечеть Машхур Жусупа' },
+    ]
+  },
+  // Усть-Каменогорск
+  'ust-kamenogorsk': {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Ust-Kamenogorsk_view.jpg/1280px-Ust-Kamenogorsk_view.jpg', title: 'Вид на Усть-Каменогорск' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Irtysh_Ust-Kamenogorsk.jpg/1280px-Irtysh_Ust-Kamenogorsk.jpg', title: 'Иртыш в Усть-Каменогорске' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Altai_Mountains_Kazakhstan.jpg/1280px-Altai_Mountains_Kazakhstan.jpg', title: 'Алтайские горы' },
+    ]
+  },
+  // Семей (бывший Семипалатинск)
+  semey: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Semey_bridge.jpg/1280px-Semey_bridge.jpg', title: 'Мост через Иртыш' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Abay_museum_Semey.jpg/1280px-Abay_museum_Semey.jpg', title: 'Музей Абая' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Dostoyevsky_Museum_Semey.jpg/1280px-Dostoyevsky_Museum_Semey.jpg', title: 'Музей Достоевского' },
+    ]
+  },
+  // Атырау - нефтяная столица
+  atyrau: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Atyrau_skyline.jpg/1280px-Atyrau_skyline.jpg', title: 'Атырау' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Ural_River_Atyrau.jpg/1280px-Ural_River_Atyrau.jpg', title: 'Река Урал' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Atyrau_Bridge.jpg/1280px-Atyrau_Bridge.jpg', title: 'Мост Европа-Азия' },
+    ]
+  },
+  // Костанай
+  kostanay: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Kostanay_center.jpg/1280px-Kostanay_center.jpg', title: 'Центр Костаная' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Kostanay_regional_mosque.jpg/1280px-Kostanay_regional_mosque.jpg', title: 'Областная мечеть' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Tobol_River_Kostanay.jpg/1280px-Tobol_River_Kostanay.jpg', title: 'Река Тобол' },
+    ]
+  },
+  // Кызылорда
+  kyzylorda: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Kyzylorda_city.jpg/1280px-Kyzylorda_city.jpg', title: 'Кызылорда' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Syr_Darya_River.jpg/1280px-Syr_Darya_River.jpg', title: 'Река Сырдарья' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Korkyt_Ata_monument.jpg/1280px-Korkyt_Ata_monument.jpg', title: 'Монумент Коркыт-Ата' },
+    ]
+  },
+  // Уральск
+  uralsk: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Uralsk_city.jpg/1280px-Uralsk_city.jpg', title: 'Уральск' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Pugachev_house_Uralsk.jpg/1280px-Pugachev_house_Uralsk.jpg', title: 'Дом-музей Пугачёва' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Ural_river_Uralsk.jpg/1280px-Ural_river_Uralsk.jpg', title: 'Река Урал' },
+    ]
+  },
+  // Петропавловск
+  petropavlovsk: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Petropavlovsk_Kazakhstan.jpg/1280px-Petropavlovsk_Kazakhstan.jpg', title: 'Петропавловск' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Ishim_River_Petropavlovsk.jpg/1280px-Ishim_River_Petropavlovsk.jpg', title: 'Река Ишим' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Abylay_Khan_Residence.jpg/1280px-Abylay_Khan_Residence.jpg', title: 'Резиденция Абылай-хана' },
+    ]
+  },
+  // Актау - город на Каспии
+  aktau: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Aktau_seaside.jpg/1280px-Aktau_seaside.jpg', title: 'Набережная Актау' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Caspian_Sea_Aktau.jpg/1280px-Caspian_Sea_Aktau.jpg', title: 'Каспийское море' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Aktau_lighthouse.jpg/1280px-Aktau_lighthouse.jpg', title: 'Маяк Актау' },
+    ]
+  },
+  // Талдыкорган
+  taldykorgan: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Taldykorgan_city.jpg/1280px-Taldykorgan_city.jpg', title: 'Талдыкорган' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Zhetysu_mountains.jpg/1280px-Zhetysu_mountains.jpg', title: 'Горы Жетысу' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Karatal_River.jpg/1280px-Karatal_River.jpg', title: 'Река Каратал' },
+    ]
+  },
+  // Кокшетау - край озёр
+  kokshetau: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Burabay_Lake.jpg/1280px-Burabay_Lake.jpg', title: 'Озеро Боровое' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Burabay_National_Park.jpg/1280px-Burabay_National_Park.jpg', title: 'Бурабай' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Okzhetpes_rock.jpg/1280px-Okzhetpes_rock.jpg', title: 'Скала Окжетпес' },
+    ]
+  },
+  // Туркестан - духовная столица
+  turkestan: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Khoja_Ahmed_Yasawi_Mausoleum.jpg/1280px-Khoja_Ahmed_Yasawi_Mausoleum.jpg', title: 'Мавзолей Ходжи Ахмеда Ясави' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Turkestan_city.jpg/1280px-Turkestan_city.jpg', title: 'Туркестан' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arystan_Bab_Mausoleum.jpg/1280px-Arystan_Bab_Mausoleum.jpg', title: 'Мавзолей Арыстан-Баба' },
+    ]
+  },
+  // Экибастуз - угольная столица
+  ekibastuz: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Ekibastuz_GRES.jpg/1280px-Ekibastuz_GRES.jpg', title: 'Экибастузская ГРЭС' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Bogatyr_coal_mine.jpg/1280px-Bogatyr_coal_mine.jpg', title: 'Разрез Богатырь' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Ekibastuz_city.jpg/1280px-Ekibastuz_city.jpg', title: 'Экибастуз' },
+    ]
+  },
+  // Конаев (бывший Капшагай)
+  konaev: {
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Kapchagay_reservoir.jpg/1280px-Kapchagay_reservoir.jpg', title: 'Капчагайское водохранилище' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Ili_River_Kazakhstan.jpg/1280px-Ili_River_Kazakhstan.jpg', title: 'Река Или' },
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Kapchagay_beach.jpg/1280px-Kapchagay_beach.jpg', title: 'Пляж Капчагая' },
+    ]
+  },
+  // Fallback для городов без фото
   default: {
     images: [
       { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Kazakhstan_location_map.svg/1280px-Kazakhstan_location_map.svg.png', title: 'Карта Казахстана' },
