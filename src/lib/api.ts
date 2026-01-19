@@ -1389,7 +1389,14 @@ export interface AiGenerationHistory {
   createdAt: string;
 }
 
-export async function checkAiGenerationStatus(): Promise<{ available: boolean; provider: string }> {
+export interface AiStatus {
+  available: boolean;
+  provider: 'openai' | 'huggingface' | 'replicate';
+  model: string;
+  isFree: boolean;
+}
+
+export async function checkAiGenerationStatus(): Promise<AiStatus> {
   const res = await fetch(`${API_URL}/ai/status`);
   if (!res.ok) throw new Error('Failed to check AI status');
   return res.json();
@@ -1486,6 +1493,7 @@ export interface AutoPublishHistoryItem {
   externalPostId: string | null;
   externalPostUrl: string | null;
   errorMessage: string | null;
+  retryCount: number;
   publishedAt: string | null;
   createdAt: string;
 }
@@ -1510,6 +1518,8 @@ export async function saveAutoPublishSettings(data: {
   instagramBusinessAccountId?: string;
   vkAccessToken?: string;
   vkGroupId?: string;
+  facebookAccessToken?: string;
+  facebookPageId?: string;
   publishEvents?: boolean;
   publishPromotions?: boolean;
   autoPublishOnCreate?: boolean;
