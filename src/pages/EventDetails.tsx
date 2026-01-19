@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Calendar, Clock, MapPin, Share2, Bookmark,
@@ -8,12 +9,91 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EventCard } from '@/components/events/EventCard';
 import { useEvent, useEvents } from '@/hooks/use-api';
+import { toggleFavorite, checkFavorite } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { EVENT_CATEGORIES } from '@/types';
 
 export default function EventDetails() {
   const { id } = useParams();
+  const { toast } = useToast();
   const { data: event, isLoading, error } = useEvent(id || '');
   const { data: allEvents = [] } = useEvents({ category: event?.category });
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  // Check favorite status on mount
+  useEffect(() => {
+    if (!isLoggedIn || !id) return;
+    checkFavorite({ eventId: id })
+      .then((res) => setIsFavorite(res.isFavorite))
+      .catch(() => {});
+  }, [id, isLoggedIn]);
+
+  const handleToggleFavorite = async () => {
+    if (!isLoggedIn) {
+      toast({
+        title: 'Требуется авторизация',
+        description: 'Войдите в аккаунт, чтобы сохранять события',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!id) return;
+
+    setIsSaving(true);
+    try {
+      const result = await toggleFavorite({ eventId: id });
+      setIsFavorite(result.isFavorite);
+      toast({
+        title: result.isFavorite ? 'Добавлено в избранное' : 'Удалено из избранного',
+        description: result.isFavorite
+          ? 'Событие сохранено в вашем профиле'
+          : 'Событие удалено из избранного',
+      });
+    } catch (err) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить избранное',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = event?.title || 'Событие';
+
+    // Try Web Share API first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch {
+        // User cancelled or error, fall through to clipboard
+      }
+    }
+
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: 'Ссылка скопирована',
+        description: 'Ссылка на событие скопирована в буфер обмена',
+      });
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось скопировать ссылку',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Loading state
   if (isLoading) {
@@ -186,11 +266,17 @@ export default function EventDetails() {
 
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" size="lg">
-                      <Bookmark className="w-5 h-5 mr-2" />
-                      Сохранить
+                    <Button
+                      variant={isFavorite ? "default" : "outline"}
+                      className={`flex-1 ${isFavorite ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
+                      size="lg"
+                      onClick={handleToggleFavorite}
+                      disabled={isSaving}
+                    >
+                      <Bookmark className={`w-5 h-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+                      {isFavorite ? 'Сохранено' : 'Сохранить'}
                     </Button>
-                    <Button variant="outline" size="lg">
+                    <Button variant="outline" size="lg" onClick={handleShare}>
                       <Share2 className="w-5 h-5" />
                     </Button>
                   </div>
