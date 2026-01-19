@@ -554,4 +554,286 @@ admin.get('/banners', async (c) => {
   }
 });
 
+// ==================== ANALYTICS ====================
+
+admin.get('/analytics', async (c) => {
+  try {
+    const { period = '30' } = c.req.query();
+    const days = parseInt(period);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get total counts and changes
+    const [totalUsers] = await db.select({ count: count() }).from(users);
+    const [newUsers] = await db.select({ count: count() }).from(users).where(gte(users.createdAt, startDate));
+
+    const [totalBusinesses] = await db.select({ count: count() }).from(businesses);
+    const [newBusinesses] = await db.select({ count: count() }).from(businesses).where(gte(businesses.createdAt, startDate));
+
+    const [totalEvents] = await db.select({ count: count() }).from(events);
+    const [totalPromotions] = await db.select({ count: count() }).from(promotions);
+
+    // Get views stats
+    const [eventsViews] = await db.select({
+      total: sql<number>`COALESCE(SUM(${events.viewsCount}), 0)::int`
+    }).from(events);
+
+    const [promotionsViews] = await db.select({
+      total: sql<number>`COALESCE(SUM(${promotions.viewsCount}), 0)::int`
+    }).from(promotions);
+
+    // Users by city (top 5)
+    const usersByCity = await db
+      .select({
+        cityName: cities.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(businesses)
+      .leftJoin(cities, eq(businesses.cityId, cities.id))
+      .groupBy(cities.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(5);
+
+    // Events by category
+    const eventsByCategory = await db
+      .select({
+        category: events.category,
+        count: sql<number>`count(*)::int`,
+        views: sql<number>`COALESCE(SUM(${events.viewsCount}), 0)::int`,
+      })
+      .from(events)
+      .groupBy(events.category)
+      .orderBy(desc(sql`sum(${events.viewsCount})`))
+      .limit(5);
+
+    // Tier distribution
+    const [freeBusinesses] = await db.select({ count: count() }).from(businesses).where(eq(businesses.tier, 'free'));
+    const [liteBusinesses] = await db.select({ count: count() }).from(businesses).where(eq(businesses.tier, 'lite'));
+    const [premiumBusinesses] = await db.select({ count: count() }).from(businesses).where(eq(businesses.tier, 'premium'));
+
+    // Premium users
+    const [premiumUsers] = await db.select({ count: count() }).from(users).where(eq(users.isPremium, true));
+
+    return c.json({
+      overview: {
+        totalUsers: totalUsers.count,
+        newUsers: newUsers.count,
+        totalBusinesses: totalBusinesses.count,
+        newBusinesses: newBusinesses.count,
+        totalEvents: totalEvents.count,
+        totalPromotions: totalPromotions.count,
+        totalViews: (eventsViews.total || 0) + (promotionsViews.total || 0),
+      },
+      usersByCity: usersByCity.map((c, i) => ({
+        name: c.cityName || 'Не указан',
+        count: c.count,
+        percentage: Math.round((c.count / Math.max(totalBusinesses.count, 1)) * 100),
+      })),
+      eventsByCategory: eventsByCategory.map(c => ({
+        category: c.category,
+        count: c.count,
+        views: c.views,
+      })),
+      tierDistribution: {
+        free: freeBusinesses.count,
+        lite: liteBusinesses.count,
+        premium: premiumBusinesses.count,
+      },
+      conversionMetrics: {
+        premiumUsers: premiumUsers.count,
+        premiumBusinesses: premiumBusinesses.count,
+        conversionRate: totalBusinesses.count > 0
+          ? Math.round((premiumBusinesses.count / totalBusinesses.count) * 100 * 10) / 10
+          : 0,
+      },
+      period: days,
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    return c.json({ error: 'Failed to fetch analytics' }, 500);
+  }
+});
+
+// ==================== MODERATION ====================
+
+// Get pending content for moderation
+admin.get('/moderation', async (c) => {
+  try {
+    // Get pending events
+    const pendingEvents = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        category: events.category,
+        createdAt: events.createdAt,
+        cityName: cities.name,
+        businessName: businesses.name,
+        creatorEmail: users.email,
+      })
+      .from(events)
+      .leftJoin(cities, eq(events.cityId, cities.id))
+      .leftJoin(businesses, eq(events.businessId, businesses.id))
+      .leftJoin(users, eq(events.creatorId, users.id))
+      .where(eq(events.isApproved, false))
+      .orderBy(desc(events.createdAt))
+      .limit(20);
+
+    // Get unverified businesses
+    const pendingBusinesses = await db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        category: businesses.category,
+        createdAt: businesses.createdAt,
+        cityName: cities.name,
+        ownerEmail: users.email,
+        ownerName: users.name,
+      })
+      .from(businesses)
+      .leftJoin(cities, eq(businesses.cityId, cities.id))
+      .leftJoin(users, eq(businesses.ownerId, users.id))
+      .where(eq(businesses.isVerified, false))
+      .orderBy(desc(businesses.createdAt))
+      .limit(20);
+
+    // Counts
+    const [pendingEventsCount] = await db.select({ count: count() }).from(events).where(eq(events.isApproved, false));
+    const [pendingBusinessesCount] = await db.select({ count: count() }).from(businesses).where(eq(businesses.isVerified, false));
+
+    return c.json({
+      pendingEvents: pendingEvents.map(e => ({
+        ...e,
+        type: 'event',
+      })),
+      pendingBusinesses: pendingBusinesses.map(b => ({
+        ...b,
+        type: 'business',
+      })),
+      counts: {
+        events: pendingEventsCount.count,
+        businesses: pendingBusinessesCount.count,
+        total: pendingEventsCount.count + pendingBusinessesCount.count,
+      },
+    });
+  } catch (error) {
+    console.error('Moderation error:', error);
+    return c.json({ error: 'Failed to fetch moderation data' }, 500);
+  }
+});
+
+// ==================== DELETE OPERATIONS ====================
+
+// Delete user
+admin.delete('/users/:id', async (c) => {
+  const { id } = c.req.param();
+  const currentUser = c.get('user');
+
+  // Prevent self-deletion
+  if (currentUser.id === id) {
+    return c.json({ error: 'Cannot delete yourself' }, 400);
+  }
+
+  try {
+    // Check if user has a business
+    const userBusiness = await db.select().from(businesses).where(eq(businesses.ownerId, id)).limit(1);
+    if (userBusiness.length) {
+      // Delete business data first
+      await db.delete(events).where(eq(events.businessId, userBusiness[0].id));
+      await db.delete(promotions).where(eq(promotions.businessId, userBusiness[0].id));
+      await db.delete(businesses).where(eq(businesses.id, userBusiness[0].id));
+    }
+
+    // Delete user events (created without business)
+    await db.delete(events).where(eq(events.creatorId, id));
+
+    // Delete user
+    await db.delete(users).where(eq(users.id, id));
+
+    return c.json({ success: true, message: 'User deleted' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return c.json({ error: 'Failed to delete user' }, 500);
+  }
+});
+
+// Delete business
+admin.delete('/businesses/:id', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    const business = await db.select().from(businesses).where(eq(businesses.id, id)).limit(1);
+    if (!business.length) {
+      return c.json({ error: 'Business not found' }, 404);
+    }
+
+    const ownerId = business[0].ownerId;
+
+    // Delete related data
+    await db.delete(events).where(eq(events.businessId, id));
+    await db.delete(promotions).where(eq(promotions.businessId, id));
+    await db.delete(cityBanners).where(eq(cityBanners.businessId, id));
+
+    // Delete business
+    await db.delete(businesses).where(eq(businesses.id, id));
+
+    // Reset owner role to user
+    await db.update(users).set({ role: 'user' }).where(eq(users.id, ownerId));
+
+    return c.json({ success: true, message: 'Business deleted' });
+  } catch (error) {
+    console.error('Delete business error:', error);
+    return c.json({ error: 'Failed to delete business' }, 500);
+  }
+});
+
+// Delete event
+admin.delete('/events/:id', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    await db.delete(events).where(eq(events.id, id));
+    return c.json({ success: true, message: 'Event deleted' });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    return c.json({ error: 'Failed to delete event' }, 500);
+  }
+});
+
+// Delete promotion
+admin.delete('/promotions/:id', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    await db.delete(promotions).where(eq(promotions.id, id));
+    return c.json({ success: true, message: 'Promotion deleted' });
+  } catch (error) {
+    console.error('Delete promotion error:', error);
+    return c.json({ error: 'Failed to delete promotion' }, 500);
+  }
+});
+
+// Delete city
+admin.delete('/cities/:id', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    // Check if city has businesses
+    const [businessCount] = await db.select({ count: count() }).from(businesses).where(eq(businesses.cityId, id));
+    if (businessCount.count > 0) {
+      return c.json({ error: 'Cannot delete city with businesses' }, 400);
+    }
+
+    // Delete banners
+    await db.delete(cityBanners).where(eq(cityBanners.cityId, id));
+
+    // Delete city
+    await db.delete(cities).where(eq(cities.id, id));
+
+    return c.json({ success: true, message: 'City deleted' });
+  } catch (error) {
+    console.error('Delete city error:', error);
+    return c.json({ error: 'Failed to delete city' }, 500);
+  }
+});
+
 export default admin;

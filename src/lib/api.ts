@@ -1135,3 +1135,152 @@ export async function uploadImage(file: File, folder?: string): Promise<string> 
   const result = await res.json();
   return result.secure_url;
 }
+
+// ============================================
+// Admin Analytics API
+// ============================================
+
+export interface AdminAnalyticsData {
+  overview: {
+    totalUsers: number;
+    newUsers: number;
+    totalBusinesses: number;
+    newBusinesses: number;
+    totalEvents: number;
+    totalPromotions: number;
+    totalViews: number;
+  };
+  usersByCity: Array<{
+    name: string;
+    count: number;
+    percentage: number;
+  }>;
+  eventsByCategory: Array<{
+    category: string;
+    count: number;
+    views: number;
+  }>;
+  tierDistribution: {
+    free: number;
+    lite: number;
+    premium: number;
+  };
+  conversionMetrics: {
+    premiumUsers: number;
+    premiumBusinesses: number;
+    conversionRate: number;
+  };
+  period: number;
+}
+
+export async function fetchAdminAnalytics(period: number = 30): Promise<AdminAnalyticsData> {
+  const res = await fetch(`${API_URL}/admin/analytics?period=${period}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch analytics');
+  return res.json();
+}
+
+// ============================================
+// Admin Moderation API
+// ============================================
+
+export interface ModerationData {
+  pendingEvents: Array<{
+    id: string;
+    title: string;
+    category: string;
+    createdAt: string;
+    cityName: string | null;
+    businessName: string | null;
+    creatorEmail: string | null;
+    type: 'event';
+  }>;
+  pendingBusinesses: Array<{
+    id: string;
+    name: string;
+    category: string;
+    createdAt: string;
+    cityName: string | null;
+    ownerEmail: string | null;
+    ownerName: string | null;
+    type: 'business';
+  }>;
+  counts: {
+    events: number;
+    businesses: number;
+    total: number;
+  };
+}
+
+export async function fetchAdminModeration(): Promise<ModerationData> {
+  const res = await fetch(`${API_URL}/admin/moderation`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch moderation data');
+  return res.json();
+}
+
+// ============================================
+// Admin Delete Operations
+// ============================================
+
+export async function deleteAdminUser(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete user');
+  }
+  return res.json();
+}
+
+export async function deleteAdminBusiness(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/businesses/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete business');
+  }
+  return res.json();
+}
+
+export async function deleteAdminEvent(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/events/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete event');
+  }
+  return res.json();
+}
+
+export async function deleteAdminPromotion(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/promotions/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete promotion');
+  }
+  return res.json();
+}
+
+export async function deleteAdminCity(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/cities/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete city');
+  }
+  return res.json();
+}
