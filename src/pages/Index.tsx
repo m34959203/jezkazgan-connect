@@ -19,12 +19,12 @@ import Autoplay from 'embla-carousel-autoplay';
 // Достопримечательности городов Казахстана
 // Фото загружены в Cloudinary из Wikimedia Commons (CC лицензия)
 const cityLandmarks: Record<string, { images: { url: string; title: string }[] }> = {
-  // Жезказган - использует общие фото Казахстана
+  // Жезказган - центр Улытауской области
   jezkazgan: {
     images: [
-      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854480/afisha/cities/kazakhstan_charyn.jpg', title: 'Чарынский каньон' },
-      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854327/afisha/cities/almaty_medeu.jpg', title: 'Казахстан' },
-      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854418/afisha/cities/almaty_cathedral.jpg', title: 'Архитектура' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854723/afisha/cities/jezkazgan_ulytau.jpg', title: 'Горы Улытау' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854718/afisha/cities/jezkazgan_saryarka.jpg', title: 'Степь Сарыарка' },
+      { url: 'https://res.cloudinary.com/dlulp8x9o/image/upload/v1768854713/afisha/cities/jezkazgan_kengir.jpg', title: 'Река Кенгир' },
     ]
   },
   // Алматы - крупнейший город
