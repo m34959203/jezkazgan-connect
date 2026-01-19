@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, UserPlus, Shield, Ban, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Search, MoreHorizontal, UserPlus, Shield, Ban, Mail, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdminUsers, useUpdateUser } from '@/hooks/use-api';
+import { deleteAdminUser } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const roleLabels: Record<string, string> = {
   admin: 'Админ',
@@ -47,9 +58,11 @@ const roleColors: Record<string, string> = {
 export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  const { data, isLoading, error } = useAdminUsers({
+  const { data, isLoading, error, refetch } = useAdminUsers({
     search: search || undefined,
     role: roleFilter !== 'all' ? roleFilter : undefined,
   });
@@ -85,6 +98,28 @@ export default function UsersPage() {
         description: 'Не удалось обновить подписку',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+    setIsDeleting(true);
+    try {
+      await deleteAdminUser(deleteUserId);
+      toast({
+        title: 'Успешно',
+        description: 'Пользователь удалён',
+      });
+      refetch();
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить пользователя',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteUserId(null);
     }
   };
 
@@ -246,6 +281,13 @@ export default function UsersPage() {
                             <Ban className="w-4 h-4 mr-2" />
                             Заблокировать
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => setDeleteUserId(user.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -256,6 +298,29 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить пользователя?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Пользователь и все связанные данные будут удалены навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

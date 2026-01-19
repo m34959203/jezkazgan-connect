@@ -28,7 +28,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdminEvents, useApproveEvent, useRejectEvent, useToggleEventFeatured } from '@/hooks/use-api';
+import { deleteAdminEvent } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -51,9 +62,11 @@ export default function EventsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  const { data, isLoading, error } = useAdminEvents({
+  const { data, isLoading, error, refetch } = useAdminEvents({
     status: statusFilter !== 'all' ? statusFilter : undefined,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
@@ -116,6 +129,28 @@ export default function EventsPage() {
         description: 'Не удалось отклонить событие',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!deleteEventId) return;
+    setIsDeleting(true);
+    try {
+      await deleteAdminEvent(deleteEventId);
+      toast({
+        title: 'Успешно',
+        description: 'Событие удалено',
+      });
+      refetch();
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить событие',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteEventId(null);
     }
   };
 
@@ -401,7 +436,10 @@ export default function EventsPage() {
                             </>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => setDeleteEventId(event.id)}
+                          >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Удалить
                           </DropdownMenuItem>
@@ -416,6 +454,29 @@ export default function EventsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteEventId} onOpenChange={() => setDeleteEventId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить событие?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Событие будет удалено навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEvent}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

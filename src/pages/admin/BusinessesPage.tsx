@@ -28,7 +28,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdminBusinesses, useVerifyBusiness, useUpdateBusiness } from '@/hooks/use-api';
+import { deleteAdminBusiness } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const tierLabels: Record<string, string> = {
   free: 'Free',
@@ -64,9 +75,11 @@ export default function BusinessesPage() {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState('all');
   const [verifiedFilter, setVerifiedFilter] = useState('all');
+  const [deleteBusinessId, setDeleteBusinessId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  const { data, isLoading, error } = useAdminBusinesses({
+  const { data, isLoading, error, refetch } = useAdminBusinesses({
     search: search || undefined,
     tier: tierFilter !== 'all' ? tierFilter : undefined,
     verified: verifiedFilter !== 'all' ? verifiedFilter : undefined,
@@ -104,6 +117,28 @@ export default function BusinessesPage() {
         description: 'Не удалось изменить тариф',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDeleteBusiness = async () => {
+    if (!deleteBusinessId) return;
+    setIsDeleting(true);
+    try {
+      await deleteAdminBusiness(deleteBusinessId);
+      toast({
+        title: 'Успешно',
+        description: 'Бизнес удалён',
+      });
+      refetch();
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить бизнес',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteBusinessId(null);
     }
   };
 
@@ -316,7 +351,10 @@ export default function BusinessesPage() {
                             </DropdownMenuItem>
                           ))}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => setDeleteBusinessId(business.id)}
+                          >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Удалить
                           </DropdownMenuItem>
@@ -330,6 +368,29 @@ export default function BusinessesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteBusinessId} onOpenChange={() => setDeleteBusinessId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить бизнес?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Бизнес и все связанные данные (события, акции) будут удалены навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBusiness}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
