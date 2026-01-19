@@ -40,6 +40,8 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
       description: events.description,
       category: events.category,
       image: events.image,
+      videoUrl: events.videoUrl,
+      videoThumbnail: events.videoThumbnail,
       date: events.date,
       location: events.location,
       price: events.price,
@@ -80,6 +82,8 @@ app.get('/:id', async (c) => {
       description: events.description,
       category: events.category,
       image: events.image,
+      videoUrl: events.videoUrl,
+      videoThumbnail: events.videoThumbnail,
       date: events.date,
       endDate: events.endDate,
       location: events.location,
@@ -103,6 +107,7 @@ app.get('/:id', async (c) => {
         name: businesses.name,
         logo: businesses.logo,
         isVerified: businesses.isVerified,
+        tier: businesses.tier,
       },
     })
     .from(events)
@@ -160,6 +165,8 @@ const createEventSchema = z.object({
   description: z.string().optional(),
   category: z.enum(['concerts', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other']),
   image: z.string().url().optional(),
+  videoUrl: z.string().url().optional(), // Business Premium: видео формат
+  videoThumbnail: z.string().url().optional(), // Превью для видео
   date: z.string().datetime(),
   endDate: z.string().datetime().optional(),
   location: z.string().optional(),
@@ -180,9 +187,10 @@ app.post('/', authMiddleware, zValidator('json', createEventSchema), async (c) =
   const data = c.req.valid('json');
 
   // Если указан businessId, проверить что он принадлежит пользователю
+  let businessTier = 'free';
   if (data.businessId) {
     const business = await db
-      .select({ ownerId: businesses.ownerId })
+      .select({ ownerId: businesses.ownerId, tier: businesses.tier, tierUntil: businesses.tierUntil })
       .from(businesses)
       .where(eq(businesses.id, data.businessId))
       .limit(1);
@@ -195,6 +203,21 @@ app.post('/', authMiddleware, zValidator('json', createEventSchema), async (c) =
     if (business[0].ownerId !== user.id && user.role !== 'admin' && user.role !== 'moderator') {
       return c.json({ error: 'Access denied', message: 'You can only create events for your own business' }, 403);
     }
+
+    // Check tier expiration
+    businessTier = business[0].tier;
+    if (business[0].tierUntil && new Date(business[0].tierUntil) < new Date()) {
+      businessTier = 'free';
+    }
+  }
+
+  // Business Premium: video format requires Premium tier
+  if (data.videoUrl && businessTier !== 'premium') {
+    return c.json({
+      error: 'Business Premium subscription required for video format',
+      requiredTier: 'premium',
+      currentTier: businessTier,
+    }, 403);
   }
 
   const result = await db

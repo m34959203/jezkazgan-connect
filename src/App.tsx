@@ -42,6 +42,7 @@ import BusinessSettings from "./pages/business/Settings";
 import BusinessBanner from "./pages/business/Banner";
 import BusinessCreateEvent from "./pages/business/CreateEvent";
 import BusinessCreatePromotion from "./pages/business/CreatePromotion";
+import BusinessAutoPublish from "./pages/business/AutoPublish";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,7 @@ const App = () => (
             <Route path="subscription" element={<BusinessSubscription />} />
             <Route path="settings" element={<BusinessSettings />} />
             <Route path="banner" element={<BusinessBanner />} />
+            <Route path="autopublish" element={<BusinessAutoPublish />} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

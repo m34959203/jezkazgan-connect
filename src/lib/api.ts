@@ -328,6 +328,8 @@ export async function createEvent(data: {
   description?: string;
   category: string;
   image?: string;
+  videoUrl?: string;
+  videoThumbnail?: string;
   date: string;
   endDate?: string;
   location?: string;
@@ -1362,5 +1364,238 @@ export async function fetchPublicCityPhotos(citySlug: string): Promise<{
 }> {
   const res = await fetch(`${API_URL}/cities/${citySlug}/photos`);
   if (!res.ok) throw new Error('Failed to fetch city photos');
+  return res.json();
+}
+
+// ============================================
+// Business Premium: AI Image Generation (Nano Banana)
+// ============================================
+
+export interface AiGenerationResult {
+  id: string;
+  imageUrl: string;
+  revisedPrompt?: string;
+  prompt: string;
+  style?: string;
+}
+
+export interface AiGenerationHistory {
+  id: string;
+  prompt: string;
+  style: string | null;
+  generatedImageUrl: string | null;
+  status: string;
+  usedFor: string | null;
+  createdAt: string;
+}
+
+export async function checkAiGenerationStatus(): Promise<{ available: boolean; provider: string }> {
+  const res = await fetch(`${API_URL}/ai/status`);
+  if (!res.ok) throw new Error('Failed to check AI status');
+  return res.json();
+}
+
+export async function getAiPromptSuggestions(params: {
+  contentType: 'event' | 'promotion' | 'banner';
+  title?: string;
+  description?: string;
+  category?: string;
+  discount?: string;
+}): Promise<{ suggestions: string[] }> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('contentType', params.contentType);
+  if (params.title) searchParams.set('title', params.title);
+  if (params.description) searchParams.set('description', params.description);
+  if (params.category) searchParams.set('category', params.category);
+  if (params.discount) searchParams.set('discount', params.discount);
+
+  const res = await fetch(`${API_URL}/ai/suggestions?${searchParams}`);
+  if (!res.ok) throw new Error('Failed to get prompt suggestions');
+  return res.json();
+}
+
+export async function generateAiImage(data: {
+  prompt: string;
+  style?: 'banner' | 'promo' | 'event' | 'poster' | 'social';
+  translatePrompt?: boolean;
+}): Promise<AiGenerationResult> {
+  const res = await fetch(`${API_URL}/ai/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to generate image');
+  }
+  return res.json();
+}
+
+export async function fetchAiGenerationHistory(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AiGenerationHistory[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/ai/history?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch AI generation history');
+  return res.json();
+}
+
+export async function markAiGenerationUsed(id: string, data: {
+  usedFor: 'event' | 'promotion' | 'banner';
+  usedForId: string;
+}): Promise<AiGenerationHistory> {
+  const res = await fetch(`${API_URL}/ai/${id}/used`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to mark generation as used');
+  return res.json();
+}
+
+// ============================================
+// Business Premium: Auto-Publish to Social Media
+// ============================================
+
+export type SocialPlatform = 'telegram' | 'instagram' | 'vk' | 'facebook';
+
+export interface AutoPublishSetting {
+  id: string;
+  platform: SocialPlatform;
+  isEnabled: boolean;
+  publishEvents: boolean;
+  publishPromotions: boolean;
+  autoPublishOnCreate: boolean;
+  isConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutoPublishHistoryItem {
+  id: string;
+  platform: SocialPlatform;
+  contentType: string;
+  contentId: string;
+  status: 'pending' | 'published' | 'failed';
+  externalPostId: string | null;
+  externalPostUrl: string | null;
+  errorMessage: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export async function fetchAutoPublishSettings(): Promise<AutoPublishSetting[]> {
+  const res = await fetch(`${API_URL}/autopublish/settings`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch auto-publish settings');
+  }
+  return res.json();
+}
+
+export async function saveAutoPublishSettings(data: {
+  platform: SocialPlatform;
+  isEnabled?: boolean;
+  telegramBotToken?: string;
+  telegramChannelId?: string;
+  instagramAccessToken?: string;
+  instagramBusinessAccountId?: string;
+  vkAccessToken?: string;
+  vkGroupId?: string;
+  publishEvents?: boolean;
+  publishPromotions?: boolean;
+  autoPublishOnCreate?: boolean;
+}): Promise<AutoPublishSetting> {
+  const res = await fetch(`${API_URL}/autopublish/settings`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to save auto-publish settings');
+  }
+  return res.json();
+}
+
+export async function testAutoPublishConnection(platform: SocialPlatform): Promise<{
+  success: boolean;
+  error?: string;
+  info?: string;
+}> {
+  const res = await fetch(`${API_URL}/autopublish/test-connection`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ platform }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to test connection');
+  }
+  return res.json();
+}
+
+export async function publishToSocialMedia(data: {
+  contentType: 'event' | 'promotion';
+  contentId: string;
+  platforms: SocialPlatform[];
+}): Promise<{
+  results: Array<{
+    success: boolean;
+    platform: SocialPlatform;
+    postId?: string;
+    postUrl?: string;
+    error?: string;
+  }>;
+  successful: number;
+  failed: number;
+}> {
+  const res = await fetch(`${API_URL}/autopublish/publish`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to publish to social media');
+  }
+  return res.json();
+}
+
+export async function fetchAutoPublishHistory(params?: {
+  platform?: SocialPlatform;
+  contentType?: 'event' | 'promotion';
+  status?: 'pending' | 'published' | 'failed';
+  limit?: number;
+  offset?: number;
+}): Promise<AutoPublishHistoryItem[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.platform) searchParams.set('platform', params.platform);
+  if (params?.contentType) searchParams.set('contentType', params.contentType);
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/autopublish/history?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch auto-publish history');
+  return res.json();
+}
+
+export async function deleteAutoPublishSettings(platform: SocialPlatform): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/autopublish/settings/${platform}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete auto-publish settings');
   return res.json();
 }

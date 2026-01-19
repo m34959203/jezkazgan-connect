@@ -15,7 +15,9 @@ import {
   Calendar,
   Percent,
   Users,
-  ExternalLink
+  ExternalLink,
+  Send,
+  Wand2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -44,6 +46,7 @@ const sidebarLinks = [
   { href: '/business/team', label: 'Команда', icon: Users, minTier: 'premium' },
   { href: '/business/stats', label: 'Статистика', icon: BarChart3, minTier: 'lite' },
   { href: '/business/banner', label: 'Реклама', icon: Megaphone, minTier: 'premium' },
+  { href: '/business/autopublish', label: 'Авто-публикации', icon: Send, minTier: 'premium' },
   { href: '/business/subscription', label: 'Подписка', icon: CreditCard },
   { href: '/business/settings', label: 'Настройки', icon: Settings },
 ];

@@ -12,7 +12,10 @@ import {
   Building2,
   BarChart3,
   Megaphone,
-  Users
+  Users,
+  Wand2,
+  Send,
+  Video
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -83,6 +86,9 @@ const tiers = [
       { name: 'Значок "Проверено"', included: true },
       { name: 'Рекламный баннер на главной', included: true },
       { name: 'До 5 сотрудников', included: true },
+      { name: 'ИИ генерация изображений', included: true, highlight: true },
+      { name: 'Авто-публикации в соцсетях', included: true, highlight: true },
+      { name: 'Видео формат для событий', included: true, highlight: true },
     ],
   },
 ];
@@ -309,7 +315,7 @@ export default function BusinessSubscription() {
                 <p className="text-sm text-muted-foreground">Максимум для вашего бизнеса</p>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
                   <Zap className="w-5 h-5 text-amber-700" />
@@ -321,11 +327,29 @@ export default function BusinessSubscription() {
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-5 h-5 text-amber-700" />
+                  <Wand2 className="w-5 h-5 text-amber-700" />
                 </div>
                 <div>
-                  <p className="font-medium">Топ в поиске</p>
-                  <p className="text-xs text-muted-foreground">Максимальный приоритет</p>
+                  <p className="font-medium">ИИ Nano Banana</p>
+                  <p className="text-xs text-muted-foreground">Генерация изображений</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
+                  <Send className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-medium">Авто-публикации</p>
+                  <p className="text-xs text-muted-foreground">В соцсети автоматически</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-200/50 flex items-center justify-center shrink-0">
+                  <Video className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-medium">Видео формат</p>
+                  <p className="text-xs text-muted-foreground">Для событий</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

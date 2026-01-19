@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { VideoUpload } from '@/components/ui/video-upload';
+import { AiImageGenerator } from '@/components/ui/ai-image-generator';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createEvent } from '@/lib/api';
@@ -42,6 +45,12 @@ export default function CreateEvent() {
   const [price, setPrice] = useState('');
   const [isFree, setIsFree] = useState(true);
   const [image, setImage] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoThumbnail, setVideoThumbnail] = useState('');
+
+  // Check premium status
+  const isPremium = business?.tier === 'premium' &&
+    (!business.tierUntil || new Date(business.tierUntil) > new Date());
 
   if (isLoading) {
     return (
@@ -92,6 +101,8 @@ export default function CreateEvent() {
         price: isFree ? undefined : (price ? parseInt(price) : undefined),
         isFree,
         image: image || undefined,
+        videoUrl: videoUrl || undefined,
+        videoThumbnail: videoThumbnail || undefined,
       });
 
       toast({
@@ -172,11 +183,62 @@ export default function CreateEvent() {
               />
             </div>
 
-            <ImageUpload
-              value={image}
-              onChange={setImage}
-              folder="afisha/events"
-              label="Изображение события"
+            {/* Image upload with AI generation */}
+            <div className="space-y-3">
+              <ImageUpload
+                value={image}
+                onChange={setImage}
+                folder="afisha/events"
+                label="Изображение события"
+              />
+
+              {/* AI Image Generator */}
+              <div className="flex items-center gap-2">
+                <AiImageGenerator
+                  contentType="event"
+                  onImageGenerated={setImage}
+                  isPremium={isPremium}
+                  context={{
+                    title,
+                    description,
+                    category,
+                  }}
+                />
+                {!isPremium && (
+                  <span className="text-xs text-muted-foreground">
+                    Генерация с ИИ доступна в Premium
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Video (Premium feature) */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Видео
+                  <Badge variant="outline" className="text-amber-700 border-amber-300">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Добавьте видео для более привлекательной презентации
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <VideoUpload
+              value={videoUrl}
+              onChange={setVideoUrl}
+              onThumbnailChange={setVideoThumbnail}
+              thumbnail={videoThumbnail}
+              isPremium={isPremium}
             />
           </CardContent>
         </Card>

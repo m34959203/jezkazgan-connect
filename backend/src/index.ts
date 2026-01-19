@@ -13,6 +13,8 @@ import admin from './routes/admin';
 import team from './routes/team';
 import upload from './routes/upload';
 import favorites from './routes/favorites';
+import ai from './routes/ai';
+import autopublish from './routes/autopublish';
 import { apiRateLimit, authRateLimit, securityCheck } from './middleware/rateLimit';
 
 const app = new Hono();
@@ -51,8 +53,8 @@ app.use('*', cors({
 }));
 
 // Health check with version info
-const BUILD_VERSION = '2.1.0-features';
-const BUILD_DATE = '2026-01-18';
+const BUILD_VERSION = '2.2.0-premium';
+const BUILD_DATE = '2026-01-19';
 
 app.get('/', (c) => {
   return c.json({
@@ -91,6 +93,9 @@ app.route('/admin', admin);
 app.route('/team', team);
 app.route('/upload', upload);
 app.route('/favorites', favorites);
+// Business Premium routes
+app.route('/ai', ai);
+app.route('/autopublish', autopublish);
 
 // 404 handler
 app.notFound((c) => {
