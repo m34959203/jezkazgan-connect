@@ -73,7 +73,7 @@ const PROVIDER_CONFIGS = {
   },
   huggingface: {
     url: 'https://router.huggingface.co/hf-inference/models/',
-    model: 'stabilityai/stable-diffusion-xl-base-1.0', // Free SDXL model
+    model: 'black-forest-labs/FLUX.1-schnell', // Fast, free FLUX model
     envKey: 'HUGGINGFACE_API_KEY',
   },
   replicate: {
