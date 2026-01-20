@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-backend-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-bekend-production.up.railway.app';
 
 export interface City {
   id: string;
