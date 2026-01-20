@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts && npm run db:push",
-    "start": "node dist/index.js",
+    "build": "tsup src/index.ts --format esm --dts",
+    "start": "node scripts/start.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
