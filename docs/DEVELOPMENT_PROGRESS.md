@@ -35,7 +35,7 @@
 
 | Компонент | Статус | URL |
 |-----------|--------|-----|
-| Backend API | ✅ Online | https://afisha-backend-production.up.railway.app |
+| Backend API | ✅ Online | https://afisha-bekend-production.up.railway.app |
 | Frontend | ✅ Online | https://jezkazgan-connect-production.up.railway.app |
 | Database | ✅ Connected | Neon PostgreSQL |
 | Admin Panel | ✅ Готова | /admin |
