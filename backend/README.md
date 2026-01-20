@@ -107,13 +107,10 @@ backend/
 └── tsconfig.json
 ```
 
-## AI Image Providers
+## AI Image Generation
 
 | Провайдер | Модель | ENV переменная |
 |-----------|--------|----------------|
-| **Ideogram** (рекомендуется) | V2 | `IDEOGRAM_API_KEY` |
-| Hugging Face (бесплатно) | FLUX.1-schnell | `HUGGINGFACE_API_KEY` |
-| OpenAI | DALL-E 3 | `OPENAI_API_KEY` |
-| Replicate | SDXL | `REPLICATE_API_KEY` |
+| **Ideogram** | V2 | `IDEOGRAM_API_KEY` |
 
-Установите `AI_IMAGE_PROVIDER=ideogram` для использования Ideogram V2.
+Установите `IDEOGRAM_API_KEY` для включения AI генерации изображений.
