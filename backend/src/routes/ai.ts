@@ -11,6 +11,7 @@ import {
   generateImage,
   isAiGenerationAvailable,
   generatePromptSuggestions,
+  generateImageIdeas,
   translatePromptForAI,
   getProviderInfo,
 } from '../services/nanobanana';
@@ -43,6 +44,23 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
   const suggestions = generatePromptSuggestions(contentType, context);
 
   return c.json({ suggestions });
+});
+
+// Get 3 image ideas based on event information
+const imageIdeasQuerySchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  date: z.string().optional(),
+  location: z.string().optional(),
+});
+
+app.get('/ideas', zValidator('query', imageIdeasQuerySchema), async (c) => {
+  const context = c.req.valid('query');
+
+  const ideas = generateImageIdeas(context);
+
+  return c.json({ ideas });
 });
 
 // Generate image schema

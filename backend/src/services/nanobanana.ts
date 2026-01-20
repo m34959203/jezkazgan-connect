@@ -395,6 +395,127 @@ export function generatePromptSuggestions(contentType: 'event' | 'promotion' | '
   return suggestions;
 }
 
+// Image idea structure
+export interface ImageIdea {
+  id: number;
+  title: string;
+  description: string;
+  prompt: string;
+  style: 'banner' | 'promo' | 'event' | 'poster' | 'social';
+  tags: string[];
+}
+
+// Category-specific visual themes
+const CATEGORY_THEMES: Record<string, { visuals: string[]; colors: string[]; mood: string }> = {
+  concerts: {
+    visuals: ['microphone', 'stage lights', 'musical notes', 'crowd silhouettes', 'guitar'],
+    colors: ['neon purple', 'electric blue', 'vibrant pink'],
+    mood: 'energetic, dynamic, exciting',
+  },
+  education: {
+    visuals: ['books', 'graduation cap', 'lightbulb', 'notebook', 'classroom'],
+    colors: ['deep blue', 'gold', 'white'],
+    mood: 'inspiring, professional, knowledge',
+  },
+  seminars: {
+    visuals: ['presentation screen', 'conference room', 'microphone', 'audience'],
+    colors: ['corporate blue', 'gray', 'white'],
+    mood: 'professional, business, informative',
+  },
+  leisure: {
+    visuals: ['park', 'friends gathering', 'outdoor activities', 'sunset'],
+    colors: ['warm orange', 'green', 'sky blue'],
+    mood: 'relaxing, fun, friendly',
+  },
+  sports: {
+    visuals: ['stadium', 'athletes', 'trophy', 'sports equipment', 'action shots'],
+    colors: ['energetic red', 'green field', 'white'],
+    mood: 'powerful, competitive, active',
+  },
+  children: {
+    visuals: ['balloons', 'toys', 'cartoon characters', 'playground', 'bright colors'],
+    colors: ['bright yellow', 'sky blue', 'pink', 'green'],
+    mood: 'playful, joyful, colorful',
+  },
+  exhibitions: {
+    visuals: ['art gallery', 'paintings', 'sculptures', 'museum interior'],
+    colors: ['elegant white', 'gold accents', 'neutral tones'],
+    mood: 'artistic, elegant, cultural',
+  },
+  other: {
+    visuals: ['abstract shapes', 'modern design', 'city elements'],
+    colors: ['modern blue', 'orange accent', 'gray'],
+    mood: 'versatile, modern, appealing',
+  },
+};
+
+// Generate 3 image ideas based on event information
+export function generateImageIdeas(context: {
+  title?: string;
+  description?: string;
+  category?: string;
+  date?: string;
+  location?: string;
+}): ImageIdea[] {
+  const category = context.category || 'other';
+  const theme = CATEGORY_THEMES[category] || CATEGORY_THEMES.other;
+  const title = context.title || 'Мероприятие';
+  const description = context.description || '';
+
+  // Extract keywords from title and description
+  const keywords = extractKeywords(title + ' ' + description);
+
+  const ideas: ImageIdea[] = [
+    // Idea 1: Modern minimalist poster
+    {
+      id: 1,
+      title: 'Современный минималистичный постер',
+      description: `Чистый дизайн с акцентом на типографику и ${theme.visuals[0]}. Использует ${theme.colors[0]} как основной цвет. Идеально для социальных сетей и печати.`,
+      prompt: `Modern minimalist event poster for "${title}", clean typography, ${theme.visuals[0]}, ${theme.colors[0]} color scheme, ${theme.mood}, professional design, Kazakhstan style, high quality`,
+      style: 'poster',
+      tags: ['минимализм', 'современный', 'типографика'],
+    },
+    // Idea 2: Vibrant illustrated banner
+    {
+      id: 2,
+      title: 'Яркий иллюстрированный баннер',
+      description: `Динамичная композиция с элементами ${theme.visuals.slice(0, 2).join(' и ')}. Яркие цвета ${theme.colors.join(', ')} создают привлекательный визуал.`,
+      prompt: `Vibrant illustrated banner for "${title}", featuring ${theme.visuals.slice(0, 3).join(', ')}, ${theme.colors.join(' and ')} colors, ${theme.mood} atmosphere, eye-catching design, Central Asian motifs, digital art style`,
+      style: 'banner',
+      tags: ['яркий', 'иллюстрация', 'баннер'],
+    },
+    // Idea 3: Photorealistic promotional image
+    {
+      id: 3,
+      title: 'Фотореалистичный промо-материал',
+      description: `Реалистичное изображение с атмосферой ${category === 'concerts' ? 'концерта' : category === 'sports' ? 'спортивного события' : 'мероприятия'}. Передаёт энергетику и настроение события.`,
+      prompt: `Photorealistic promotional image for "${title}" event, ${theme.visuals[Math.floor(Math.random() * theme.visuals.length)]}, dramatic lighting, ${theme.mood}, cinematic composition, ${theme.colors[0]} tones, professional photography style, Kazakhstan`,
+      style: 'event',
+      tags: ['реалистичный', 'промо', 'атмосферный'],
+    },
+  ];
+
+  // Add location context if available
+  if (context.location) {
+    ideas.forEach(idea => {
+      idea.prompt += `, ${context.location} venue`;
+    });
+  }
+
+  return ideas;
+}
+
+// Extract meaningful keywords from text
+function extractKeywords(text: string): string[] {
+  const stopWords = ['в', 'на', 'и', 'для', 'с', 'по', 'к', 'от', 'из', 'у', 'о', 'а', 'но', 'или', 'что', 'это', 'как', 'так'];
+  const words = text.toLowerCase()
+    .replace(/[^\wа-яё\s]/gi, '')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.includes(word));
+
+  return [...new Set(words)].slice(0, 5);
+}
+
 // Translate common Kazakh/Russian business terms to English for better AI results
 export function translatePromptForAI(prompt: string): string {
   const translations: Record<string, string> = {
