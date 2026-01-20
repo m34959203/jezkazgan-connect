@@ -1,9 +1,9 @@
 # Afisha.kz - Прогресс разработки
 
-**Версия документа:** 2.1
+**Версия документа:** 2.2
 **Дата обновления:** 20 января 2026
-**Версия приложения:** 2.3.0-premium
-**Ветка разработки:** `claude/auto-publish-ai-images-vWa7y`
+**Версия приложения:** 2.4.0-premium
+**Ветка разработки:** `claude/fix-api-resolution-7q0rU`
 
 ---
 
@@ -154,7 +154,7 @@ Railway Platform
 | Баннеры городов | ✅ | Рекламные баннеры на главной |
 | Управление фото карусели | ✅ | CRUD через админку |
 | Сохранение событий | ✅ | Избранное для пользователей |
-| **ИИ генерация изображений** | ✅ | Hugging Face (бесплатно), OpenAI, Replicate |
+| **ИИ генерация изображений** | ✅ | Ideogram V2, FLUX.1-schnell, DALL-E 3, Replicate |
 | **Маркировка AI-контента** | ✅ | Закон РК об ИИ (01.2026) |
 | **Авто-публикации в соцсети** | ✅ | Telegram, VK, Instagram, Facebook |
 | **Видео формат для событий** | ✅ | YouTube, Vimeo, MP4 (Premium) |
@@ -268,7 +268,7 @@ Railway Platform
 
 1. **ИИ генерация изображений (Nano Banana):**
    - Сервис `nanobanana.ts` — мульти-провайдер AI генерация
-   - Провайдеры: **Hugging Face (бесплатно)**, OpenAI DALL-E, Replicate
+   - Провайдеры: **Ideogram V2** (рекомендуется), Hugging Face FLUX.1-schnell (бесплатно), OpenAI DALL-E 3, Replicate
    - API routes `/ai/*` — генерация, история, подсказки
    - Компонент `AiImageGenerator` — UI с промптами и историей
    - Стили: banner, promo, event, poster, social
@@ -646,7 +646,7 @@ ai_image_generations (
 | Значок "Проверено" | - | ✅ | ✅ |
 | Рекламный баннер | - | - | ✅ |
 | Команда сотрудников | - | - | До 5 |
-| **ИИ генерация изображений** | - | - | ✅ Nano Banana |
+| **ИИ генерация изображений** | - | - | ✅ Ideogram V2 / FLUX |
 | **Авто-публикации в соцсети** | - | - | ✅ TG/VK/IG |
 | **Видео формат для событий** | - | - | ✅ YouTube/Vimeo |
 
@@ -739,11 +739,18 @@ ai_image_generations (
 
 | Провайдер | Цена | Модель | ENV переменная |
 |-----------|------|--------|----------------|
-| **Hugging Face** | Бесплатно | Stable Diffusion XL | `HUGGINGFACE_API_KEY` |
+| **Ideogram** | Платно | V2 (отлично для текста) | `IDEOGRAM_API_KEY` |
+| Hugging Face | Бесплатно | FLUX.1-schnell | `HUGGINGFACE_API_KEY` |
 | OpenAI | Платно | DALL-E 3 | `OPENAI_API_KEY` |
 | Replicate | Платно | SDXL | `REPLICATE_API_KEY` |
 
 **Конфигурация (backend/.env):**
+```env
+AI_IMAGE_PROVIDER=ideogram
+IDEOGRAM_API_KEY=your_key_here
+```
+
+**Или для бесплатного варианта:**
 ```env
 AI_IMAGE_PROVIDER=huggingface
 HUGGINGFACE_API_KEY=hf_...
@@ -768,4 +775,4 @@ HUGGINGFACE_API_KEY=hf_...
 
 ---
 
-*Последнее обновление: 20 января 2026 (v2.3.0-premium)*
+*Последнее обновление: 20 января 2026 (v2.4.0-premium)*
