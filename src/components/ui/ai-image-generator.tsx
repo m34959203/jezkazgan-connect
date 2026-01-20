@@ -86,7 +86,7 @@ export function AiImageGenerator({
   useEffect(() => {
     checkAiGenerationStatus()
       .then((status) => setAiStatus(status))
-      .catch(() => setAiStatus({ available: false, provider: 'huggingface', model: '', isFree: true }));
+      .catch(() => setAiStatus({ available: false, provider: 'ideogram', model: 'V_2', isFree: false }));
   }, []);
 
   // Update prompt and style when defaults change (e.g., from idea selection)
@@ -103,9 +103,10 @@ export function AiImageGenerator({
   }, [defaultStyle]);
 
   const providerLabels: Record<string, string> = {
-    openai: 'OpenAI DALL-E',
-    huggingface: 'Hugging Face (бесплатно)',
-    replicate: 'Replicate',
+    ideogram: 'Ideogram V2',
+    openai: 'OpenAI DALL-E 3',
+    huggingface: 'FLUX.1 (бесплатно)',
+    replicate: 'Replicate SDXL',
   };
 
   // Load suggestions when dialog opens
@@ -191,7 +192,7 @@ export function AiImageGenerator({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Создавайте уникальные изображения с помощью Nano Banana AI
+              Создавайте уникальные изображения с помощью Ideogram V2 или FLUX
             </p>
           </div>
         </div>

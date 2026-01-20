@@ -102,7 +102,7 @@ export function AiImageIdeas({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              ИИ подберёт 3 лучших идеи для изображения вашего события
+              ИИ подберёт 3 лучших идеи с готовыми промптами
             </p>
           </div>
         </div>
@@ -130,7 +130,7 @@ export function AiImageIdeas({
             Идеи для изображения
           </DialogTitle>
           <DialogDescription>
-            На основе информации о вашем событии ИИ подготовил 3 наиболее подходящих идеи с готовыми промптами
+            На основе информации о событии подготовлены 3 идеи с промптами для генерации
           </DialogDescription>
         </DialogHeader>
 
