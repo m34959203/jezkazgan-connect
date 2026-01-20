@@ -1,8 +1,8 @@
-// Nano Banana AI Image Generation Service
+// AI Image Generation Service
 // Business Premium feature for generating promotional images
-// Supports: Ideogram V2, OpenAI DALL-E, Hugging Face (free), Replicate
+// Provider: Ideogram V2
 
-export type AiProvider = 'openai' | 'huggingface' | 'replicate' | 'ideogram';
+export type AiProvider = 'ideogram';
 
 export interface NanoBananaConfig {
   provider: AiProvider;
@@ -16,7 +16,6 @@ export interface GenerationRequest {
   style?: 'banner' | 'promo' | 'event' | 'poster' | 'social';
   width?: number;
   height?: number;
-  negativePrompt?: string;
 }
 
 export interface GenerationResult {
@@ -64,54 +63,19 @@ const STYLE_PRESETS: Record<string, { suffix: string; width: number; height: num
   },
 };
 
-// Provider configurations
-const PROVIDER_CONFIGS = {
-  openai: {
-    url: 'https://api.openai.com/v1/images/generations',
-    model: 'dall-e-3',
-    envKey: 'OPENAI_API_KEY',
-  },
-  huggingface: {
-    url: 'https://router.huggingface.co/hf-inference/models/',
-    model: 'black-forest-labs/FLUX.1-schnell', // Fast, free FLUX model
-    envKey: 'HUGGINGFACE_API_KEY',
-  },
-  replicate: {
-    url: 'https://api.replicate.com/v1/predictions',
-    model: 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
-    envKey: 'REPLICATE_API_KEY',
-  },
-  ideogram: {
-    url: 'https://api.ideogram.ai/generate',
-    model: 'V_2', // Ideogram V2 - excellent for text in images
-    envKey: 'IDEOGRAM_API_KEY',
-  },
+// Ideogram configuration
+const IDEOGRAM_CONFIG = {
+  url: 'https://api.ideogram.ai/generate',
+  model: 'V_2',
 };
 
 // Get config from environment
 export function getNanoBananaConfig(): NanoBananaConfig {
-  // Check for explicit provider setting
-  const providerEnv = (process.env.AI_IMAGE_PROVIDER || 'huggingface').toLowerCase() as AiProvider;
+  const apiKey = process.env.IDEOGRAM_API_KEY || '';
+  const apiUrl = process.env.NANOBANANA_API_URL || IDEOGRAM_CONFIG.url;
+  const model = process.env.AI_IMAGE_MODEL || IDEOGRAM_CONFIG.model;
 
-  // Validate provider
-  const provider = ['openai', 'huggingface', 'replicate', 'ideogram'].includes(providerEnv)
-    ? providerEnv
-    : 'huggingface';
-
-  const providerConfig = PROVIDER_CONFIGS[provider];
-
-  // Get API key - check provider-specific key first, then generic
-  const apiKey = process.env.NANOBANANA_API_KEY ||
-                 process.env[providerConfig.envKey] ||
-                 '';
-
-  // Allow custom API URL override
-  const apiUrl = process.env.NANOBANANA_API_URL || providerConfig.url;
-
-  // Allow custom model override
-  const model = process.env.AI_IMAGE_MODEL || providerConfig.model;
-
-  return { provider, apiKey, apiUrl, model };
+  return { provider: 'ideogram', apiKey, apiUrl, model };
 }
 
 // Check if AI generation is available
@@ -126,197 +90,7 @@ export function getProviderInfo(): { provider: AiProvider; model: string; isFree
   return {
     provider: config.provider,
     model: config.model,
-    isFree: config.provider === 'huggingface',
-  };
-}
-
-// Generate image using OpenAI DALL-E
-async function generateWithOpenAI(
-  config: NanoBananaConfig,
-  enhancedPrompt: string,
-  width: number,
-  height: number
-): Promise<GenerationResult> {
-  // Map to valid DALL-E sizes (1024x1024, 1024x1792, 1792x1024)
-  let size: '1024x1024' | '1024x1792' | '1792x1024' = '1024x1024';
-  if (width > height * 1.3) {
-    size = '1792x1024'; // Landscape
-  } else if (height > width * 1.3) {
-    size = '1024x1792'; // Portrait
-  }
-
-  const response = await fetch(config.apiUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: config.model,
-      prompt: enhancedPrompt,
-      n: 1,
-      size,
-      quality: 'standard',
-      response_format: 'url',
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
-    throw new Error(error.error?.message || `OpenAI API request failed: ${response.status}`);
-  }
-
-  const result = await response.json();
-
-  if (!result.data || !result.data[0]?.url) {
-    throw new Error('Invalid response from OpenAI');
-  }
-
-  return {
-    imageUrl: result.data[0].url,
-    revisedPrompt: result.data[0].revised_prompt,
-    generationId: `gen_openai_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    // Kazakhstan AI Law compliance
-    isAiGenerated: true as const,
-    aiDisclaimer: AI_DISCLAIMER_RU,
-    generatedAt: new Date().toISOString(),
-    provider: 'openai' as const,
-  };
-}
-
-// Generate image using Hugging Face Inference API (FREE!)
-async function generateWithHuggingFace(
-  config: NanoBananaConfig,
-  enhancedPrompt: string,
-  width: number,
-  height: number,
-  negativePrompt?: string
-): Promise<GenerationResult> {
-  const modelUrl = config.apiUrl.endsWith('/')
-    ? `${config.apiUrl}${config.model}`
-    : `${config.apiUrl}/${config.model}`;
-
-  const response = await fetch(modelUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: enhancedPrompt,
-      parameters: {
-        negative_prompt: negativePrompt || 'blurry, low quality, distorted, ugly, bad anatomy',
-        width: Math.min(width, 1024), // HF has size limits
-        height: Math.min(height, 1024),
-        num_inference_steps: 30,
-        guidance_scale: 7.5,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    // Check if model is loading (common with free tier)
-    if (response.status === 503) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData.estimated_time) {
-        throw new Error(`Модель загружается, подождите ~${Math.ceil(errorData.estimated_time)} секунд и попробуйте снова`);
-      }
-    }
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `Hugging Face API request failed: ${response.status}`);
-  }
-
-  // HF returns raw image data, need to convert to base64 data URL
-  const imageBlob = await response.blob();
-  const arrayBuffer = await imageBlob.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
-  const mimeType = imageBlob.type || 'image/png';
-
-  return {
-    imageUrl: `data:${mimeType};base64,${base64}`,
-    generationId: `gen_hf_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    // Kazakhstan AI Law compliance
-    isAiGenerated: true as const,
-    aiDisclaimer: AI_DISCLAIMER_RU,
-    generatedAt: new Date().toISOString(),
-    provider: 'huggingface' as const,
-  };
-}
-
-// Generate image using Replicate
-async function generateWithReplicate(
-  config: NanoBananaConfig,
-  enhancedPrompt: string,
-  width: number,
-  height: number,
-  negativePrompt?: string
-): Promise<GenerationResult> {
-  // Start prediction
-  const startResponse = await fetch(config.apiUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Token ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      version: config.model.includes(':') ? config.model.split(':')[1] : config.model,
-      input: {
-        prompt: enhancedPrompt,
-        negative_prompt: negativePrompt || 'blurry, low quality, distorted',
-        width: Math.min(width, 1024),
-        height: Math.min(height, 1024),
-        num_inference_steps: 30,
-      },
-    }),
-  });
-
-  if (!startResponse.ok) {
-    const error = await startResponse.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `Replicate API request failed: ${startResponse.status}`);
-  }
-
-  const prediction = await startResponse.json();
-
-  // Poll for completion (max 60 seconds)
-  const maxAttempts = 30;
-  let attempts = 0;
-  let result = prediction;
-
-  while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const pollResponse = await fetch(result.urls.get, {
-      headers: {
-        'Authorization': `Token ${config.apiKey}`,
-      },
-    });
-
-    if (!pollResponse.ok) {
-      throw new Error('Failed to check generation status');
-    }
-
-    result = await pollResponse.json();
-    attempts++;
-  }
-
-  if (result.status === 'failed') {
-    throw new Error(result.error || 'Image generation failed');
-  }
-
-  if (result.status !== 'succeeded') {
-    throw new Error('Generation timed out');
-  }
-
-  const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-
-  return {
-    imageUrl,
-    generationId: `gen_replicate_${result.id}`,
-    // Kazakhstan AI Law compliance
-    isAiGenerated: true as const,
-    aiDisclaimer: AI_DISCLAIMER_RU,
-    generatedAt: new Date().toISOString(),
-    provider: 'replicate' as const,
+    isFree: false,
   };
 }
 
@@ -384,9 +158,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   const config = getNanoBananaConfig();
 
   if (!config.apiKey) {
-    throw new Error(
-      'AI image generation not configured. Set one of: IDEOGRAM_API_KEY, HUGGINGFACE_API_KEY, OPENAI_API_KEY, or REPLICATE_API_KEY'
-    );
+    throw new Error('AI image generation not configured. Set IDEOGRAM_API_KEY environment variable.');
   }
 
   const stylePreset = request.style ? STYLE_PRESETS[request.style] : null;
@@ -404,29 +176,7 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
   const width = request.width || stylePreset?.width || 1024;
   const height = request.height || stylePreset?.height || 1024;
 
-  try {
-    switch (config.provider) {
-      case 'openai':
-        return await generateWithOpenAI(config, enhancedPrompt, width, height);
-
-      case 'huggingface':
-        return await generateWithHuggingFace(config, enhancedPrompt, width, height, request.negativePrompt);
-
-      case 'replicate':
-        return await generateWithReplicate(config, enhancedPrompt, width, height, request.negativePrompt);
-
-      case 'ideogram':
-        return await generateWithIdeogram(config, enhancedPrompt, width, height);
-
-      default:
-        throw new Error(`Unknown AI provider: ${config.provider}`);
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to generate image');
-  }
+  return await generateWithIdeogram(config, enhancedPrompt, width, height);
 }
 
 // Generate prompt suggestions based on content type
@@ -527,42 +277,34 @@ export function generateImageIdeas(context: {
   const category = context.category || 'other';
   const theme = CATEGORY_THEMES[category] || CATEGORY_THEMES.other;
   const title = context.title || 'Мероприятие';
-  const description = context.description || '';
-
-  // Extract keywords from title and description
-  const keywords = extractKeywords(title + ' ' + description);
 
   const ideas: ImageIdea[] = [
-    // Idea 1: Modern minimalist poster
     {
       id: 1,
       title: 'Современный минималистичный постер',
-      description: `Чистый дизайн с акцентом на типографику и ${theme.visuals[0]}. Использует ${theme.colors[0]} как основной цвет. Идеально для социальных сетей и печати.`,
+      description: `Чистый дизайн с акцентом на типографику и ${theme.visuals[0]}. Использует ${theme.colors[0]} как основной цвет.`,
       prompt: `Modern minimalist event poster for "${title}", clean typography, ${theme.visuals[0]}, ${theme.colors[0]} color scheme, ${theme.mood}, professional design, Kazakhstan style, high quality`,
       style: 'poster',
       tags: ['минимализм', 'современный', 'типографика'],
     },
-    // Idea 2: Vibrant illustrated banner
     {
       id: 2,
       title: 'Яркий иллюстрированный баннер',
-      description: `Динамичная композиция с элементами ${theme.visuals.slice(0, 2).join(' и ')}. Яркие цвета ${theme.colors.join(', ')} создают привлекательный визуал.`,
+      description: `Динамичная композиция с элементами ${theme.visuals.slice(0, 2).join(' и ')}. Яркие цвета создают привлекательный визуал.`,
       prompt: `Vibrant illustrated banner for "${title}", featuring ${theme.visuals.slice(0, 3).join(', ')}, ${theme.colors.join(' and ')} colors, ${theme.mood} atmosphere, eye-catching design, Central Asian motifs, digital art style`,
       style: 'banner',
       tags: ['яркий', 'иллюстрация', 'баннер'],
     },
-    // Idea 3: Photorealistic promotional image
     {
       id: 3,
       title: 'Фотореалистичный промо-материал',
-      description: `Реалистичное изображение с атмосферой ${category === 'concerts' ? 'концерта' : category === 'sports' ? 'спортивного события' : 'мероприятия'}. Передаёт энергетику и настроение события.`,
+      description: `Реалистичное изображение с атмосферой ${category === 'concerts' ? 'концерта' : category === 'sports' ? 'спортивного события' : 'мероприятия'}.`,
       prompt: `Photorealistic promotional image for "${title}" event, ${theme.visuals[Math.floor(Math.random() * theme.visuals.length)]}, dramatic lighting, ${theme.mood}, cinematic composition, ${theme.colors[0]} tones, professional photography style, Kazakhstan`,
       style: 'event',
       tags: ['реалистичный', 'промо', 'атмосферный'],
     },
   ];
 
-  // Add location context if available
   if (context.location) {
     ideas.forEach(idea => {
       idea.prompt += `, ${context.location} venue`;
@@ -570,17 +312,6 @@ export function generateImageIdeas(context: {
   }
 
   return ideas;
-}
-
-// Extract meaningful keywords from text
-function extractKeywords(text: string): string[] {
-  const stopWords = ['в', 'на', 'и', 'для', 'с', 'по', 'к', 'от', 'из', 'у', 'о', 'а', 'но', 'или', 'что', 'это', 'как', 'так'];
-  const words = text.toLowerCase()
-    .replace(/[^\wа-яё\s]/gi, '')
-    .split(/\s+/)
-    .filter(word => word.length > 2 && !stopWords.includes(word));
-
-  return [...new Set(words)].slice(0, 5);
 }
 
 // Translate common Kazakh/Russian business terms to English for better AI results

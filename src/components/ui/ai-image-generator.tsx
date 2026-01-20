@@ -102,12 +102,7 @@ export function AiImageGenerator({
     }
   }, [defaultStyle]);
 
-  const providerLabels: Record<string, string> = {
-    ideogram: 'Ideogram V2',
-    openai: 'OpenAI DALL-E 3',
-    huggingface: 'FLUX.1 (бесплатно)',
-    replicate: 'Replicate SDXL',
-  };
+  const providerLabel = 'Ideogram V2';
 
   // Load suggestions when dialog opens
   useEffect(() => {
@@ -192,7 +187,7 @@ export function AiImageGenerator({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Создавайте уникальные изображения с помощью Ideogram V2 или FLUX
+              Создавайте уникальные изображения с помощью Ideogram V2
             </p>
           </div>
         </div>
@@ -224,7 +219,7 @@ export function AiImageGenerator({
             <span>Опишите желаемое изображение, и ИИ создаст его для вас</span>
             {aiStatus && (
               <Badge variant={aiStatus.isFree ? 'secondary' : 'outline'} className="text-xs">
-                {providerLabels[aiStatus.provider] || aiStatus.provider}
+                {providerLabel}
               </Badge>
             )}
           </DialogDescription>

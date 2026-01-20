@@ -1391,7 +1391,7 @@ export interface AiGenerationHistory {
 
 export interface AiStatus {
   available: boolean;
-  provider: 'openai' | 'huggingface' | 'replicate';
+  provider: 'ideogram';
   model: string;
   isFree: boolean;
 }
