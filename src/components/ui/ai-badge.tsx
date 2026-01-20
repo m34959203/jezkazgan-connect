@@ -2,9 +2,9 @@ import { cn } from '@/lib/utils';
 
 // Kazakhstan AI Law - mandatory AI content disclosure labels
 export const AI_LABELS = {
-  ru: 'Сгенерировано ИИ',
+  ru: 'сгенерировано ИИ',
   kz: 'ЖИ жасаған',
-  en: 'AI Generated',
+  en: 'AI generated',
 } as const;
 
 // Short labels for compact displays
@@ -61,7 +61,7 @@ export function AiBadge({
   return (
     <div
       className={cn(
-        'inline-flex items-center bg-black/70 text-white rounded font-medium',
+        'inline-flex items-center text-gray-400 text-opacity-70 font-normal',
         sizeClasses[size],
         position && positionClasses[position],
         className
