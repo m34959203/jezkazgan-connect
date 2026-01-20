@@ -1,4 +1,3 @@
-import { Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Kazakhstan AI Law - mandatory AI content disclosure labels
@@ -8,13 +7,20 @@ export const AI_LABELS = {
   en: 'AI Generated',
 } as const;
 
+// Short labels for compact displays
+export const AI_LABELS_SHORT = {
+  ru: 'ИИ',
+  kz: 'ЖИ',
+  en: 'AI',
+} as const;
+
 interface AiBadgeProps {
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
   /** Language for the label */
   lang?: 'ru' | 'kz' | 'en';
-  /** Show only icon (for tight spaces) */
-  iconOnly?: boolean;
+  /** Show short version (just "ИИ") */
+  short?: boolean;
   /** Additional CSS classes */
   className?: string;
   /** Position when used as overlay */
@@ -28,12 +34,12 @@ interface AiBadgeProps {
  * Usage:
  * - On AI-generated images: <AiBadge position="top-left" />
  * - Inline in text: <AiBadge size="sm" />
- * - Icon only for thumbnails: <AiBadge iconOnly />
+ * - Short version for thumbnails: <AiBadge short />
  */
 export function AiBadge({
   size = 'md',
   lang = 'ru',
-  iconOnly = false,
+  short = false,
   className,
   position,
 }: AiBadgeProps) {
@@ -43,12 +49,6 @@ export function AiBadge({
     lg: 'text-sm px-2.5 py-1.5',
   };
 
-  const iconSizes = {
-    sm: 'w-2.5 h-2.5',
-    md: 'w-3 h-3',
-    lg: 'w-4 h-4',
-  };
-
   const positionClasses = {
     'top-left': 'absolute top-2 left-2',
     'top-right': 'absolute top-2 right-2',
@@ -56,10 +56,12 @@ export function AiBadge({
     'bottom-right': 'absolute bottom-2 right-2',
   };
 
+  const label = short ? AI_LABELS_SHORT[lang] : AI_LABELS[lang];
+
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1 bg-black/70 text-white rounded font-medium',
+        'inline-flex items-center bg-black/70 text-white rounded font-medium',
         sizeClasses[size],
         position && positionClasses[position],
         className
@@ -67,8 +69,7 @@ export function AiBadge({
       title={AI_LABELS[lang]}
       aria-label={AI_LABELS[lang]}
     >
-      <Bot className={iconSizes[size]} />
-      {!iconOnly && <span>{AI_LABELS[lang]}</span>}
+      {label}
     </div>
   );
 }

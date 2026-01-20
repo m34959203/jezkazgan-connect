@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wand2, Loader2, Sparkles, Image as ImageIcon, History, ChevronDown, Crown, Bot } from 'lucide-react';
+import { Wand2, Loader2, Sparkles, Image as ImageIcon, History, ChevronDown, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -285,9 +285,8 @@ export function AiImageGenerator({
                   className="w-full h-64 object-cover"
                 />
                 {/* Kazakhstan AI Law - mandatory AI disclosure label */}
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
-                  <Bot className="w-3 h-3" />
-                  <span>{AI_DISCLAIMER_RU}</span>
+                <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                  {AI_DISCLAIMER_RU}
                 </div>
               </div>
               {/* Legal notice */}
@@ -354,8 +353,8 @@ export function AiImageGenerator({
                           className="w-full h-full object-cover"
                         />
                         {/* AI label on history items */}
-                        <div className="absolute top-1 left-1 bg-black/70 text-white p-0.5 rounded">
-                          <Bot className="w-2.5 h-2.5" />
+                        <div className="absolute top-1 left-1 bg-black/70 text-white px-1 py-0.5 rounded text-[8px] font-medium">
+                          ИИ
                         </div>
                         <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-white text-xs">Использовать</span>
