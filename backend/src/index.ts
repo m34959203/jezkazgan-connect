@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import { runMigrations } from './db/migrate';
 
 import auth from './routes/auth';
 import cities from './routes/cities';
@@ -111,11 +112,21 @@ app.onError((err, c) => {
 // Start server
 const port = Number(process.env.PORT) || 3000;
 
-console.log(`🚀 Server starting on port ${port}`);
+// Run migrations before starting server
+runMigrations().then(() => {
+  console.log(`🚀 Server starting on port ${port}`);
 
-serve({
-  fetch: app.fetch,
-  port,
+  serve({
+    fetch: app.fetch,
+    port,
+  });
+}).catch((err) => {
+  console.error('Failed to run migrations:', err);
+  // Start server anyway
+  serve({
+    fetch: app.fetch,
+    port,
+  });
 });
 
 export default app;
