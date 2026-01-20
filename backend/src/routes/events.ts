@@ -20,55 +20,60 @@ const listQuerySchema = z.object({
 
 // GET /events - список событий
 app.get('/', zValidator('query', listQuerySchema), async (c) => {
-  const { cityId, category, isFree, isFeatured, fromDate, limit, offset } = c.req.valid('query');
+  try {
+    const { cityId, category, isFree, isFeatured, fromDate, limit, offset } = c.req.valid('query');
 
-  const conditions = [
-    eq(events.isApproved, true),
-    gte(events.date, new Date()),
-  ];
+    const conditions = [
+      eq(events.isApproved, true),
+      gte(events.date, new Date()),
+    ];
 
-  if (cityId) conditions.push(eq(events.cityId, cityId));
-  if (category) conditions.push(eq(events.category, category as any));
-  if (isFree !== undefined) conditions.push(eq(events.isFree, isFree));
-  if (isFeatured !== undefined) conditions.push(eq(events.isFeatured, isFeatured));
-  if (fromDate) conditions.push(gte(events.date, new Date(fromDate)));
+    if (cityId) conditions.push(eq(events.cityId, cityId));
+    if (category) conditions.push(eq(events.category, category as any));
+    if (isFree !== undefined) conditions.push(eq(events.isFree, isFree));
+    if (isFeatured !== undefined) conditions.push(eq(events.isFeatured, isFeatured));
+    if (fromDate) conditions.push(gte(events.date, new Date(fromDate)));
 
-  const result = await db
-    .select({
-      id: events.id,
-      title: events.title,
-      description: events.description,
-      category: events.category,
-      image: events.image,
-      videoUrl: events.videoUrl,
-      videoThumbnail: events.videoThumbnail,
-      date: events.date,
-      location: events.location,
-      price: events.price,
-      isFree: events.isFree,
-      isFeatured: events.isFeatured,
-      viewsCount: events.viewsCount,
-      savesCount: events.savesCount,
-      city: {
-        id: cities.id,
-        name: cities.name,
-        slug: cities.slug,
-      },
-      business: {
-        id: businesses.id,
-        name: businesses.name,
-        logo: businesses.logo,
-      },
-    })
-    .from(events)
-    .leftJoin(cities, eq(events.cityId, cities.id))
-    .leftJoin(businesses, eq(events.businessId, businesses.id))
-    .where(and(...conditions))
-    .orderBy(asc(events.date))
-    .limit(limit)
-    .offset(offset);
+    const result = await db
+      .select({
+        id: events.id,
+        title: events.title,
+        description: events.description,
+        category: events.category,
+        image: events.image,
+        videoUrl: events.videoUrl,
+        videoThumbnail: events.videoThumbnail,
+        date: events.date,
+        location: events.location,
+        price: events.price,
+        isFree: events.isFree,
+        isFeatured: events.isFeatured,
+        viewsCount: events.viewsCount,
+        savesCount: events.savesCount,
+        city: {
+          id: cities.id,
+          name: cities.name,
+          slug: cities.slug,
+        },
+        business: {
+          id: businesses.id,
+          name: businesses.name,
+          logo: businesses.logo,
+        },
+      })
+      .from(events)
+      .leftJoin(cities, eq(events.cityId, cities.id))
+      .leftJoin(businesses, eq(events.businessId, businesses.id))
+      .where(and(...conditions))
+      .orderBy(asc(events.date))
+      .limit(limit)
+      .offset(offset);
 
-  return c.json(result);
+    return c.json(result);
+  } catch (error) {
+    console.error('Events fetch error:', error);
+    return c.json({ error: 'Database error', details: String(error) }, 500);
+  }
 });
 
 // GET /events/:id - событие по ID
