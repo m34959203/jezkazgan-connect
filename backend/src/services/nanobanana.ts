@@ -1,8 +1,8 @@
 // Nano Banana AI Image Generation Service
 // Business Premium feature for generating promotional images
-// Supports: OpenAI DALL-E, Hugging Face (free), Replicate, Google Imagen
+// Supports: OpenAI DALL-E, Hugging Face (free), Replicate, Google Imagen, Ideogram
 
-export type AiProvider = 'openai' | 'huggingface' | 'replicate' | 'google';
+export type AiProvider = 'openai' | 'huggingface' | 'replicate' | 'google' | 'ideogram';
 
 export interface NanoBananaConfig {
   provider: AiProvider;
@@ -86,6 +86,11 @@ const PROVIDER_CONFIGS = {
     model: 'imagen-3.0-generate-001', // Google Imagen 3
     envKey: 'GOOGLE_API_KEY',
   },
+  ideogram: {
+    url: 'https://api.ideogram.ai/generate',
+    model: 'V_2', // Ideogram V2 - excellent for text in images
+    envKey: 'IDEOGRAM_API_KEY',
+  },
 };
 
 // Get config from environment
@@ -94,7 +99,7 @@ export function getNanoBananaConfig(): NanoBananaConfig {
   const providerEnv = (process.env.AI_IMAGE_PROVIDER || 'huggingface').toLowerCase() as AiProvider;
 
   // Validate provider
-  const provider = ['openai', 'huggingface', 'replicate', 'google'].includes(providerEnv)
+  const provider = ['openai', 'huggingface', 'replicate', 'google', 'ideogram'].includes(providerEnv)
     ? providerEnv
     : 'huggingface';
 
@@ -388,13 +393,72 @@ async function generateWithGoogle(
   };
 }
 
+// Generate image using Ideogram V2
+async function generateWithIdeogram(
+  config: NanoBananaConfig,
+  enhancedPrompt: string,
+  width: number,
+  height: number
+): Promise<GenerationResult> {
+  // Determine aspect ratio for Ideogram
+  let aspectRatio = 'ASPECT_1_1';
+  if (width > height * 1.5) {
+    aspectRatio = 'ASPECT_16_9';
+  } else if (width > height * 1.2) {
+    aspectRatio = 'ASPECT_4_3';
+  } else if (height > width * 1.5) {
+    aspectRatio = 'ASPECT_9_16';
+  } else if (height > width * 1.2) {
+    aspectRatio = 'ASPECT_3_4';
+  }
+
+  const response = await fetch(config.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Api-Key': config.apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      image_request: {
+        prompt: enhancedPrompt,
+        aspect_ratio: aspectRatio,
+        model: config.model,
+        magic_prompt_option: 'AUTO',
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const errorMessage = error.message || error.error?.message || `Ideogram API request failed: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+
+  if (!result.data || !result.data[0]?.url) {
+    throw new Error('Invalid response from Ideogram');
+  }
+
+  return {
+    imageUrl: result.data[0].url,
+    revisedPrompt: result.data[0].prompt,
+    generationId: `gen_ideogram_${result.data[0].seed || Date.now()}`,
+    // Kazakhstan AI Law compliance
+    isAiGenerated: true as const,
+    aiDisclaimer: AI_DISCLAIMER_RU,
+    generatedAt: new Date().toISOString(),
+    provider: 'ideogram' as const,
+  };
+}
+
 // Generate image using AI (main function)
 export async function generateImage(request: GenerationRequest): Promise<GenerationResult> {
   const config = getNanoBananaConfig();
 
   if (!config.apiKey) {
     throw new Error(
-      'AI image generation not configured. Set one of: GOOGLE_API_KEY, HUGGINGFACE_API_KEY, OPENAI_API_KEY, or REPLICATE_API_KEY'
+      'AI image generation not configured. Set one of: IDEOGRAM_API_KEY, GOOGLE_API_KEY, HUGGINGFACE_API_KEY, OPENAI_API_KEY, or REPLICATE_API_KEY'
     );
   }
 
@@ -426,6 +490,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
 
       case 'google':
         return await generateWithGoogle(config, enhancedPrompt, width, height);
+
+      case 'ideogram':
+        return await generateWithIdeogram(config, enhancedPrompt, width, height);
 
       default:
         throw new Error(`Unknown AI provider: ${config.provider}`);
