@@ -50,6 +50,8 @@ interface AiImageGeneratorProps {
   };
   isPremium?: boolean;
   className?: string;
+  defaultPrompt?: string;
+  defaultStyle?: 'banner' | 'promo' | 'event' | 'poster' | 'social';
 }
 
 const styleOptions = [
@@ -66,11 +68,13 @@ export function AiImageGenerator({
   context,
   isPremium = false,
   className,
+  defaultPrompt,
+  defaultStyle,
 }: AiImageGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
-  const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState<string>('promo');
+  const [prompt, setPrompt] = useState(defaultPrompt || '');
+  const [style, setStyle] = useState<string>(defaultStyle || 'promo');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +88,19 @@ export function AiImageGenerator({
       .then((status) => setAiStatus(status))
       .catch(() => setAiStatus({ available: false, provider: 'huggingface', model: '', isFree: true }));
   }, []);
+
+  // Update prompt and style when defaults change (e.g., from idea selection)
+  useEffect(() => {
+    if (defaultPrompt) {
+      setPrompt(defaultPrompt);
+    }
+  }, [defaultPrompt]);
+
+  useEffect(() => {
+    if (defaultStyle) {
+      setStyle(defaultStyle);
+    }
+  }, [defaultStyle]);
 
   const providerLabels: Record<string, string> = {
     openai: 'OpenAI DALL-E',

@@ -26,7 +26,7 @@
 #### Backend API (100% базовой структуры)
 - **Framework:** Hono + TypeScript
 - **Database:** Drizzle ORM + Neon PostgreSQL (serverless)
-- **Deployment:** Railway (https://afisha-bekend-production.up.railway.app)
+- **Deployment:** Railway (https://afisha-backend-production.up.railway.app)
 
 | Endpoint | Метод | Описание | Статус |
 |----------|-------|----------|--------|
@@ -422,7 +422,7 @@ export const promotions = pgTable('promotions', {
 
 | Сервис | URL | Статус |
 |--------|-----|--------|
-| Backend API | https://afisha-bekend-production.up.railway.app | ✅ Online |
+| Backend API | https://afisha-backend-production.up.railway.app | ✅ Online |
 | Frontend | https://jezkazgan-connect-production.up.railway.app | ✅ Online |
 | Database | Neon PostgreSQL (serverless) | ✅ Connected |
 

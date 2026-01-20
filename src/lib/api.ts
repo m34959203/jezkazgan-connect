@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-bekend-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-backend-production.up.railway.app';
 
 export interface City {
   id: string;
@@ -1418,6 +1418,35 @@ export async function getAiPromptSuggestions(params: {
 
   const res = await fetch(`${API_URL}/ai/suggestions?${searchParams}`);
   if (!res.ok) throw new Error('Failed to get prompt suggestions');
+  return res.json();
+}
+
+// Image idea structure for AI-generated suggestions
+export interface ImageIdea {
+  id: number;
+  title: string;
+  description: string;
+  prompt: string;
+  style: 'banner' | 'promo' | 'event' | 'poster' | 'social';
+  tags: string[];
+}
+
+export async function getAiImageIdeas(params: {
+  title?: string;
+  description?: string;
+  category?: string;
+  date?: string;
+  location?: string;
+}): Promise<{ ideas: ImageIdea[] }> {
+  const searchParams = new URLSearchParams();
+  if (params.title) searchParams.set('title', params.title);
+  if (params.description) searchParams.set('description', params.description);
+  if (params.category) searchParams.set('category', params.category);
+  if (params.date) searchParams.set('date', params.date);
+  if (params.location) searchParams.set('location', params.location);
+
+  const res = await fetch(`${API_URL}/ai/ideas?${searchParams}`);
+  if (!res.ok) throw new Error('Failed to get image ideas');
   return res.json();
 }
 
