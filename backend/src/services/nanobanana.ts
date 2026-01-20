@@ -1,8 +1,8 @@
 // Nano Banana AI Image Generation Service
 // Business Premium feature for generating promotional images
-// Supports: OpenAI DALL-E, Hugging Face (free), Replicate
+// Supports: OpenAI DALL-E, Hugging Face (free), Replicate, Google Imagen
 
-export type AiProvider = 'openai' | 'huggingface' | 'replicate';
+export type AiProvider = 'openai' | 'huggingface' | 'replicate' | 'google';
 
 export interface NanoBananaConfig {
   provider: AiProvider;
@@ -81,6 +81,11 @@ const PROVIDER_CONFIGS = {
     model: 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
     envKey: 'REPLICATE_API_KEY',
   },
+  google: {
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/',
+    model: 'imagen-3.0-generate-001', // Google Imagen 3
+    envKey: 'GOOGLE_API_KEY',
+  },
 };
 
 // Get config from environment
@@ -89,7 +94,7 @@ export function getNanoBananaConfig(): NanoBananaConfig {
   const providerEnv = (process.env.AI_IMAGE_PROVIDER || 'huggingface').toLowerCase() as AiProvider;
 
   // Validate provider
-  const provider = ['openai', 'huggingface', 'replicate'].includes(providerEnv)
+  const provider = ['openai', 'huggingface', 'replicate', 'google'].includes(providerEnv)
     ? providerEnv
     : 'huggingface';
 
@@ -315,13 +320,81 @@ async function generateWithReplicate(
   };
 }
 
+// Generate image using Google Imagen
+async function generateWithGoogle(
+  config: NanoBananaConfig,
+  enhancedPrompt: string,
+  width: number,
+  height: number
+): Promise<GenerationResult> {
+  const modelUrl = `${config.apiUrl}${config.model}:generateImages?key=${config.apiKey}`;
+
+  // Determine aspect ratio based on dimensions
+  let aspectRatio = '1:1';
+  if (width > height * 1.3) {
+    aspectRatio = '16:9'; // Landscape
+  } else if (height > width * 1.3) {
+    aspectRatio = '9:16'; // Portrait
+  } else if (width > height) {
+    aspectRatio = '4:3';
+  } else if (height > width) {
+    aspectRatio = '3:4';
+  }
+
+  const response = await fetch(modelUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      instances: [
+        {
+          prompt: enhancedPrompt,
+        },
+      ],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: aspectRatio,
+        personGeneration: 'allow_adult',
+        safetyFilterLevel: 'block_few',
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+    const errorMessage = error.error?.message || error.message || `Google API request failed: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+
+  if (!result.predictions || !result.predictions[0]?.bytesBase64Encoded) {
+    throw new Error('Invalid response from Google Imagen');
+  }
+
+  // Google returns base64 encoded image
+  const base64Image = result.predictions[0].bytesBase64Encoded;
+  const mimeType = result.predictions[0].mimeType || 'image/png';
+
+  return {
+    imageUrl: `data:${mimeType};base64,${base64Image}`,
+    generationId: `gen_google_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    // Kazakhstan AI Law compliance
+    isAiGenerated: true as const,
+    aiDisclaimer: AI_DISCLAIMER_RU,
+    generatedAt: new Date().toISOString(),
+    provider: 'google' as const,
+  };
+}
+
 // Generate image using AI (main function)
 export async function generateImage(request: GenerationRequest): Promise<GenerationResult> {
   const config = getNanoBananaConfig();
 
   if (!config.apiKey) {
     throw new Error(
-      'AI image generation not configured. Set one of: HUGGINGFACE_API_KEY (free), OPENAI_API_KEY, or REPLICATE_API_KEY'
+      'AI image generation not configured. Set one of: GOOGLE_API_KEY, HUGGINGFACE_API_KEY, OPENAI_API_KEY, or REPLICATE_API_KEY'
     );
   }
 
@@ -350,6 +423,9 @@ export async function generateImage(request: GenerationRequest): Promise<Generat
 
       case 'replicate':
         return await generateWithReplicate(config, enhancedPrompt, width, height, request.negativePrompt);
+
+      case 'google':
+        return await generateWithGoogle(config, enhancedPrompt, width, height);
 
       default:
         throw new Error(`Unknown AI provider: ${config.provider}`);
