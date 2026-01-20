@@ -103,6 +103,7 @@ export const events = pgTable('events', {
   description: text('description'),
   category: eventCategoryEnum('category').notNull(),
   image: text('image'),
+  isImageAiGenerated: boolean('is_image_ai_generated').default(false), // Kazakhstan AI Law compliance
   videoUrl: text('video_url'), // Business Premium: видео формат для событий
   videoThumbnail: text('video_thumbnail'), // Превью для видео
   date: timestamp('date').notNull(),
@@ -128,6 +129,7 @@ export const promotions = pgTable('promotions', {
   title: text('title').notNull(),
   description: text('description'),
   image: text('image'),
+  isImageAiGenerated: boolean('is_image_ai_generated').default(false), // Kazakhstan AI Law compliance
   discount: text('discount'),
   conditions: text('conditions'),
   validFrom: timestamp('valid_from').defaultNow(),
