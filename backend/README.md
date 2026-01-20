@@ -53,6 +53,19 @@ npm run dev
 - `GET /promotions/:id` — акция по ID
 - `POST /promotions` — создать акцию
 
+### AI Image Generation (Premium)
+- `GET /ai/status` — статус AI сервиса
+- `GET /ai/suggestions` — подсказки для промптов
+- `POST /ai/generate` — генерация изображения
+- `GET /ai/history` — история генераций
+
+### Auto-Publish (Premium)
+- `GET /autopublish/settings` — настройки платформ
+- `POST /autopublish/settings` — создать/обновить настройки
+- `POST /autopublish/test-connection` — тест подключения
+- `POST /autopublish/publish` — публикация контента
+- `GET /autopublish/history` — история публикаций
+
 ## Скрипты
 
 ```bash
@@ -73,16 +86,34 @@ backend/
 │   ├── index.ts          # Entry point
 │   ├── db/
 │   │   ├── schema.ts     # Drizzle схема
+│   │   ├── migrate.ts    # Программные миграции
 │   │   └── index.ts      # Подключение к БД
 │   ├── routes/
 │   │   ├── auth.ts
 │   │   ├── cities.ts
 │   │   ├── events.ts
 │   │   ├── businesses.ts
-│   │   └── promotions.ts
+│   │   ├── promotions.ts
+│   │   ├── ai.ts         # AI генерация (Premium)
+│   │   └── autopublish.ts # Авто-публикации (Premium)
+│   ├── services/
+│   │   ├── nanobanana.ts # AI Image Generation
+│   │   └── autopublish.ts # Social Media Publishing
 │   ├── middleware/
 │   └── lib/
 ├── drizzle.config.ts
+├── nixpacks.toml         # Railway build config
 ├── package.json
 └── tsconfig.json
 ```
+
+## AI Image Providers
+
+| Провайдер | Модель | ENV переменная |
+|-----------|--------|----------------|
+| **Ideogram** (рекомендуется) | V2 | `IDEOGRAM_API_KEY` |
+| Hugging Face (бесплатно) | FLUX.1-schnell | `HUGGINGFACE_API_KEY` |
+| OpenAI | DALL-E 3 | `OPENAI_API_KEY` |
+| Replicate | SDXL | `REPLICATE_API_KEY` |
+
+Установите `AI_IMAGE_PROVIDER=ideogram` для использования Ideogram V2.
