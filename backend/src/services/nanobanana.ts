@@ -72,7 +72,7 @@ const PROVIDER_CONFIGS = {
     envKey: 'OPENAI_API_KEY',
   },
   huggingface: {
-    url: 'https://api-inference.huggingface.co/models/',
+    url: 'https://router.huggingface.co/hf-inference/models/',
     model: 'stabilityai/stable-diffusion-xl-base-1.0', // Free SDXL model
     envKey: 'HUGGINGFACE_API_KEY',
   },
