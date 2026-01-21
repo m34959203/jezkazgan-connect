@@ -75,7 +75,7 @@ jezkazgan-connect/
 - Управление публикациями
 - Страница подписки с тарифами
 - Рекламный баннер (Premium)
-- AI генерация изображений (Premium) — Ideogram V2, FLUX, DALL-E
+- AI генерация изображений (Premium) — Ideogram V2
 - Авто-публикации в соцсети: Telegram, VK, Instagram, Facebook (Premium)
 - Видео формат для событий (Premium)
 

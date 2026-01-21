@@ -154,7 +154,7 @@ Railway Platform
 | Баннеры городов | ✅ | Рекламные баннеры на главной |
 | Управление фото карусели | ✅ | CRUD через админку |
 | Сохранение событий | ✅ | Избранное для пользователей |
-| **ИИ генерация изображений** | ✅ | Ideogram V2, FLUX.1-schnell, DALL-E 3, Replicate |
+| **ИИ генерация изображений** | ✅ | Ideogram V2 |
 | **Маркировка AI-контента** | ✅ | Закон РК об ИИ (01.2026) |
 | **Авто-публикации в соцсети** | ✅ | Telegram, VK, Instagram, Facebook |
 | **Видео формат для событий** | ✅ | YouTube, Vimeo, MP4 (Premium) |
@@ -266,9 +266,9 @@ Railway Platform
 
 ### Этап 9: Business Premium функции
 
-1. **ИИ генерация изображений (Nano Banana):**
-   - Сервис `nanobanana.ts` — мульти-провайдер AI генерация
-   - Провайдеры: **Ideogram V2** (рекомендуется), Hugging Face FLUX.1-schnell (бесплатно), OpenAI DALL-E 3, Replicate
+1. **ИИ генерация изображений (Ideogram V2):**
+   - Сервис `nanobanana.ts` — AI генерация изображений
+   - Провайдер: **Ideogram V2** (отлично для текста и типографики)
    - API routes `/ai/*` — генерация, история, подсказки
    - Компонент `AiImageGenerator` — UI с промптами и историей
    - Стили: banner, promo, event, poster, social
@@ -646,7 +646,7 @@ ai_image_generations (
 | Значок "Проверено" | - | ✅ | ✅ |
 | Рекламный баннер | - | - | ✅ |
 | Команда сотрудников | - | - | До 5 |
-| **ИИ генерация изображений** | - | - | ✅ Ideogram V2 / FLUX |
+| **ИИ генерация изображений** | - | - | ✅ Ideogram V2 |
 | **Авто-публикации в соцсети** | - | - | ✅ TG/VK/IG |
 | **Видео формат для событий** | - | - | ✅ YouTube/Vimeo |
 
@@ -733,27 +733,17 @@ ai_image_generations (
 
 Изображения автоматически меняются в карусели каждые 5 секунд с использованием Embla Carousel + Autoplay.
 
-### AI Генерация изображений (Nano Banana)
+### AI Генерация изображений (Ideogram V2)
 
-Поддерживаются несколько провайдеров AI генерации:
+Используется Ideogram V2 для генерации изображений:
 
-| Провайдер | Цена | Модель | ENV переменная |
-|-----------|------|--------|----------------|
-| **Ideogram** | Платно | V2 (отлично для текста) | `IDEOGRAM_API_KEY` |
-| Hugging Face | Бесплатно | FLUX.1-schnell | `HUGGINGFACE_API_KEY` |
-| OpenAI | Платно | DALL-E 3 | `OPENAI_API_KEY` |
-| Replicate | Платно | SDXL | `REPLICATE_API_KEY` |
+| Провайдер | Модель | ENV переменная |
+|-----------|--------|----------------|
+| **Ideogram** | V2 | `IDEOGRAM_API_KEY` |
 
 **Конфигурация (backend/.env):**
 ```env
-AI_IMAGE_PROVIDER=ideogram
 IDEOGRAM_API_KEY=your_key_here
-```
-
-**Или для бесплатного варианта:**
-```env
-AI_IMAGE_PROVIDER=huggingface
-HUGGINGFACE_API_KEY=hf_...
 ```
 
 **Закон РК об ИИ (с января 2026):**
