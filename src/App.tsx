@@ -28,6 +28,12 @@ import AdminFinance from "./pages/admin/FinancePage";
 import AdminModeration from "./pages/admin/ModerationPage";
 import AdminAnalytics from "./pages/admin/AnalyticsPage";
 import AdminSettings from "./pages/admin/SettingsPage";
+import AdminCashback from "./pages/admin/CashbackPage";
+import AdminReferral from "./pages/admin/ReferralPage";
+
+// User Premium pages
+import CashbackWallet from "./pages/CashbackWallet";
+import ReferralProgram from "./pages/ReferralProgram";
 
 // Business cabinet pages
 import BusinessLayout from "./pages/business/BusinessLayout";
@@ -63,6 +69,10 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/create-business" element={<CreateBusiness />} />
 
+          {/* User Premium pages */}
+          <Route path="/cashback" element={<CashbackWallet />} />
+          <Route path="/referral" element={<ReferralProgram />} />
+
           {/* Admin routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -77,6 +87,8 @@ const App = () => (
             <Route path="moderation" element={<AdminModeration />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="cashback" element={<AdminCashback />} />
+            <Route path="referral" element={<AdminReferral />} />
           </Route>
 
           {/* Business cabinet routes */}
