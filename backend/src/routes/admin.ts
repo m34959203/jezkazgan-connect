@@ -81,49 +81,72 @@ admin.get('/finance', async (c) => {
         previousStartDate.setMonth(now.getMonth() - 2);
     }
 
-    // Get payments for current period
-    const currentPayments = await db
-      .select({
-        id: payments.id,
-        type: payments.type,
-        amount: payments.amount,
-        status: payments.status,
-        description: payments.description,
-        subscriptionType: payments.subscriptionType,
-        createdAt: payments.createdAt,
-        paidAt: payments.paidAt,
-        userId: payments.userId,
-        businessId: payments.businessId,
-        userName: users.name,
-        userEmail: users.email,
-        businessName: businesses.name,
-      })
-      .from(payments)
-      .leftJoin(users, eq(payments.userId, users.id))
-      .leftJoin(businesses, eq(payments.businessId, businesses.id))
-      .where(gte(payments.createdAt, startDate))
-      .orderBy(desc(payments.createdAt));
+    // Get payments for current period - handle case where payments table may not exist
+    let currentPayments: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      status: string;
+      description: string | null;
+      subscriptionType: string | null;
+      createdAt: Date;
+      paidAt: Date | null;
+      userId: string;
+      businessId: string | null;
+      userName: string | null;
+      userEmail: string | null;
+      businessName: string | null;
+    }> = [];
+    let currentRevenue = 0;
+    let previousRevenue = 0;
 
-    // Calculate current period revenue
-    const currentRevenue = currentPayments
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    try {
+      currentPayments = await db
+        .select({
+          id: payments.id,
+          type: payments.type,
+          amount: payments.amount,
+          status: payments.status,
+          description: payments.description,
+          subscriptionType: payments.subscriptionType,
+          createdAt: payments.createdAt,
+          paidAt: payments.paidAt,
+          userId: payments.userId,
+          businessId: payments.businessId,
+          userName: users.name,
+          userEmail: users.email,
+          businessName: businesses.name,
+        })
+        .from(payments)
+        .leftJoin(users, eq(payments.userId, users.id))
+        .leftJoin(businesses, eq(payments.businessId, businesses.id))
+        .where(gte(payments.createdAt, startDate))
+        .orderBy(desc(payments.createdAt));
 
-    // Get previous period revenue for comparison
-    const [previousRevenueResult] = await db
-      .select({
-        total: sql<number>`COALESCE(SUM(${payments.amount}), 0)::integer`
-      })
-      .from(payments)
-      .where(
-        and(
-          gte(payments.createdAt, previousStartDate),
-          lte(payments.createdAt, startDate),
-          eq(payments.status, 'completed')
-        )
-      );
+      // Calculate current period revenue
+      currentRevenue = currentPayments
+        .filter(p => p.status === 'completed')
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-    const previousRevenue = previousRevenueResult?.total || 0;
+      // Get previous period revenue for comparison
+      const [previousRevenueResult] = await db
+        .select({
+          total: sql<number>`COALESCE(SUM(${payments.amount}), 0)::integer`
+        })
+        .from(payments)
+        .where(
+          and(
+            gte(payments.createdAt, previousStartDate),
+            lte(payments.createdAt, startDate),
+            eq(payments.status, 'completed')
+          )
+        );
+
+      previousRevenue = previousRevenueResult?.total || 0;
+    } catch (paymentsError) {
+      // Payments table may not exist yet - continue with empty data
+      console.log('[Finance] Payments table not available:', paymentsError instanceof Error ? paymentsError.message : 'Unknown error');
+    }
     const revenueChange = previousRevenue > 0
       ? Math.round(((currentRevenue - previousRevenue) / previousRevenue) * 100)
       : 0;
