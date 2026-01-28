@@ -873,9 +873,15 @@ admin.delete('/businesses/:id', async (c) => {
     await db.update(users).set({ role: 'user' }).where(eq(users.id, ownerId));
 
     return c.json({ success: true, message: 'Business deleted' });
-  } catch (error) {
-    console.error('Delete business error:', error);
-    return c.json({ error: 'Failed to delete business' }, 500);
+  } catch (error: any) {
+    console.error('[DELETE BUSINESS] Error details:', {
+      businessId: id,
+      message: error?.message,
+      detail: error?.detail,
+      code: error?.code,
+      constraint: error?.constraint,
+    });
+    return c.json({ error: 'Failed to delete business', detail: error?.detail || error?.message }, 500);
   }
 });
 
