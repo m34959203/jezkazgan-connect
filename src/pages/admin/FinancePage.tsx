@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, DollarSign, TrendingUp, CreditCard, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, Download, DollarSign, TrendingUp, CreditCard, Receipt, ArrowUpRight, ArrowDownRight, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,81 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Mock transactions data
-const mockTransactions = [
-  {
-    id: '1',
-    type: 'subscription',
-    description: 'Premium подписка - Ресторан "Тюльпан"',
-    amount: 200000,
-    status: 'completed',
-    date: '2026-01-17',
-  },
-  {
-    id: '2',
-    type: 'subscription',
-    description: 'Lite подписка - Фитнес "Энергия"',
-    amount: 50000,
-    status: 'completed',
-    date: '2026-01-16',
-  },
-  {
-    id: '3',
-    type: 'premium_user',
-    description: 'Premium пользователь - Айдар К.',
-    amount: 2000,
-    status: 'completed',
-    date: '2026-01-15',
-  },
-  {
-    id: '4',
-    type: 'subscription',
-    description: 'Lite подписка - ТехноМир',
-    amount: 50000,
-    status: 'pending',
-    date: '2026-01-14',
-  },
-  {
-    id: '5',
-    type: 'refund',
-    description: 'Возврат - Кофейня Арома',
-    amount: -50000,
-    status: 'completed',
-    date: '2026-01-13',
-  },
-];
-
-// Mock subscriptions data
-const mockSubscriptions = [
-  {
-    id: '1',
-    business: 'Ресторан "Тюльпан"',
-    tier: 'premium',
-    amount: 200000,
-    startDate: '2026-01-01',
-    endDate: '2026-02-01',
-    status: 'active',
-  },
-  {
-    id: '2',
-    business: 'Фитнес "Энергия"',
-    tier: 'lite',
-    amount: 50000,
-    startDate: '2026-01-10',
-    endDate: '2026-02-10',
-    status: 'active',
-  },
-  {
-    id: '3',
-    business: 'ТехноМир',
-    tier: 'lite',
-    amount: 50000,
-    startDate: '2025-12-20',
-    endDate: '2026-01-20',
-    status: 'expiring',
-  },
-];
+import { useAdminFinance } from '@/hooks/use-api';
 
 const tierLabels: Record<string, string> = {
   free: 'Free',
@@ -113,6 +39,29 @@ const statusColors: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800',
   active: 'bg-green-100 text-green-800',
   expiring: 'bg-red-100 text-red-800',
+  failed: 'bg-red-100 text-red-800',
+  refunded: 'bg-gray-100 text-gray-800',
+  cancelled: 'bg-gray-100 text-gray-800',
+};
+
+const statusLabels: Record<string, string> = {
+  completed: 'Выполнено',
+  pending: 'Ожидание',
+  active: 'Активна',
+  expiring: 'Истекает',
+  failed: 'Ошибка',
+  refunded: 'Возврат',
+  cancelled: 'Отменено',
+};
+
+const typeLabels: Record<string, string> = {
+  subscription: 'Подписка',
+  premium: 'Premium',
+  business_lite: 'Lite подписка',
+  business_premium: 'Premium подписка',
+  user_premium: 'Premium пользователь',
+  banner: 'Баннер',
+  other: 'Другое',
 };
 
 const formatCurrency = (amount: number) => {
@@ -123,14 +72,42 @@ export default function FinancePage() {
   const [search, setSearch] = useState('');
   const [periodFilter, setPeriodFilter] = useState('month');
 
-  // Calculate stats
-  const totalRevenue = mockTransactions
-    .filter((t) => t.status === 'completed' && t.amount > 0)
-    .reduce((acc, t) => acc + t.amount, 0);
+  const { data, isLoading, error } = useAdminFinance(periodFilter);
 
-  const premiumSubscriptions = mockSubscriptions.filter((s) => s.tier === 'premium').length;
-  const liteSubscriptions = mockSubscriptions.filter((s) => s.tier === 'lite').length;
-  const expiringSubscriptions = mockSubscriptions.filter((s) => s.status === 'expiring').length;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Ошибка загрузки</h2>
+        <p className="text-muted-foreground">Не удалось загрузить финансовые данные</p>
+      </div>
+    );
+  }
+
+  const stats = data?.stats ?? {
+    totalRevenue: 0,
+    revenueChange: 0,
+    premiumSubscriptions: 0,
+    liteSubscriptions: 0,
+    expiringSubscriptions: 0,
+    premiumUsers: 0,
+  };
+
+  const transactions = data?.transactions ?? [];
+  const subscriptions = data?.subscriptions ?? [];
+
+  // Filter transactions by search
+  const filteredTransactions = transactions.filter(t =>
+    !search || t.description.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -154,17 +131,19 @@ export default function FinancePage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Доход за месяц</p>
-                <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+                <p className="text-sm text-muted-foreground">Доход за период</p>
+                <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
               </div>
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-              <ArrowUpRight className="w-4 h-4" />
-              +15% к прошлому месяцу
-            </div>
+            {stats.revenueChange !== 0 && (
+              <div className={`flex items-center gap-1 mt-2 text-sm ${stats.revenueChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {stats.revenueChange > 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                {stats.revenueChange > 0 ? '+' : ''}{stats.revenueChange}% к прошлому периоду
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -172,7 +151,7 @@ export default function FinancePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Premium подписок</p>
-                <div className="text-2xl font-bold">{premiumSubscriptions}</div>
+                <div className="text-2xl font-bold">{stats.premiumSubscriptions}</div>
               </div>
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-amber-600" />
@@ -188,7 +167,7 @@ export default function FinancePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Lite подписок</p>
-                <div className="text-2xl font-bold">{liteSubscriptions}</div>
+                <div className="text-2xl font-bold">{stats.liteSubscriptions}</div>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <Receipt className="w-5 h-5 text-blue-600" />
@@ -204,7 +183,7 @@ export default function FinancePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Истекают скоро</p>
-                <div className="text-2xl font-bold text-red-600">{expiringSubscriptions}</div>
+                <div className="text-2xl font-bold text-red-600">{stats.expiringSubscriptions}</div>
               </div>
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-red-600" />
@@ -273,32 +252,39 @@ export default function FinancePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(transaction.date).toLocaleDateString('ru-RU')}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {transaction.description}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {transaction.type === 'subscription' ? 'Подписка' :
-                           transaction.type === 'premium_user' ? 'Premium' : 'Возврат'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}>
-                          {transaction.amount < 0 ? '' : '+'}{formatCurrency(transaction.amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[transaction.status]}>
-                          {transaction.status === 'completed' ? 'Выполнено' : 'Ожидание'}
-                        </Badge>
+                  {filteredTransactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Транзакции не найдены
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredTransactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(transaction.date).toLocaleDateString('ru-RU')}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {transaction.description}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {typeLabels[transaction.type] || transaction.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className={transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}>
+                            {transaction.amount < 0 ? '' : '+'}{formatCurrency(transaction.amount)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[transaction.status] || 'bg-gray-100 text-gray-800'}>
+                            {statusLabels[transaction.status] || transaction.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -327,28 +313,36 @@ export default function FinancePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockSubscriptions.map((sub) => (
-                    <TableRow key={sub.id}>
-                      <TableCell className="font-medium">{sub.business}</TableCell>
-                      <TableCell>
-                        <Badge className={tierColors[sub.tier]}>
-                          {tierLabels[sub.tier]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatCurrency(sub.amount)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(sub.startDate).toLocaleDateString('ru-RU')}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(sub.endDate).toLocaleDateString('ru-RU')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[sub.status]}>
-                          {sub.status === 'active' ? 'Активна' : 'Истекает'}
-                        </Badge>
+                  {subscriptions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Активные подписки не найдены
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    subscriptions.map((sub) => (
+                      <TableRow key={sub.id}>
+                        <TableCell className="font-medium">{sub.business}</TableCell>
+                        <TableCell>
+                          <Badge className={tierColors[sub.tier]}>
+                            {tierLabels[sub.tier]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatCurrency(sub.amount)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(sub.startDate).toLocaleDateString('ru-RU')}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {sub.endDate ? new Date(sub.endDate).toLocaleDateString('ru-RU') : 'Бессрочно'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[sub.status]}>
+                            {statusLabels[sub.status] || sub.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

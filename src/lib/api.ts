@@ -537,6 +537,47 @@ export async function fetchAdminStats(): Promise<AdminStats> {
   return res.json();
 }
 
+export interface AdminFinanceData {
+  stats: {
+    totalRevenue: number;
+    revenueChange: number;
+    premiumSubscriptions: number;
+    liteSubscriptions: number;
+    expiringSubscriptions: number;
+    premiumUsers: number;
+  };
+  transactions: Array<{
+    id: string;
+    type: string;
+    description: string;
+    amount: number;
+    status: string;
+    date: string;
+    businessName?: string;
+    userName?: string;
+  }>;
+  subscriptions: Array<{
+    id: string;
+    business: string;
+    tier: string;
+    amount: number;
+    startDate: string;
+    endDate?: string;
+    status: string;
+    ownerName?: string;
+    ownerEmail?: string;
+  }>;
+}
+
+export async function fetchAdminFinance(period?: string): Promise<AdminFinanceData> {
+  const params = period ? `?period=${period}` : '';
+  const res = await fetch(`${API_URL}/admin/finance${params}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch finance data');
+  return res.json();
+}
+
 export async function fetchAdminUsers(params?: {
   search?: string;
   role?: string;
