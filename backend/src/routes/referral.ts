@@ -637,4 +637,85 @@ export async function onUserBecamePremium(userId: string) {
     .where(eq(referralCodes.id, referral.codeId));
 }
 
+// ============================================
+// INTERNAL: First purchase tracking
+// ============================================
+
+// Track first purchase flag - stored in referrals table metadata
+// We need to add a field or use status to track this
+
+// This is called when a referred user makes their first confirmed cashback payment
+export async function onUserFirstPurchase(userId: string) {
+  // Find referral where this user was referred
+  const [referral] = await db
+    .select()
+    .from(referrals)
+    .where(
+      and(
+        eq(referrals.referredId, userId),
+        // Only pay once - check if activated status exists (means already got first purchase bonus)
+        or(
+          eq(referrals.status, 'registered'),
+          eq(referrals.status, 'premium_converted')
+        )
+      )
+    )
+    .limit(1);
+
+  if (!referral) return false;
+
+  // Check if already got first purchase reward (we use activatedAt as indicator)
+  if (referral.activatedAt) {
+    return false; // Already received first purchase bonus
+  }
+
+  // Get first purchase reward
+  const firstPurchaseReward = await getRewardConfig('first_purchase');
+  if (!firstPurchaseReward) return false;
+
+  const referrerAmount = parseFloat(firstPurchaseReward.referrerAmount);
+  const referredAmount = parseFloat(firstPurchaseReward.referredAmount);
+
+  // Mark first purchase as done (use activatedAt field)
+  await db
+    .update(referrals)
+    .set({
+      activatedAt: new Date(),
+      referrerReward: sql`${referrals.referrerReward} + ${referrerAmount}`,
+      referredReward: sql`${referrals.referredReward} + ${referredAmount}`,
+    })
+    .where(eq(referrals.id, referral.id));
+
+  // Pay first purchase rewards
+  if (referrerAmount > 0) {
+    await payReferralReward(
+      referral.id,
+      referral.referrerId,
+      referrerAmount,
+      true,
+      'Бонус: ваш реферал совершил первую покупку!'
+    );
+  }
+
+  if (referredAmount > 0) {
+    await payReferralReward(
+      referral.id,
+      userId,
+      referredAmount,
+      false,
+      'Бонус за первую покупку!'
+    );
+  }
+
+  // Update code stats
+  await db
+    .update(referralCodes)
+    .set({
+      totalRewardsEarned: sql`${referralCodes.totalRewardsEarned} + ${referrerAmount}`,
+    })
+    .where(eq(referralCodes.id, referral.codeId));
+
+  return true;
+}
+
 export default app;

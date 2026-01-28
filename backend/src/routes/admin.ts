@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig } from '../db';
 import { eq, desc, sql, count, and, gte, lte, like, or, isNull } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
+import { onUserBecamePremium } from './referral';
 
 const admin = new Hono<{ Variables: { user: AuthUser } }>();
 
@@ -109,6 +110,15 @@ admin.patch('/users/:id', async (c) => {
   const body = await c.req.json();
 
   try {
+    // Get current user state to check if premium status is changing
+    const [currentUser] = await db.select().from(users).where(eq(users.id, id));
+    if (!currentUser) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const wasNotPremium = !currentUser.isPremium;
+    const becomingPremium = body.isPremium === true;
+
     const [updated] = await db
       .update(users)
       .set({
@@ -118,6 +128,16 @@ admin.patch('/users/:id', async (c) => {
       })
       .where(eq(users.id, id))
       .returning();
+
+    // If user just became premium, trigger referral reward
+    if (wasNotPremium && becomingPremium) {
+      try {
+        await onUserBecamePremium(id);
+      } catch (err) {
+        console.error('Failed to process referral premium bonus:', err);
+        // Don't fail the request, just log the error
+      }
+    }
 
     return c.json({ ...updated, passwordHash: undefined });
   } catch {

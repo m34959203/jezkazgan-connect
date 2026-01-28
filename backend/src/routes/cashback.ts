@@ -10,12 +10,14 @@ import {
   cashbackRules,
   cashbackPartnerPayments,
   businesses,
+  businessMembers,
   users,
   events,
   promotions
 } from '../db';
 import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 import { nanoid } from 'nanoid';
+import { onUserFirstPurchase } from './referral';
 
 const app = new Hono<{ Variables: { user: AuthUser } }>();
 
@@ -456,10 +458,24 @@ app.post('/confirm', zValidator('json', confirmPaymentSchema), async (c) => {
     return c.json({ error: 'Бизнес не найден' }, 404);
   }
 
-  // Verify user has access (owner or admin)
+  // Verify user has access (owner, admin, or business member with appropriate role)
   if (business.ownerId !== user.id && user.role !== 'admin') {
-    // TODO: Check business members table
-    return c.json({ error: 'Нет доступа к этому бизнесу' }, 403);
+    // Check if user is a member of this business with admin or editor role
+    const [member] = await db
+      .select()
+      .from(businessMembers)
+      .where(
+        and(
+          eq(businessMembers.businessId, business.id),
+          eq(businessMembers.userId, user.id),
+          eq(businessMembers.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!member || (member.role !== 'admin' && member.role !== 'editor')) {
+      return c.json({ error: 'Нет доступа к этому бизнесу' }, 403);
+    }
   }
 
   // Get customer's wallet
@@ -544,6 +560,14 @@ app.post('/confirm', zValidator('json', confirmPaymentSchema), async (c) => {
       .where(eq(cashbackRules.id, payment.appliedRuleId));
   }
 
+  // Check if this is user's first purchase and pay referral bonus
+  try {
+    await onUserFirstPurchase(payment.userId);
+  } catch (err) {
+    console.error('Failed to process first purchase referral bonus:', err);
+    // Don't fail the payment confirmation, just log the error
+  }
+
   // Get customer info for response
   const [customer] = await db
     .select({ name: users.name, email: users.email })
@@ -595,6 +619,36 @@ app.post('/reject', zValidator('json', rejectPaymentSchema), async (c) => {
 
   if (payment.status !== 'pending') {
     return c.json({ error: 'Платёж уже обработан' }, 400);
+  }
+
+  // Check if user has access to this business
+  const [business] = await db
+    .select()
+    .from(businesses)
+    .where(eq(businesses.id, payment.businessId))
+    .limit(1);
+
+  if (!business) {
+    return c.json({ error: 'Бизнес не найден' }, 404);
+  }
+
+  // Verify user has access (owner, admin, or business member)
+  if (business.ownerId !== user.id && user.role !== 'admin') {
+    const [member] = await db
+      .select()
+      .from(businessMembers)
+      .where(
+        and(
+          eq(businessMembers.businessId, business.id),
+          eq(businessMembers.userId, user.id),
+          eq(businessMembers.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!member || (member.role !== 'admin' && member.role !== 'editor')) {
+      return c.json({ error: 'Нет доступа к этому бизнесу' }, 403);
+    }
   }
 
   // Update payment status
