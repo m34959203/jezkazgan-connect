@@ -1638,3 +1638,659 @@ export async function deleteAutoPublishSettings(platform: SocialPlatform): Promi
   if (!res.ok) throw new Error('Failed to delete auto-publish settings');
   return res.json();
 }
+
+// ============================================
+// CASHBACK SYSTEM (Premium Users)
+// ============================================
+
+export interface CashbackWallet {
+  id: string;
+  balance: number;
+  totalEarned: number;
+  totalSpent: number;
+  totalExpired: number;
+}
+
+export interface CashbackTransaction {
+  id: string;
+  type: 'earn' | 'spend' | 'refund' | 'bonus' | 'referral' | 'premium_bonus' | 'expired';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  description: string | null;
+  status: 'pending' | 'completed' | 'cancelled' | 'expired';
+  businessId: string | null;
+  businessName: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+export interface CashbackPayment {
+  id: string;
+  totalAmount: number;
+  cashbackUsed: number;
+  cashbackEarned: number;
+  amountPaid: number;
+  status: 'pending' | 'confirmed' | 'rejected' | 'refunded';
+  confirmationCode: string;
+  businessName: string | null;
+  businessLogo: string | null;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+export interface CashbackRule {
+  id: string;
+  name: string;
+  description: string | null;
+  type: 'percentage' | 'fixed';
+  value: number;
+  minPurchase: number;
+  maxCashback: number | null;
+  isPremiumOnly: boolean;
+  businessId: string | null;
+  businessName: string | null;
+  validUntil: string | null;
+}
+
+export interface CashbackPartner {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  logo: string | null;
+  address: string | null;
+  tier: string;
+  cashbackPercent: number;
+}
+
+// Cashback API functions
+export async function fetchCashbackWallet(): Promise<{ wallet: CashbackWallet; currency: string }> {
+  const res = await fetch(`${API_URL}/cashback/wallet`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch wallet');
+  }
+  return res.json();
+}
+
+export async function fetchCashbackTransactions(params?: {
+  limit?: number;
+  offset?: number;
+  type?: string;
+}): Promise<{ transactions: CashbackTransaction[]; pagination: { limit: number; offset: number; hasMore: boolean } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+  if (params?.type) searchParams.set('type', params.type);
+
+  const res = await fetch(`${API_URL}/cashback/transactions?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch transactions');
+  return res.json();
+}
+
+export async function createCashbackPayment(data: {
+  businessId: string;
+  totalAmount: number;
+  useCashback?: number;
+  eventId?: string;
+  promotionId?: string;
+  notes?: string;
+}): Promise<{
+  payment: {
+    id: string;
+    confirmationCode: string;
+    totalAmount: number;
+    cashbackUsed: number;
+    cashbackEarned: number;
+    amountToPay: number;
+    status: string;
+    businessName: string;
+  };
+  message: string;
+  instructions: { ru: string; kz: string };
+}> {
+  const res = await fetch(`${API_URL}/cashback/pay`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create payment');
+  }
+  return res.json();
+}
+
+export async function fetchCashbackPayments(params?: {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}): Promise<{ payments: CashbackPayment[]; pagination: { limit: number; offset: number; hasMore: boolean } }> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+  if (params?.status) searchParams.set('status', params.status);
+
+  const res = await fetch(`${API_URL}/cashback/payments?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch payments');
+  return res.json();
+}
+
+export async function fetchCashbackPaymentById(id: string): Promise<{ payment: CashbackPayment }> {
+  const res = await fetch(`${API_URL}/cashback/payment/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch payment');
+  return res.json();
+}
+
+export async function confirmCashbackPayment(confirmationCode: string): Promise<{
+  success: boolean;
+  message: string;
+  payment: {
+    id: string;
+    totalAmount: number;
+    cashbackUsed: number;
+    cashbackEarned: number;
+    amountPaid: number;
+    customerName: string;
+  };
+}> {
+  const res = await fetch(`${API_URL}/cashback/confirm`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ confirmationCode }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to confirm payment');
+  }
+  return res.json();
+}
+
+export async function rejectCashbackPayment(confirmationCode: string, reason: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/cashback/reject`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ confirmationCode, reason }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to reject payment');
+  }
+  return res.json();
+}
+
+export async function fetchCashbackRules(businessId?: string): Promise<{ rules: CashbackRule[] }> {
+  const searchParams = new URLSearchParams();
+  if (businessId) searchParams.set('businessId', businessId);
+
+  const res = await fetch(`${API_URL}/cashback/rules?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch rules');
+  return res.json();
+}
+
+export async function fetchCashbackPartners(params?: {
+  cityId?: string;
+  category?: string;
+}): Promise<{ partners: CashbackPartner[] }> {
+  const searchParams = new URLSearchParams();
+  if (params?.cityId) searchParams.set('cityId', params.cityId);
+  if (params?.category) searchParams.set('category', params.category);
+
+  const res = await fetch(`${API_URL}/cashback/partners?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch partners');
+  return res.json();
+}
+
+export async function fetchBusinessCashbackStats(): Promise<{
+  stats: {
+    totalPayments: number;
+    confirmedPayments: number;
+    pendingPayments: number;
+    totalRevenue: number;
+    totalCashbackUsed: number;
+    totalCashbackGiven: number;
+  };
+}> {
+  const res = await fetch(`${API_URL}/cashback/business/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch business cashback stats');
+  return res.json();
+}
+
+export async function fetchBusinessCashbackPayments(params?: {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}): Promise<{
+  payments: Array<{
+    id: string;
+    totalAmount: number;
+    cashbackUsed: number;
+    cashbackEarned: number;
+    status: string;
+    confirmationCode: string;
+    customerName: string | null;
+    createdAt: string;
+    confirmedAt: string | null;
+  }>;
+  pagination: { limit: number; offset: number; hasMore: boolean };
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+  if (params?.status) searchParams.set('status', params.status);
+
+  const res = await fetch(`${API_URL}/cashback/business/payments?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch business payments');
+  return res.json();
+}
+
+// ============================================
+// REFERRAL SYSTEM (Premium Users)
+// ============================================
+
+export interface ReferralCode {
+  code: string;
+  usageCount: number;
+  maxUsages: number | null;
+  totalRewardsEarned: number;
+  premiumConversions: number;
+  shareUrl: string;
+  shareMessage: string;
+}
+
+export interface Referral {
+  id: string;
+  status: 'pending' | 'registered' | 'activated' | 'premium_converted';
+  reward: number;
+  rewardPaid: boolean;
+  referredName: string;
+  registeredAt: string | null;
+  convertedAt: string | null;
+}
+
+export interface ReferralStats {
+  totalReferrals: number;
+  registeredReferrals: number;
+  premiumConversions: number;
+  totalEarned: number;
+  pendingRewards: number;
+}
+
+export interface ReferralRewards {
+  registration: {
+    referrerBonus: number;
+    referredBonus: number;
+    description: string;
+  } | null;
+  premiumConversion: {
+    referrerBonus: number;
+    referredBonus: number;
+    description: string;
+  } | null;
+  firstPurchase: {
+    referrerBonus: number;
+    referredBonus: number;
+    description: string;
+  } | null;
+}
+
+// Referral API functions
+export async function validateReferralCode(code: string): Promise<{
+  valid: boolean;
+  code?: string;
+  referrerName?: string;
+  bonusAmount?: number;
+  message?: string;
+  error?: string;
+}> {
+  const res = await fetch(`${API_URL}/referral/validate/${code}`);
+  return res.json();
+}
+
+export async function fetchReferralCode(): Promise<{
+  code: string | null;
+  usageCount?: number;
+  maxUsages?: number | null;
+  totalRewardsEarned?: number;
+  premiumConversions?: number;
+  shareUrl?: string;
+  shareMessage?: string;
+  message?: string;
+}> {
+  const res = await fetch(`${API_URL}/referral/code`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch referral code');
+  }
+  return res.json();
+}
+
+export async function generateReferralCode(): Promise<{
+  code: string;
+  shareUrl: string;
+  shareMessage: string;
+  message: string;
+}> {
+  const res = await fetch(`${API_URL}/referral/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to generate referral code');
+  }
+  return res.json();
+}
+
+export async function applyReferralCode(code: string): Promise<{
+  success: boolean;
+  message: string;
+  bonusReceived: number;
+  referrerName?: string;
+}> {
+  const res = await fetch(`${API_URL}/referral/apply`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to apply referral code');
+  }
+  return res.json();
+}
+
+export async function fetchReferralStats(): Promise<{
+  hasCode: boolean;
+  code?: string;
+  stats?: ReferralStats;
+  referrals?: Referral[];
+  message?: string;
+}> {
+  const res = await fetch(`${API_URL}/referral/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch referral stats');
+  }
+  return res.json();
+}
+
+export async function fetchReferralRewards(): Promise<{
+  rewards: ReferralRewards;
+  programDescription: { ru: string; kz: string };
+}> {
+  const res = await fetch(`${API_URL}/referral/rewards`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral rewards');
+  return res.json();
+}
+
+export async function deactivateReferralCode(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/referral/deactivate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to deactivate code');
+  }
+  return res.json();
+}
+
+// ============================================
+// ADMIN: CASHBACK & REFERRAL MANAGEMENT
+// ============================================
+
+export async function fetchAdminCashbackStats(): Promise<{
+  wallets: {
+    total: number;
+    totalBalance: number;
+    totalEarned: number;
+    totalSpent: number;
+  };
+  payments: {
+    total: number;
+    confirmed: number;
+    pending: number;
+  };
+  last30Days: {
+    totalRevenue: number;
+    cashbackUsed: number;
+    cashbackGiven: number;
+  };
+  activeRules: number;
+}> {
+  const res = await fetch(`${API_URL}/admin/cashback/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch cashback stats');
+  return res.json();
+}
+
+export async function fetchAdminCashbackRules(): Promise<{
+  rules: Array<CashbackRule & {
+    isActive: boolean;
+    priority: number;
+    usageCount: number;
+    totalCashbackGiven: number;
+    category: string | null;
+    createdAt: string;
+  }>;
+}> {
+  const res = await fetch(`${API_URL}/admin/cashback/rules`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch cashback rules');
+  return res.json();
+}
+
+export async function createAdminCashbackRule(data: {
+  name: string;
+  description?: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  minPurchase?: number;
+  maxCashback?: number | null;
+  category?: string | null;
+  businessId?: string | null;
+  isPremiumOnly?: boolean;
+  isActive?: boolean;
+  priority?: number;
+  validFrom?: string;
+  validUntil?: string | null;
+}): Promise<CashbackRule> {
+  const res = await fetch(`${API_URL}/admin/cashback/rules`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create rule');
+  }
+  return res.json();
+}
+
+export async function updateAdminCashbackRule(id: string, data: Partial<{
+  name: string;
+  description: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  minPurchase: number;
+  maxCashback: number | null;
+  category: string | null;
+  businessId: string | null;
+  isPremiumOnly: boolean;
+  isActive: boolean;
+  priority: number;
+  validFrom: string;
+  validUntil: string | null;
+}>): Promise<CashbackRule> {
+  const res = await fetch(`${API_URL}/admin/cashback/rules/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update rule');
+  return res.json();
+}
+
+export async function deleteAdminCashbackRule(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/admin/cashback/rules/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete rule');
+  return res.json();
+}
+
+export async function fetchAdminCashbackPayments(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  payments: Array<{
+    id: string;
+    totalAmount: number;
+    cashbackUsed: number;
+    cashbackEarned: number;
+    status: string;
+    confirmationCode: string;
+    createdAt: string;
+    confirmedAt: string | null;
+    userName: string | null;
+    userEmail: string | null;
+    businessName: string | null;
+  }>;
+  total: number;
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/admin/cashback/payments?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch payments');
+  return res.json();
+}
+
+export async function fetchAdminReferralStats(): Promise<{
+  codes: { total: number; active: number };
+  referrals: { total: number; premiumConverted: number; conversionRate: number };
+  rewards: { totalGiven: number };
+  last30Days: { newReferrals: number };
+  topReferrers: Array<{
+    userId: string;
+    userName: string | null;
+    userEmail: string | null;
+    code: string;
+    usageCount: number;
+    totalRewards: number;
+    premiumConversions: number;
+  }>;
+}> {
+  const res = await fetch(`${API_URL}/admin/referral/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral stats');
+  return res.json();
+}
+
+export async function fetchAdminReferralRewards(): Promise<{
+  rewards: Array<{
+    id: string;
+    rewardType: string;
+    referrerAmount: number;
+    referredAmount: number;
+    description: string | null;
+    isActive: boolean;
+    validFrom: string;
+    validUntil: string | null;
+  }>;
+}> {
+  const res = await fetch(`${API_URL}/admin/referral/rewards`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral rewards');
+  return res.json();
+}
+
+export async function updateAdminReferralReward(type: string, data: {
+  referrerAmount: number;
+  referredAmount: number;
+  description?: string;
+  isActive?: boolean;
+  validFrom?: string;
+  validUntil?: string | null;
+}): Promise<any> {
+  const res = await fetch(`${API_URL}/admin/referral/rewards/${type}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update reward');
+  return res.json();
+}
+
+export async function fetchAdminReferralCodes(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  codes: Array<{
+    id: string;
+    code: string;
+    isActive: boolean;
+    usageCount: number;
+    maxUsages: number | null;
+    totalRewardsEarned: number;
+    premiumConversions: number;
+    expiresAt: string | null;
+    createdAt: string;
+    userName: string | null;
+    userEmail: string | null;
+  }>;
+  total: number;
+}> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/admin/referral/codes?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch codes');
+  return res.json();
+}
+
+export async function deactivateAdminReferralCode(id: string): Promise<any> {
+  const res = await fetch(`${API_URL}/admin/referral/codes/${id}/deactivate`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to deactivate code');
+  return res.json();
+}

@@ -16,6 +16,8 @@ import upload from './routes/upload';
 import favorites from './routes/favorites';
 import ai from './routes/ai';
 import autopublish from './routes/autopublish';
+import cashback from './routes/cashback';
+import referral from './routes/referral';
 import { apiRateLimit, authRateLimit, securityCheck } from './middleware/rateLimit';
 
 const app = new Hono();
@@ -54,8 +56,8 @@ app.use('*', cors({
 }));
 
 // Health check with version info
-const BUILD_VERSION = '2.2.0-premium';
-const BUILD_DATE = '2026-01-19';
+const BUILD_VERSION = '2.5.0-premium-cashback';
+const BUILD_DATE = '2026-01-21';
 
 app.get('/', (c) => {
   return c.json({
@@ -97,6 +99,9 @@ app.route('/favorites', favorites);
 // Business Premium routes
 app.route('/ai', ai);
 app.route('/autopublish', autopublish);
+// User Premium routes (Cashback & Referral)
+app.route('/cashback', cashback);
+app.route('/referral', referral);
 
 // 404 handler
 app.notFound((c) => {
