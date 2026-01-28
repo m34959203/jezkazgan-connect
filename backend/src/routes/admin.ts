@@ -797,6 +797,16 @@ admin.delete('/users/:id', async (c) => {
 admin.delete('/businesses/:id', async (c) => {
   const { id } = c.req.param();
 
+  // Helper to safely delete from tables that might not exist
+  const safeDelete = async (deletePromise: Promise<any>) => {
+    try {
+      await deletePromise;
+    } catch (err: any) {
+      // Ignore "relation does not exist" errors (42P01)
+      if (err?.code !== '42P01') throw err;
+    }
+  };
+
   try {
     const business = await db.select().from(businesses).where(eq(businesses.id, id)).limit(1);
     if (!business.length) {
@@ -812,59 +822,64 @@ admin.delete('/businesses/:id', async (c) => {
     const businessPromotions = await db.select({ id: promotions.id }).from(promotions).where(eq(promotions.businessId, id));
     const promotionIds = businessPromotions.map(p => p.id);
 
-    // Get all review IDs for this business (direct and via events)
-    const businessReviews = await db.select({ id: reviews.id }).from(reviews).where(eq(reviews.businessId, id));
-    let reviewIds = businessReviews.map(r => r.id);
+    // Get all review IDs for this business (direct and via events) - safely
+    let reviewIds: string[] = [];
+    try {
+      const businessReviews = await db.select({ id: reviews.id }).from(reviews).where(eq(reviews.businessId, id));
+      reviewIds = businessReviews.map(r => r.id);
 
-    if (eventIds.length > 0) {
-      const eventReviews = await db.select({ id: reviews.id }).from(reviews).where(inArray(reviews.eventId, eventIds));
-      reviewIds = [...reviewIds, ...eventReviews.map(r => r.id)];
+      if (eventIds.length > 0) {
+        const eventReviews = await db.select({ id: reviews.id }).from(reviews).where(inArray(reviews.eventId, eventIds));
+        reviewIds = [...reviewIds, ...eventReviews.map(r => r.id)];
+      }
+    } catch (err: any) {
+      if (err?.code !== '42P01') throw err;
     }
 
     // Delete review replies and votes first (they reference reviews)
     if (reviewIds.length > 0) {
-      await db.delete(reviewReplies).where(inArray(reviewReplies.reviewId, reviewIds));
-      await db.delete(reviewVotes).where(inArray(reviewVotes.reviewId, reviewIds));
+      await safeDelete(db.delete(reviewReplies).where(inArray(reviewReplies.reviewId, reviewIds)));
+      await safeDelete(db.delete(reviewVotes).where(inArray(reviewVotes.reviewId, reviewIds)));
     }
 
     // Delete favorites referencing events/promotions
     if (eventIds.length > 0) {
-      await db.delete(favorites).where(inArray(favorites.eventId, eventIds));
+      await safeDelete(db.delete(favorites).where(inArray(favorites.eventId, eventIds)));
     }
     if (promotionIds.length > 0) {
-      await db.delete(favorites).where(inArray(favorites.promotionId, promotionIds));
+      await safeDelete(db.delete(favorites).where(inArray(favorites.promotionId, promotionIds)));
     }
 
     // Delete cashback transactions/payments referencing events/promotions
     if (eventIds.length > 0) {
-      await db.delete(cashbackTransactions).where(inArray(cashbackTransactions.relatedEventId, eventIds));
-      await db.delete(cashbackPartnerPayments).where(inArray(cashbackPartnerPayments.relatedEventId, eventIds));
+      await safeDelete(db.delete(cashbackTransactions).where(inArray(cashbackTransactions.relatedEventId, eventIds)));
+      await safeDelete(db.delete(cashbackPartnerPayments).where(inArray(cashbackPartnerPayments.relatedEventId, eventIds)));
     }
     if (promotionIds.length > 0) {
-      await db.delete(cashbackTransactions).where(inArray(cashbackTransactions.relatedPromotionId, promotionIds));
-      await db.delete(cashbackPartnerPayments).where(inArray(cashbackPartnerPayments.relatedPromotionId, promotionIds));
+      await safeDelete(db.delete(cashbackTransactions).where(inArray(cashbackTransactions.relatedPromotionId, promotionIds)));
+      await safeDelete(db.delete(cashbackPartnerPayments).where(inArray(cashbackPartnerPayments.relatedPromotionId, promotionIds)));
     }
 
-    // Now delete all business-related data
-    await db.delete(cashbackPartnerPayments).where(eq(cashbackPartnerPayments.businessId, id));
-    await db.delete(cashbackTransactions).where(eq(cashbackTransactions.relatedBusinessId, id));
-    await db.delete(cashbackRules).where(eq(cashbackRules.businessId, id));
-    await db.delete(autoPublishHistory).where(eq(autoPublishHistory.businessId, id));
-    await db.delete(autoPublishSettings).where(eq(autoPublishSettings.businessId, id));
-    await db.delete(aiImageGenerations).where(eq(aiImageGenerations.businessId, id));
+    // Now delete all business-related data (safely for tables that might not exist)
+    await safeDelete(db.delete(cashbackPartnerPayments).where(eq(cashbackPartnerPayments.businessId, id)));
+    await safeDelete(db.delete(cashbackTransactions).where(eq(cashbackTransactions.relatedBusinessId, id)));
+    await safeDelete(db.delete(cashbackRules).where(eq(cashbackRules.businessId, id)));
+    await safeDelete(db.delete(autoPublishHistory).where(eq(autoPublishHistory.businessId, id)));
+    await safeDelete(db.delete(autoPublishSettings).where(eq(autoPublishSettings.businessId, id)));
+    await safeDelete(db.delete(aiImageGenerations).where(eq(aiImageGenerations.businessId, id)));
 
     // Delete reviews (after their replies/votes are deleted)
     if (reviewIds.length > 0) {
-      await db.delete(reviews).where(inArray(reviews.id, reviewIds));
+      await safeDelete(db.delete(reviews).where(inArray(reviews.id, reviewIds)));
     }
-    await db.delete(reviews).where(eq(reviews.businessId, id));
+    await safeDelete(db.delete(reviews).where(eq(reviews.businessId, id)));
 
-    await db.delete(favorites).where(eq(favorites.businessId, id));
-    await db.delete(businessMembers).where(eq(businessMembers.businessId, id));
-    await db.delete(payments).where(eq(payments.businessId, id));
+    await safeDelete(db.delete(favorites).where(eq(favorites.businessId, id)));
+    await safeDelete(db.delete(businessMembers).where(eq(businessMembers.businessId, id)));
+    await safeDelete(db.delete(payments).where(eq(payments.businessId, id)));
     await db.delete(events).where(eq(events.businessId, id));
     await db.delete(promotions).where(eq(promotions.businessId, id));
-    await db.delete(cityBanners).where(eq(cityBanners.businessId, id));
+    await safeDelete(db.delete(cityBanners).where(eq(cityBanners.businessId, id)));
 
     // Delete business
     await db.delete(businesses).where(eq(businesses.id, id));
