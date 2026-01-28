@@ -421,7 +421,7 @@ export const referrals = pgTable('referrals', {
   referredId: uuid('referred_id').references(() => users.id).notNull(), // Кто был приглашён
   codeId: uuid('code_id').references(() => referralCodes.id).notNull(), // Использованный код
   referralCodeId: uuid('referral_code_id').references(() => referralCodes.id), // Alias for routes
-  status: text('status').default('pending').notNull(), // registered, converted
+  status: referralStatusEnum('status').default('pending').notNull(),
   // Награды
   referrerReward: numeric('referrer_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашающему
   referredReward: numeric('referred_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашённому
