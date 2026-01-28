@@ -1,9 +1,9 @@
 # Afisha.kz - Прогресс разработки
 
-**Версия документа:** 2.2
-**Дата обновления:** 20 января 2026
-**Версия приложения:** 2.4.0-premium
-**Ветка разработки:** `claude/fix-api-resolution-7q0rU`
+**Версия документа:** 2.3
+**Дата обновления:** 28 января 2026
+**Версия приложения:** 2.3.0-full
+**Ветка разработки:** `claude/fix-business-members-premium-bln5q`
 
 ---
 
@@ -158,6 +158,13 @@ Railway Platform
 | **Маркировка AI-контента** | ✅ | Закон РК об ИИ (01.2026) |
 | **Авто-публикации в соцсети** | ✅ | Telegram, VK, Instagram, Facebook |
 | **Видео формат для событий** | ✅ | YouTube, Vimeo, MP4 (Premium) |
+| **Реферальная система** | ✅ | Бонусы за first_purchase |
+| **Платежи Kaspi/Halyk** | ✅ | QR-коды, webhooks |
+| **Fraud-защита** | ✅ | Risk scoring, IP blocking |
+| **Push-уведомления** | ✅ | Web Push API |
+| **Отзывы и рейтинги** | ✅ | Для бизнесов и событий |
+| **Swagger/OpenAPI** | ✅ | Документация на `/docs` |
+| **Аналитика конверсий** | ✅ | Premium conversion tracking |
 
 ---
 
@@ -297,7 +304,7 @@ Railway Platform
    - Расширен блок преимуществ Premium
    - Иконки для AI, авто-публикаций, видео
 
-### Этап 10: Закон РК об ИИ (Текущий)
+### Этап 10: Закон РК об ИИ
 
 1. **Маркировка AI-контента (Обязательно с января 2026):**
    - Метаданные генерации: `isAiGenerated`, `aiDisclaimer`, `generatedAt`, `provider`
@@ -309,6 +316,60 @@ Railway Platform
    - Компонент `AiImage` — изображение с автоматической маркировкой
    - Поля `isImageAiGenerated` в таблицах events и promotions
    - Визуальная маркировка на всех AI-изображениях в UI
+
+### Этап 11: Полная платформа (Текущий)
+
+1. **Реферальная система:**
+   - Таблицы: `referral_codes`, `referrals`, `referral_bonuses`
+   - Уникальные реферальные коды для пользователей
+   - first_purchase бонусы (10% рефереру, 500₸ рефералу)
+   - API routes `/referrals/*` — код, статистика, список, бонусы
+   - Запрос на вывод средств через Kaspi/Halyk
+
+2. **Платежи Kaspi/Halyk:**
+   - Таблицы: `payments`, `payment_webhooks`
+   - API routes `/payments/*` — создание, статус, история
+   - Webhook handlers для Kaspi и Halyk
+   - QR-коды для оплаты через Kaspi
+   - Автоматическая активация подписки при успешной оплате
+   - Интеграция с реферальной системой (first_purchase bonus)
+
+3. **Fraud-защита:**
+   - Таблицы: `fraud_logs`, `blocked_entities`, `device_fingerprints`
+   - Сервис `fraud.ts` — Risk scoring алгоритм
+   - Детекция: suspicious_login, multiple_accounts, payment_fraud, referral_abuse
+   - Автоматическая блокировка high-risk IP
+   - Device fingerprinting для обнаружения мульти-аккаунтов
+
+4. **Push-уведомления:**
+   - Таблицы: `push_subscriptions`, `notifications`
+   - Web Push API с VAPID ключами
+   - API routes `/push/*` — подписка, уведомления, чтение
+   - Типы: event_reminder, promotion_new, payment_success, referral_bonus и др.
+   - Admin endpoint для массовой рассылки
+
+5. **Отзывы и рейтинги:**
+   - Таблицы: `reviews`, `review_replies`, `review_votes`
+   - API routes `/reviews/*` — CRUD, голосование, ответы
+   - Рейтинги 1-5 звёзд для бизнесов и событий
+   - Распределение рейтингов (5★, 4★, 3★...)
+   - Модерация отзывов (isApproved)
+   - Ответы от бизнеса (isBusinessReply)
+   - Голосование за полезность (helpful/not helpful)
+
+6. **OpenAPI/Swagger документация:**
+   - Route `/docs` — Swagger UI
+   - Route `/docs/openapi.json` — OpenAPI 3.0 спецификация
+   - Полная документация всех API endpoints
+   - Схемы всех типов данных
+
+7. **Аналитика конверсий:**
+   - Таблица: `analytics_events`
+   - API routes `/analytics/*` — track, conversions, revenue, traffic
+   - Premium conversion tracking
+   - Business tier upgrade tracking
+   - Revenue analytics по типам и провайдерам
+   - Traffic sources (UTM, device, referrer)
 
 ---
 
@@ -378,11 +439,18 @@ backend/src/
 │   ├── favorites.ts             # /favorites (избранное)
 │   ├── upload.ts                # /upload (Cloudinary config)
 │   ├── ai.ts                    # /ai/* (AI генерация, Premium)
-│   └── autopublish.ts           # /autopublish/* (соцсети, Premium)
+│   ├── autopublish.ts           # /autopublish/* (соцсети, Premium)
+│   ├── referrals.ts             # /referrals/* (реферальная система)
+│   ├── payments.ts              # /payments/* (Kaspi/Halyk)
+│   ├── push.ts                  # /push/* (уведомления)
+│   ├── reviews.ts               # /reviews/* (отзывы и рейтинги)
+│   ├── analytics.ts             # /analytics/* (аналитика конверсий)
+│   └── openapi.ts               # /docs (Swagger UI)
 ├── services/
 │   ├── cloudinary.ts            # Cloudinary интеграция
 │   ├── nanobanana.ts            # AI генерация изображений
-│   └── autopublish.ts           # Публикация в соцсети
+│   ├── autopublish.ts           # Публикация в соцсети
+│   └── fraud.ts                 # Fraud-защита и risk scoring
 ├── middleware/
 │   └── auth.ts                  # JWT middleware
 └── index.ts                     # Hono app entry
@@ -503,6 +571,79 @@ backend/src/
 | `GET /autopublish/history` | GET | История публикаций |
 | `DELETE /autopublish/settings/:platform` | DELETE | Удалить настройки платформы |
 
+### Реферальная система (требуется JWT)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /referrals/my-code` | GET | Получить/создать реферальный код |
+| `GET /referrals/stats` | GET | Статистика рефералов |
+| `GET /referrals/list` | GET | Список приглашённых |
+| `GET /referrals/validate/:code` | GET | Проверить реферальный код |
+| `GET /referrals/bonuses` | GET | История бонусов |
+| `POST /referrals/withdraw` | POST | Запрос на вывод средств |
+
+### Платежи (требуется JWT)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `POST /payments/create` | POST | Создать платёж |
+| `GET /payments/status/:id` | GET | Статус платежа |
+| `GET /payments/history` | GET | История платежей |
+| `GET /payments/pricing` | GET | Тарифы и цены |
+| `POST /payments/webhook/kaspi` | POST | Webhook Kaspi |
+| `POST /payments/webhook/halyk` | POST | Webhook Halyk |
+| `POST /payments/confirm/:id` | POST | Подтвердить платёж (admin) |
+| `GET /payments/admin/list` | GET | Все платежи (admin) |
+
+### Push-уведомления (требуется JWT)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /push/vapid-key` | GET | VAPID публичный ключ |
+| `POST /push/subscribe` | POST | Подписка на push |
+| `POST /push/unsubscribe` | POST | Отписка от push |
+| `GET /push/notifications` | GET | Список уведомлений |
+| `PUT /push/notifications/:id/read` | PUT | Пометить прочитанным |
+| `PUT /push/notifications/read-all` | PUT | Прочитать все |
+| `DELETE /push/notifications/:id` | DELETE | Удалить уведомление |
+| `POST /push/admin/send` | POST | Массовая рассылка (admin) |
+| `GET /push/admin/stats` | GET | Статистика push (admin) |
+
+### Отзывы и рейтинги
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `POST /reviews` | POST | Создать отзыв (JWT) |
+| `GET /reviews/business/:id` | GET | Отзывы о бизнесе |
+| `GET /reviews/event/:id` | GET | Отзывы о событии |
+| `GET /reviews/:id` | GET | Детали отзыва |
+| `PUT /reviews/:id` | PUT | Обновить отзыв (JWT) |
+| `DELETE /reviews/:id` | DELETE | Удалить отзыв (JWT) |
+| `POST /reviews/:id/vote` | POST | Голосовать (JWT) |
+| `POST /reviews/:id/reply` | POST | Ответить (JWT) |
+| `DELETE /reviews/reply/:id` | DELETE | Удалить ответ (JWT) |
+| `GET /reviews/user/my-reviews` | GET | Мои отзывы (JWT) |
+| `GET /reviews/admin/pending` | GET | На модерации (admin) |
+| `PATCH /reviews/admin/:id` | PATCH | Одобрить/отклонить (admin) |
+
+### Аналитика (требуется JWT admin)
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `POST /analytics/track` | POST | Отслеживать событие |
+| `GET /analytics/conversions` | GET | Метрики конверсий |
+| `GET /analytics/conversions/trends` | GET | Тренды конверсий |
+| `GET /analytics/revenue` | GET | Revenue аналитика |
+| `GET /analytics/referrals` | GET | Реферальная аналитика |
+| `GET /analytics/traffic` | GET | Источники трафика |
+
+### Документация
+
+| Endpoint | Метод | Описание |
+|----------|-------|----------|
+| `GET /docs` | GET | Swagger UI |
+| `GET /docs/openapi.json` | GET | OpenAPI спецификация |
+
 ---
 
 ## База данных
@@ -598,11 +739,112 @@ auto_publish_history (
   publishedAt, createdAt
 )
 
--- AI генерация изображений (NEW - Premium)
+-- AI генерация изображений (Premium)
 ai_image_generations (
   id, businessId, userId, prompt, style,
   generatedImageUrl, status: pending|generating|completed|failed,
   errorMessage, usedFor, usedForId, creditsUsed, createdAt
+)
+
+-- Реферальные коды (NEW)
+referral_codes (
+  id, userId, code, usageCount, totalEarnings,
+  isActive, createdAt
+)
+
+-- Рефералы (NEW)
+referrals (
+  id, referrerId, referredId, referralCodeId,
+  status: pending|registered|converted|expired,
+  firstPurchaseAt, firstPurchaseAmount,
+  bonusEarned, bonusGiven, createdAt
+)
+
+-- Реферальные бонусы (NEW)
+referral_bonuses (
+  id, userId, referralId,
+  type: registration|first_purchase|subscription|withdrawal,
+  amount, status: pending|approved|paid|rejected,
+  description, processedAt, createdAt
+)
+
+-- Платежи (NEW)
+payments (
+  id, userId, businessId, provider: kaspi|halyk|stripe|manual,
+  type: subscription|premium|banner|other,
+  amount, currency, status: pending|processing|completed|failed|refunded|cancelled,
+  externalId, externalStatus, paymentUrl, qrCode,
+  subscriptionType, subscriptionDays,
+  expiresAt, paidAt, refundedAt, createdAt, updatedAt
+)
+
+-- Webhook логи платежей (NEW)
+payment_webhooks (
+  id, provider, paymentId, eventType, payload,
+  signature, isProcessed, processedAt, errorMessage, createdAt
+)
+
+-- Fraud логи (NEW)
+fraud_logs (
+  id, userId, ipAddress, userAgent,
+  eventType: suspicious_login|multiple_accounts|payment_fraud|referral_abuse|rate_limit_exceeded|bot_detected,
+  riskScore, details, action: warn|block_temporary|block_permanent|require_verification,
+  isReviewed, reviewedBy, reviewedAt, createdAt
+)
+
+-- Заблокированные сущности (NEW)
+blocked_entities (
+  id, entityType: ip|device|email_domain|phone_prefix,
+  entityValue, reason, blockedBy, expiresAt, createdAt
+)
+
+-- Device fingerprints (NEW)
+device_fingerprints (
+  id, userId, fingerprint, ipAddress, userAgent,
+  lastSeenAt, createdAt
+)
+
+-- Push подписки (NEW)
+push_subscriptions (
+  id, userId, endpoint, p256dh, auth,
+  userAgent, isActive, createdAt, lastUsedAt
+)
+
+-- Уведомления (NEW)
+notifications (
+  id, userId, type: event_reminder|promotion_new|...|system,
+  title, body, icon, link, data,
+  isRead, isPushed, readAt, createdAt
+)
+
+-- Отзывы (NEW)
+reviews (
+  id, userId, targetType: business|event,
+  businessId, eventId, rating, title, content,
+  pros, cons, images, isVerifiedPurchase, isApproved,
+  likesCount, dislikesCount, replyCount,
+  createdAt, updatedAt
+)
+
+-- Ответы на отзывы (NEW)
+review_replies (
+  id, reviewId, userId, content,
+  isBusinessReply, createdAt
+)
+
+-- Голоса за отзывы (NEW)
+review_votes (
+  id, reviewId, userId, isHelpful, createdAt
+)
+
+-- События аналитики (NEW)
+analytics_events (
+  id, userId, sessionId,
+  eventType: page_view|event_view|premium_conversion|...,
+  eventData, source, referrer,
+  utmSource, utmMedium, utmCampaign,
+  ipAddress, userAgent, deviceType,
+  country, city, createdAt
 )
 ```
 
@@ -675,18 +917,22 @@ ai_image_generations (
 - [x] Баннеры городов в админке
 - [x] Управление фото карусели в админке
 - [x] Избранное (сохранение событий)
-- [x] **ИИ генерация изображений (Nano Banana)** ← NEW
-- [x] **Авто-публикации в соцсети (Telegram/VK/Instagram)** ← NEW
-- [x] **Видео формат для событий** ← NEW
-- [ ] Оплата тарифов (интеграция Kaspi/карты)
-- [ ] Email уведомления
+- [x] **ИИ генерация изображений (Nano Banana)**
+- [x] **Авто-публикации в соцсети (Telegram/VK/Instagram)**
+- [x] **Видео формат для событий**
+- [x] **Оплата тарифов (интеграция Kaspi/Halyk)** ← NEW
+- [x] **Реферальная система с first_purchase бонусами** ← NEW
+- [x] **Fraud-защита** ← NEW
+- [x] **Push-уведомления** ← NEW
+- [x] **Отзывы и рейтинги** ← NEW
+- [x] **Swagger/OpenAPI документация** ← NEW
+- [x] **Аналитика конверсий** ← NEW
+- [ ] Email уведомления (частично реализовано)
 
 ### Приоритет 2 (После MVP)
 
 - [ ] QR-коды для акций
-- [ ] Push-уведомления
 - [ ] Чат между бизнесом и клиентами
-- [ ] Отзывы и рейтинги
 
 ### Приоритет 3 (Развитие)
 
@@ -756,6 +1002,105 @@ IDEOGRAM_API_KEY=your_key_here
 
 ---
 
+## ⚠️ Переменные окружения для интеграций
+
+> **ВАЖНО:** Для полноценной работы платежей и push-уведомлений необходимо добавить следующие переменные окружения в `backend/.env`:
+
+### Kaspi Pay Integration
+
+```env
+# Kaspi Pay API (https://kaspi.kz/pay)
+KASPI_MERCHANT_ID=your_merchant_id
+KASPI_API_KEY=your_api_key
+KASPI_WEBHOOK_SECRET=your_webhook_secret
+```
+
+**Получение ключей:**
+1. Зарегистрируйтесь как мерчант на https://kaspi.kz/pay
+2. Получите merchant_id и API key в личном кабинете
+3. Настройте webhook URL: `https://your-api.com/payments/webhook/kaspi`
+
+### Halyk Epay Integration
+
+```env
+# Halyk Epay API (https://epay.halykbank.kz)
+HALYK_TERMINAL_ID=your_terminal_id
+HALYK_CLIENT_ID=your_client_id
+HALYK_CLIENT_SECRET=your_client_secret
+HALYK_WEBHOOK_SECRET=your_webhook_secret
+```
+
+**Получение ключей:**
+1. Подайте заявку на интеграцию на https://epay.halykbank.kz
+2. После одобрения получите terminal_id и client credentials
+3. Настройте callback URL: `https://your-api.com/payments/webhook/halyk`
+
+### Web Push Notifications (VAPID)
+
+```env
+# VAPID Keys для Web Push API
+# Сгенерировать: npx web-push generate-vapid-keys
+VAPID_PUBLIC_KEY=BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+VAPID_PRIVATE_KEY=your_private_key_here
+VAPID_SUBJECT=mailto:support@afisha.kz
+```
+
+**Генерация ключей:**
+```bash
+npm install web-push -g
+web-push generate-vapid-keys
+```
+
+### Полный пример .env файла
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@host.neon.tech/dbname?sslmode=require
+
+# JWT
+JWT_SECRET=your-jwt-secret-key
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_UPLOAD_PRESET=afisha_unsigned
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# AI Image Generation (Ideogram)
+IDEOGRAM_API_KEY=ide_your_key_here
+
+# Kaspi Pay
+KASPI_MERCHANT_ID=
+KASPI_API_KEY=
+KASPI_WEBHOOK_SECRET=
+
+# Halyk Epay
+HALYK_TERMINAL_ID=
+HALYK_CLIENT_ID=
+HALYK_CLIENT_SECRET=
+HALYK_WEBHOOK_SECRET=
+
+# Web Push (VAPID)
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:support@afisha.kz
+
+# Email (Resend)
+RESEND_API_KEY=re_your_key_here
+```
+
+### Статус интеграций
+
+| Интеграция | Backend | Frontend | Ключи |
+|------------|---------|----------|-------|
+| Kaspi Pay | ✅ Готово | ✅ UI | ⚠️ Требуются |
+| Halyk Epay | ✅ Готово | ✅ UI | ⚠️ Требуются |
+| Web Push | ✅ Готово | ✅ Hooks | ⚠️ Требуются |
+| Ideogram AI | ✅ Готово | ✅ UI | ✅ Настроен |
+| Cloudinary | ✅ Готово | ✅ UI | ✅ Настроен |
+
+---
+
 ## Полезные ссылки
 
 - **Документация продукта:** [docs/UNIFIED_PRODUCT_VISION.md](./UNIFIED_PRODUCT_VISION.md)
@@ -765,4 +1110,4 @@ IDEOGRAM_API_KEY=your_key_here
 
 ---
 
-*Последнее обновление: 20 января 2026 (v2.4.0-premium)*
+*Последнее обновление: 28 января 2026 (v2.3.0-full)*
