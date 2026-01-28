@@ -408,6 +408,7 @@ export const referralCodes = pgTable('referral_codes', {
   maxUsages: integer('max_usages'), // null = безлимит
   // Статистика
   totalRewardsEarned: numeric('total_rewards_earned', { precision: 12, scale: 2 }).default('0'),
+  totalEarnings: numeric('total_earnings', { precision: 12, scale: 2 }).default('0'), // Alias for routes
   premiumConversions: integer('premium_conversions').default(0), // Сколько стали premium
   createdAt: timestamp('created_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at'), // Дата истечения кода
@@ -419,12 +420,18 @@ export const referrals = pgTable('referrals', {
   referrerId: uuid('referrer_id').references(() => users.id).notNull(), // Кто пригласил
   referredId: uuid('referred_id').references(() => users.id).notNull(), // Кто был приглашён
   codeId: uuid('code_id').references(() => referralCodes.id).notNull(), // Использованный код
-  status: referralStatusEnum('status').default('pending').notNull(),
+  referralCodeId: uuid('referral_code_id').references(() => referralCodes.id), // Alias for routes
+  status: text('status').default('pending').notNull(), // registered, converted
   // Награды
   referrerReward: numeric('referrer_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашающему
   referredReward: numeric('referred_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашённому
   referrerRewardPaid: boolean('referrer_reward_paid').default(false),
   referredRewardPaid: boolean('referred_reward_paid').default(false),
+  // First purchase tracking (for routes)
+  firstPurchaseAt: timestamp('first_purchase_at'),
+  firstPurchaseAmount: integer('first_purchase_amount'),
+  bonusEarned: numeric('bonus_earned', { precision: 12, scale: 2 }).default('0'),
+  bonusGiven: numeric('bonus_given', { precision: 12, scale: 2 }).default('0'),
   // Даты
   registeredAt: timestamp('registered_at'), // Когда зарегистрировался
   activatedAt: timestamp('activated_at'), // Когда активировался
@@ -444,6 +451,195 @@ export const referralRewardsConfig = pgTable('referral_rewards_config', {
   validUntil: timestamp('valid_until'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// REFERRAL BONUSES
+// ============================================
+
+export const referralBonusTypeEnum = pgEnum('referral_bonus_type', [
+  'first_purchase',  // Бонус за первую покупку
+  'registration',    // Бонус за регистрацию
+  'withdrawal'       // Вывод средств
+]);
+
+export const referralBonusStatusEnum = pgEnum('referral_bonus_status', [
+  'pending',   // Ожидает
+  'approved',  // Подтверждён
+  'paid',      // Выплачен
+  'rejected'   // Отклонён
+]);
+
+export const referralBonuses = pgTable('referral_bonuses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  referralId: uuid('referral_id').references(() => referrals.id),
+  type: referralBonusTypeEnum('type').notNull(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  status: referralBonusStatusEnum('status').default('pending').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// ANALYTICS EVENTS
+// ============================================
+
+export const analyticsEventTypeEnum = pgEnum('analytics_event_type', [
+  'page_view',
+  'event_view',
+  'business_view',
+  'promotion_view',
+  'premium_conversion',
+  'business_tier_upgrade',
+  'referral_signup',
+  'first_purchase',
+  'subscription_started',
+  'subscription_cancelled'
+]);
+
+export const analyticsEvents = pgTable('analytics_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id),
+  sessionId: text('session_id'),
+  eventType: text('event_type').notNull(),
+  eventData: text('event_data'), // JSON string
+  source: text('source').default('web'),
+  referrer: text('referrer'),
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  deviceType: text('device_type'), // desktop, mobile, tablet
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// PAYMENTS SYSTEM
+// ============================================
+
+export const paymentProviderEnum = pgEnum('payment_provider', ['kaspi', 'halyk']);
+export const paymentTypeEnum = pgEnum('payment_type', ['subscription', 'premium', 'banner', 'other']);
+export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed', 'refunded', 'cancelled']);
+export const subscriptionTypeEnum = pgEnum('subscription_type', ['user_premium', 'business_lite', 'business_premium']);
+
+export const payments = pgTable('payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  businessId: uuid('business_id').references(() => businesses.id),
+  provider: paymentProviderEnum('provider').notNull(),
+  type: paymentTypeEnum('type').notNull(),
+  amount: integer('amount').notNull(), // В тенге
+  status: paymentStatusEnum('status').default('pending').notNull(),
+  description: text('description'),
+  subscriptionType: subscriptionTypeEnum('subscription_type'),
+  subscriptionDays: integer('subscription_days'),
+  paymentUrl: text('payment_url'),
+  qrCode: text('qr_code'),
+  externalId: text('external_id'), // ID в платёжной системе
+  externalStatus: text('external_status'),
+  paidAt: timestamp('paid_at'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const paymentWebhooks = pgTable('payment_webhooks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provider: paymentProviderEnum('provider').notNull(),
+  eventType: text('event_type').notNull(),
+  payload: text('payload').notNull(), // JSON
+  signature: text('signature'),
+  isProcessed: boolean('is_processed').default(false),
+  processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  userAgent: text('user_agent'),
+  isActive: boolean('is_active').default(true),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'event_reminder',
+  'promotion_new',
+  'business_verified',
+  'payment_success',
+  'subscription_expiring',
+  'referral_bonus',
+  'event_approved',
+  'event_rejected',
+  'system'
+]);
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  type: notificationTypeEnum('type').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  icon: text('icon'),
+  link: text('link'),
+  data: text('data'), // JSON string
+  isRead: boolean('is_read').default(false),
+  readAt: timestamp('read_at'),
+  isPushed: boolean('is_pushed').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// REVIEWS SYSTEM
+// ============================================
+
+export const reviewTargetTypeEnum = pgEnum('review_target_type', ['business', 'event']);
+
+export const reviews = pgTable('reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  targetType: reviewTargetTypeEnum('target_type').notNull(),
+  businessId: uuid('business_id').references(() => businesses.id),
+  eventId: uuid('event_id').references(() => events.id),
+  rating: integer('rating').notNull(), // 1-5
+  title: text('title'),
+  content: text('content'),
+  pros: text('pros'),
+  cons: text('cons'),
+  images: text('images'), // JSON array of URLs
+  likesCount: integer('likes_count').default(0),
+  dislikesCount: integer('dislikes_count').default(0),
+  replyCount: integer('reply_count').default(0),
+  isApproved: boolean('is_approved').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const reviewReplies = pgTable('review_replies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reviewId: uuid('review_id').references(() => reviews.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  content: text('content').notNull(),
+  isBusinessReply: boolean('is_business_reply').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const reviewVotes = pgTable('review_votes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reviewId: uuid('review_id').references(() => reviews.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  isHelpful: boolean('is_helpful').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Relations
@@ -578,3 +774,65 @@ export const referralsRelations = relations(referrals, ({ one }) => ({
 }));
 
 export const referralRewardsConfigRelations = relations(referralRewardsConfig, () => ({}));
+
+// ============================================
+// REFERRAL BONUSES RELATIONS
+// ============================================
+
+export const referralBonusesRelations = relations(referralBonuses, ({ one }) => ({
+  user: one(users, { fields: [referralBonuses.userId], references: [users.id] }),
+  referral: one(referrals, { fields: [referralBonuses.referralId], references: [referrals.id] }),
+}));
+
+// ============================================
+// ANALYTICS EVENTS RELATIONS
+// ============================================
+
+export const analyticsEventsRelations = relations(analyticsEvents, ({ one }) => ({
+  user: one(users, { fields: [analyticsEvents.userId], references: [users.id] }),
+}));
+
+// ============================================
+// PAYMENTS RELATIONS
+// ============================================
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  user: one(users, { fields: [payments.userId], references: [users.id] }),
+  business: one(businesses, { fields: [payments.businessId], references: [businesses.id] }),
+}));
+
+export const paymentWebhooksRelations = relations(paymentWebhooks, () => ({}));
+
+// ============================================
+// PUSH NOTIFICATIONS RELATIONS
+// ============================================
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, { fields: [pushSubscriptions.userId], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+// ============================================
+// REVIEWS RELATIONS
+// ============================================
+
+export const reviewsRelations = relations(reviews, ({ one, many }) => ({
+  user: one(users, { fields: [reviews.userId], references: [users.id] }),
+  business: one(businesses, { fields: [reviews.businessId], references: [businesses.id] }),
+  event: one(events, { fields: [reviews.eventId], references: [events.id] }),
+  replies: many(reviewReplies),
+  votes: many(reviewVotes),
+}));
+
+export const reviewRepliesRelations = relations(reviewReplies, ({ one }) => ({
+  review: one(reviews, { fields: [reviewReplies.reviewId], references: [reviews.id] }),
+  user: one(users, { fields: [reviewReplies.userId], references: [users.id] }),
+}));
+
+export const reviewVotesRelations = relations(reviewVotes, ({ one }) => ({
+  review: one(reviews, { fields: [reviewVotes.reviewId], references: [reviews.id] }),
+  user: one(users, { fields: [reviewVotes.userId], references: [users.id] }),
+}));
