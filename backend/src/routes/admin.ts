@@ -149,6 +149,7 @@ admin.patch('/users/:id', async (c) => {
 
 admin.get('/businesses', async (c) => {
   try {
+    console.log('[Admin] GET /businesses called');
     const { search, tier, verified, limit = '20', offset = '0' } = c.req.query();
 
     const result = await db
@@ -192,7 +193,10 @@ admin.get('/businesses', async (c) => {
       },
     });
   } catch (error) {
-    console.error('Businesses error:', error);
+    console.error('[Admin] Businesses error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return c.json({ error: 'Failed to fetch businesses' }, 500);
   }
 });
