@@ -41,6 +41,39 @@ import {
   updateCityPhoto,
   deleteCityPhoto,
   fetchPublicCityPhotos,
+  // New imports for referrals, payments, push, reviews, analytics
+  fetchMyReferralCode,
+  fetchReferralStats,
+  fetchReferralList,
+  validateReferralCode,
+  fetchReferralBonuses,
+  requestReferralWithdrawal,
+  createPayment,
+  fetchPaymentStatus,
+  fetchPaymentHistory,
+  fetchPricing,
+  fetchVapidKey,
+  subscribeToPush,
+  unsubscribeFromPush,
+  fetchNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  createReview,
+  fetchBusinessReviews,
+  fetchEventReviews,
+  fetchReview,
+  updateReview,
+  deleteReview,
+  voteOnReview,
+  replyToReview,
+  deleteReviewReply,
+  fetchMyReviews,
+  trackAnalyticsEvent,
+  fetchConversionMetrics,
+  fetchRevenueMetrics,
+  fetchReferralMetrics,
+  fetchTrafficMetrics,
   type City,
   type Event,
   type Business,
@@ -55,6 +88,23 @@ import {
   type TeamData,
   type TeamMember,
   type CityBanner,
+  type ReferralCode,
+  type ReferralStats,
+  type Referral,
+  type ReferralBonus,
+  type Payment,
+  type PaymentCreateResponse,
+  type PricingInfo,
+  type PushNotification,
+  type NotificationsResponse,
+  type Review,
+  type ReviewReply,
+  type ReviewsResponse,
+  type ConversionMetrics,
+  type RevenueMetrics,
+  type ReferralMetrics,
+  type TrafficMetrics,
+  type AnalyticsEventType,
 } from '@/lib/api';
 
 // Cities hooks
@@ -615,6 +665,362 @@ export function usePublicCityPhotos(citySlug: string) {
     queryKey: ['cityPhotos', citySlug],
     queryFn: () => fetchPublicCityPhotos(citySlug),
     enabled: !!citySlug,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ============================================
+// REFERRAL SYSTEM HOOKS
+// ============================================
+
+export function useMyReferralCode() {
+  return useQuery<ReferralCode>({
+    queryKey: ['referral', 'myCode'],
+    queryFn: fetchMyReferralCode,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useReferralStats() {
+  return useQuery<ReferralStats>({
+    queryKey: ['referral', 'stats'],
+    queryFn: fetchReferralStats,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useReferralList(params?: { limit?: number; offset?: number }) {
+  return useQuery<Referral[]>({
+    queryKey: ['referral', 'list', params],
+    queryFn: () => fetchReferralList(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useValidateReferralCode(code: string) {
+  return useQuery({
+    queryKey: ['referral', 'validate', code],
+    queryFn: () => validateReferralCode(code),
+    enabled: !!code && code.length >= 4,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useReferralBonuses(params?: { limit?: number; offset?: number }) {
+  return useQuery<ReferralBonus[]>({
+    queryKey: ['referral', 'bonuses', params],
+    queryFn: () => fetchReferralBonuses(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useRequestWithdrawal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { amount: number; method: 'kaspi' | 'halyk'; accountDetails: string }) =>
+      requestReferralWithdrawal(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referral'] });
+    },
+  });
+}
+
+// ============================================
+// PAYMENT HOOKS
+// ============================================
+
+export function usePricing() {
+  return useQuery<PricingInfo>({
+    queryKey: ['pricing'],
+    queryFn: fetchPricing,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+}
+
+export function useCreatePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      provider: 'kaspi' | 'halyk';
+      type: 'subscription' | 'premium' | 'banner' | 'other';
+      subscriptionType?: 'user_premium' | 'business_lite' | 'business_premium';
+      subscriptionPeriod?: 'monthly' | 'yearly';
+      amount?: number;
+      businessId?: string;
+      description?: string;
+    }) => createPayment(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+    },
+  });
+}
+
+export function usePaymentStatus(paymentId: string) {
+  return useQuery<Payment>({
+    queryKey: ['payment', paymentId],
+    queryFn: () => fetchPaymentStatus(paymentId),
+    enabled: !!paymentId,
+    refetchInterval: (data) => {
+      // Refetch every 5 seconds if payment is still pending
+      if (data?.status === 'pending' || data?.status === 'processing') {
+        return 5000;
+      }
+      return false;
+    },
+  });
+}
+
+export function usePaymentHistory(params?: { limit?: number; offset?: number }) {
+  return useQuery<Payment[]>({
+    queryKey: ['payments', 'history', params],
+    queryFn: () => fetchPaymentHistory(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ============================================
+// PUSH NOTIFICATION HOOKS
+// ============================================
+
+export function useNotifications(params?: { unread?: boolean; limit?: number; offset?: number }) {
+  return useQuery<NotificationsResponse>({
+    queryKey: ['notifications', params],
+    queryFn: () => fetchNotifications(params),
+    staleTime: 1000 * 60, // 1 minute
+    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+  });
+}
+
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => markAllNotificationsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteNotification(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useSubscribeToPush() {
+  return useMutation({
+    mutationFn: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+      subscribeToPush(subscription),
+  });
+}
+
+export function useUnsubscribeFromPush() {
+  return useMutation({
+    mutationFn: (endpoint?: string) => unsubscribeFromPush(endpoint),
+  });
+}
+
+// ============================================
+// REVIEW HOOKS
+// ============================================
+
+export function useBusinessReviews(
+  businessId: string,
+  params?: { sort?: 'recent' | 'helpful' | 'rating_high' | 'rating_low'; limit?: number; offset?: number }
+) {
+  return useQuery<ReviewsResponse>({
+    queryKey: ['reviews', 'business', businessId, params],
+    queryFn: () => fetchBusinessReviews(businessId, params),
+    enabled: !!businessId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useEventReviews(eventId: string, params?: { limit?: number; offset?: number }) {
+  return useQuery<ReviewsResponse>({
+    queryKey: ['reviews', 'event', eventId, params],
+    queryFn: () => fetchEventReviews(eventId, params),
+    enabled: !!eventId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useReview(id: string) {
+  return useQuery({
+    queryKey: ['review', id],
+    queryFn: () => fetchReview(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      targetType: 'business' | 'event';
+      businessId?: string;
+      eventId?: string;
+      rating: number;
+      title?: string;
+      content?: string;
+      pros?: string;
+      cons?: string;
+      images?: string[];
+    }) => createReview(data),
+    onSuccess: (_, variables) => {
+      if (variables.businessId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'business', variables.businessId] });
+      }
+      if (variables.eventId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'event', variables.eventId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
+    },
+  });
+}
+
+export function useUpdateReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: {
+      rating?: number;
+      title?: string;
+      content?: string;
+      pros?: string;
+      cons?: string;
+      images?: string[];
+    }}) => updateReview(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
+    },
+  });
+}
+
+export function useDeleteReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteReview(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
+    },
+  });
+}
+
+export function useVoteOnReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, isHelpful }: { id: string; isHelpful: boolean }) => voteOnReview(id, isHelpful),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['review', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    },
+  });
+}
+
+export function useReplyToReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reviewId, content }: { reviewId: string; content: string }) =>
+      replyToReview(reviewId, content),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['review', variables.reviewId] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    },
+  });
+}
+
+export function useDeleteReviewReply() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (replyId: string) => deleteReviewReply(replyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    },
+  });
+}
+
+export function useMyReviews(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ['myReviews', params],
+    queryFn: () => fetchMyReviews(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ============================================
+// ANALYTICS HOOKS
+// ============================================
+
+export function useTrackEvent() {
+  return useMutation({
+    mutationFn: (data: {
+      eventType: AnalyticsEventType;
+      eventData?: Record<string, unknown>;
+      sessionId?: string;
+      source?: string;
+      referrer?: string;
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+    }) => trackAnalyticsEvent(data),
+  });
+}
+
+export function useConversionMetrics(period?: number) {
+  return useQuery<ConversionMetrics>({
+    queryKey: ['analytics', 'conversions', period],
+    queryFn: () => fetchConversionMetrics(period),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useRevenueMetrics(period?: number) {
+  return useQuery<RevenueMetrics>({
+    queryKey: ['analytics', 'revenue', period],
+    queryFn: () => fetchRevenueMetrics(period),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useReferralMetrics(period?: number) {
+  return useQuery<ReferralMetrics>({
+    queryKey: ['analytics', 'referrals', period],
+    queryFn: () => fetchReferralMetrics(period),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useTrafficMetrics(period?: number) {
+  return useQuery<TrafficMetrics>({
+    queryKey: ['analytics', 'traffic', period],
+    queryFn: () => fetchTrafficMetrics(period),
     staleTime: 1000 * 60 * 5,
   });
 }

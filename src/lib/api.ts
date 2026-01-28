@@ -1638,3 +1638,652 @@ export async function deleteAutoPublishSettings(platform: SocialPlatform): Promi
   if (!res.ok) throw new Error('Failed to delete auto-publish settings');
   return res.json();
 }
+
+// ============================================
+// REFERRAL SYSTEM API
+// ============================================
+
+export interface ReferralCode {
+  code: string;
+  usageCount: number;
+  totalEarnings: number;
+  isActive: boolean;
+  shareUrl: string;
+}
+
+export interface ReferralStats {
+  totalReferrals: number;
+  convertedReferrals: number;
+  pendingBonuses: number;
+  paidBonuses: number;
+  conversionRate: number;
+  config: {
+    referrerBonusPercent: number;
+    referredBonusAmount: number;
+    minPurchaseForBonus: number;
+    maxBonusPerReferral: number;
+  };
+}
+
+export interface Referral {
+  id: string;
+  status: 'pending' | 'registered' | 'converted' | 'expired';
+  firstPurchaseAt: string | null;
+  firstPurchaseAmount: number | null;
+  bonusEarned: number;
+  createdAt: string;
+  referredUser: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface ReferralBonus {
+  id: string;
+  type: 'registration' | 'first_purchase' | 'subscription' | 'withdrawal';
+  amount: number;
+  status: 'pending' | 'approved' | 'paid' | 'rejected';
+  description: string | null;
+  processedAt: string | null;
+  createdAt: string;
+}
+
+export async function fetchMyReferralCode(): Promise<ReferralCode> {
+  const res = await fetch(`${API_URL}/referrals/my-code`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral code');
+  return res.json();
+}
+
+export async function fetchReferralStats(): Promise<ReferralStats> {
+  const res = await fetch(`${API_URL}/referrals/stats`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral stats');
+  return res.json();
+}
+
+export async function fetchReferralList(params?: { limit?: number; offset?: number }): Promise<Referral[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/referrals/list?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referrals');
+  return res.json();
+}
+
+export async function validateReferralCode(code: string): Promise<{
+  valid: boolean;
+  code?: string;
+  referrerName?: string;
+  bonusAmount?: number;
+  error?: string;
+}> {
+  const res = await fetch(`${API_URL}/referrals/validate/${code}`);
+  return res.json();
+}
+
+export async function fetchReferralBonuses(params?: { limit?: number; offset?: number }): Promise<ReferralBonus[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/referrals/bonuses?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch bonuses');
+  return res.json();
+}
+
+export async function requestReferralWithdrawal(data: {
+  amount: number;
+  method: 'kaspi' | 'halyk';
+  accountDetails: string;
+}): Promise<{ success: boolean; withdrawalId: string; message: string }> {
+  const res = await fetch(`${API_URL}/referrals/withdraw`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to request withdrawal');
+  }
+  return res.json();
+}
+
+// ============================================
+// PAYMENTS API (Kaspi/Halyk)
+// ============================================
+
+export type PaymentProvider = 'kaspi' | 'halyk';
+export type PaymentType = 'subscription' | 'premium' | 'banner' | 'other';
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'cancelled';
+export type SubscriptionType = 'user_premium' | 'business_lite' | 'business_premium';
+
+export interface Payment {
+  id: string;
+  userId: string;
+  businessId: string | null;
+  provider: PaymentProvider;
+  type: PaymentType;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paymentUrl: string | null;
+  qrCode: string | null;
+  subscriptionType: string | null;
+  subscriptionDays: number | null;
+  paidAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface PaymentCreateResponse {
+  paymentId: string;
+  amount: number;
+  currency: string;
+  provider: PaymentProvider;
+  paymentUrl: string;
+  qrCode: string | null;
+  expiresAt: string;
+}
+
+export interface PricingInfo {
+  subscriptions: {
+    user_premium: {
+      name: string;
+      description: string;
+      prices: { monthly: number; yearly: number };
+      features: string[];
+    };
+    business_lite: {
+      name: string;
+      description: string;
+      prices: { monthly: number; yearly: number };
+      features: string[];
+    };
+    business_premium: {
+      name: string;
+      description: string;
+      prices: { monthly: number; yearly: number };
+      features: string[];
+    };
+  };
+  paymentMethods: Array<{ id: string; name: string; icon: string }>;
+}
+
+export async function createPayment(data: {
+  provider: PaymentProvider;
+  type: PaymentType;
+  subscriptionType?: SubscriptionType;
+  subscriptionPeriod?: 'monthly' | 'yearly';
+  amount?: number;
+  businessId?: string;
+  description?: string;
+}): Promise<PaymentCreateResponse> {
+  const res = await fetch(`${API_URL}/payments/create`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create payment');
+  }
+  return res.json();
+}
+
+export async function fetchPaymentStatus(paymentId: string): Promise<Payment> {
+  const res = await fetch(`${API_URL}/payments/status/${paymentId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch payment status');
+  return res.json();
+}
+
+export async function fetchPaymentHistory(params?: { limit?: number; offset?: number }): Promise<Payment[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/payments/history?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch payment history');
+  return res.json();
+}
+
+export async function fetchPricing(): Promise<PricingInfo> {
+  const res = await fetch(`${API_URL}/payments/pricing`);
+  if (!res.ok) throw new Error('Failed to fetch pricing');
+  return res.json();
+}
+
+// ============================================
+// PUSH NOTIFICATIONS API
+// ============================================
+
+export interface PushNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  icon: string | null;
+  link: string | null;
+  isRead: boolean;
+  isPushed: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: PushNotification[];
+  unreadCount: number;
+}
+
+export async function fetchVapidKey(): Promise<{ publicKey: string }> {
+  const res = await fetch(`${API_URL}/push/vapid-key`);
+  if (!res.ok) throw new Error('Failed to fetch VAPID key');
+  return res.json();
+}
+
+export async function subscribeToPush(subscription: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}): Promise<{ success: boolean; subscriptionId: string }> {
+  const res = await fetch(`${API_URL}/push/subscribe`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(subscription),
+  });
+  if (!res.ok) throw new Error('Failed to subscribe to push');
+  return res.json();
+}
+
+export async function unsubscribeFromPush(endpoint?: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/push/unsubscribe`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!res.ok) throw new Error('Failed to unsubscribe');
+  return res.json();
+}
+
+export async function fetchNotifications(params?: {
+  unread?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<NotificationsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.unread) searchParams.set('unread', 'true');
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/push/notifications?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch notifications');
+  return res.json();
+}
+
+export async function markNotificationRead(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/push/notifications/${id}/read`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to mark notification as read');
+  return res.json();
+}
+
+export async function markAllNotificationsRead(): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/push/notifications/read-all`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to mark all notifications as read');
+  return res.json();
+}
+
+export async function deleteNotification(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/push/notifications/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete notification');
+  return res.json();
+}
+
+// ============================================
+// REVIEWS API
+// ============================================
+
+export interface Review {
+  id: string;
+  userId: string;
+  targetType: 'business' | 'event';
+  businessId: string | null;
+  eventId: string | null;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  pros: string | null;
+  cons: string | null;
+  images: string[];
+  isVerifiedPurchase: boolean;
+  isApproved: boolean;
+  likesCount: number;
+  dislikesCount: number;
+  replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface ReviewReply {
+  id: string;
+  reviewId: string;
+  userId: string;
+  content: string;
+  isBusinessReply: boolean;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface ReviewsResponse {
+  reviews: Review[];
+  stats: {
+    averageRating: number;
+    totalReviews: number;
+    distribution: {
+      5: number;
+      4: number;
+      3: number;
+      2: number;
+      1: number;
+    };
+  };
+}
+
+export async function createReview(data: {
+  targetType: 'business' | 'event';
+  businessId?: string;
+  eventId?: string;
+  rating: number;
+  title?: string;
+  content?: string;
+  pros?: string;
+  cons?: string;
+  images?: string[];
+}): Promise<Review> {
+  const res = await fetch(`${API_URL}/reviews`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create review');
+  }
+  return res.json();
+}
+
+export async function fetchBusinessReviews(
+  businessId: string,
+  params?: { sort?: 'recent' | 'helpful' | 'rating_high' | 'rating_low'; limit?: number; offset?: number }
+): Promise<ReviewsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.sort) searchParams.set('sort', params.sort);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/reviews/business/${businessId}?${searchParams}`);
+  if (!res.ok) throw new Error('Failed to fetch reviews');
+  return res.json();
+}
+
+export async function fetchEventReviews(
+  eventId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<ReviewsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/reviews/event/${eventId}?${searchParams}`);
+  if (!res.ok) throw new Error('Failed to fetch reviews');
+  return res.json();
+}
+
+export async function fetchReview(id: string): Promise<Review & { replies: ReviewReply[]; userVote: 'helpful' | 'not_helpful' | null }> {
+  const res = await fetch(`${API_URL}/reviews/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch review');
+  return res.json();
+}
+
+export async function updateReview(id: string, data: {
+  rating?: number;
+  title?: string;
+  content?: string;
+  pros?: string;
+  cons?: string;
+  images?: string[];
+}): Promise<Review> {
+  const res = await fetch(`${API_URL}/reviews/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update review');
+  return res.json();
+}
+
+export async function deleteReview(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/reviews/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete review');
+  return res.json();
+}
+
+export async function voteOnReview(id: string, isHelpful: boolean): Promise<{ voted: boolean; isHelpful?: boolean }> {
+  const res = await fetch(`${API_URL}/reviews/${id}/vote`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ isHelpful }),
+  });
+  if (!res.ok) throw new Error('Failed to vote on review');
+  return res.json();
+}
+
+export async function replyToReview(reviewId: string, content: string): Promise<ReviewReply> {
+  const res = await fetch(`${API_URL}/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error('Failed to reply to review');
+  return res.json();
+}
+
+export async function deleteReviewReply(replyId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/reviews/reply/${replyId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete reply');
+  return res.json();
+}
+
+export async function fetchMyReviews(params?: { limit?: number; offset?: number }): Promise<Array<{
+  review: Review;
+  businessName: string | null;
+  eventTitle: string | null;
+}>> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const res = await fetch(`${API_URL}/reviews/user/my-reviews?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch my reviews');
+  return res.json();
+}
+
+// ============================================
+// ANALYTICS API
+// ============================================
+
+export type AnalyticsEventType =
+  | 'page_view' | 'event_view' | 'business_view' | 'promotion_view'
+  | 'premium_conversion' | 'business_tier_upgrade' | 'referral_signup'
+  | 'first_purchase' | 'subscription_started' | 'subscription_cancelled';
+
+export async function trackAnalyticsEvent(data: {
+  eventType: AnalyticsEventType;
+  eventData?: Record<string, unknown>;
+  sessionId?: string;
+  source?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+}): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/analytics/track`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to track event');
+  return res.json();
+}
+
+export interface ConversionMetrics {
+  period: number;
+  conversions: {
+    premiumUserConversions: number;
+    businessTierUpgrades: number;
+  };
+  users: {
+    total: number;
+    premium: number;
+    newInPeriod: number;
+    conversionRate: number;
+  };
+  businesses: {
+    total: number;
+    free: number;
+    lite: number;
+    premium: number;
+    paidConversionRate: number;
+  };
+  funnel: {
+    pageViews: number;
+    eventViews: number;
+    businessViews: number;
+    subscriptionStarts: number;
+  };
+}
+
+export async function fetchConversionMetrics(period?: number): Promise<ConversionMetrics> {
+  const searchParams = new URLSearchParams();
+  if (period) searchParams.set('period', period.toString());
+
+  const res = await fetch(`${API_URL}/analytics/conversions?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch conversion metrics');
+  return res.json();
+}
+
+export interface RevenueMetrics {
+  period: number;
+  summary: {
+    totalRevenue: number;
+    totalTransactions: number;
+    averageTransaction: number;
+  };
+  byType: Array<{ type: string; total: number; count: number }>;
+  byProvider: Array<{ provider: string; total: number; count: number }>;
+  daily: Array<{ date: string; total: number; count: number }>;
+}
+
+export async function fetchRevenueMetrics(period?: number): Promise<RevenueMetrics> {
+  const searchParams = new URLSearchParams();
+  if (period) searchParams.set('period', period.toString());
+
+  const res = await fetch(`${API_URL}/analytics/revenue?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch revenue metrics');
+  return res.json();
+}
+
+export interface ReferralMetrics {
+  period: number;
+  summary: {
+    totalReferrals: number;
+    convertedReferrals: number;
+    conversionRate: number;
+    totalBonusEarned: number;
+  };
+  topReferrers: Array<{
+    userId: string;
+    userName: string | null;
+    referralCount: number;
+    convertedCount: number;
+    totalEarned: number;
+  }>;
+  daily: Array<{ date: string; count: number; converted: number }>;
+}
+
+export async function fetchReferralMetrics(period?: number): Promise<ReferralMetrics> {
+  const searchParams = new URLSearchParams();
+  if (period) searchParams.set('period', period.toString());
+
+  const res = await fetch(`${API_URL}/analytics/referrals?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral metrics');
+  return res.json();
+}
+
+export interface TrafficMetrics {
+  period: number;
+  bySource: Array<{ source: string; count: number; uniqueUsers: number }>;
+  byDevice: Array<{ deviceType: string; count: number }>;
+  byUtmSource: Array<{ utmSource: string; count: number }>;
+  byUtmCampaign: Array<{ utmCampaign: string; count: number }>;
+}
+
+export async function fetchTrafficMetrics(period?: number): Promise<TrafficMetrics> {
+  const searchParams = new URLSearchParams();
+  if (period) searchParams.set('period', period.toString());
+
+  const res = await fetch(`${API_URL}/analytics/traffic?${searchParams}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch traffic metrics');
+  return res.json();
+}
