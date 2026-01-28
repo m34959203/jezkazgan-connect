@@ -155,6 +155,7 @@ admin.get('/businesses', async (c) => {
       .select({
         id: businesses.id,
         name: businesses.name,
+        description: businesses.description,
         category: businesses.category,
         tier: businesses.tier,
         isVerified: businesses.isVerified,
@@ -163,6 +164,10 @@ admin.get('/businesses', async (c) => {
         ownerName: users.name,
         ownerEmail: users.email,
         cityName: cities.name,
+        address: businesses.address,
+        phone: businesses.phone,
+        website: businesses.website,
+        workingHours: businesses.workingHours,
       })
       .from(businesses)
       .leftJoin(users, eq(businesses.ownerId, users.id))
@@ -198,13 +203,22 @@ admin.patch('/businesses/:id', async (c) => {
   const body = await c.req.json();
 
   try {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    // Support for verification and tier changes
+    if (body.isVerified !== undefined) updateData.isVerified = body.isVerified;
+    if (body.tier !== undefined) updateData.tier = body.tier;
+
+    // Support for editing business details
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.category !== undefined) updateData.category = body.category;
+
     const [updated] = await db
       .update(businesses)
-      .set({
-        isVerified: body.isVerified,
-        tier: body.tier,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(businesses.id, id))
       .returning();
 

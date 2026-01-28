@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, CheckCircle, XCircle, Eye, Edit, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Search, MoreHorizontal, CheckCircle, XCircle, Eye, Edit, Trash2, Loader2, AlertCircle, MapPin, Phone, Globe, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const tierLabels: Record<string, string> = {
   free: 'Free',
@@ -71,12 +81,34 @@ const categoryLabels: Record<string, string> = {
   other: 'Другое',
 };
 
+interface Business {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  tier: string;
+  isVerified: boolean;
+  ownerName?: string;
+  ownerEmail?: string;
+  cityName?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  workingHours?: string;
+  postsThisMonth: number;
+  createdAt: string;
+}
+
 export default function BusinessesPage() {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState('all');
   const [verifiedFilter, setVerifiedFilter] = useState('all');
   const [deleteBusinessId, setDeleteBusinessId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewBusiness, setViewBusiness] = useState<Business | null>(null);
+  const [editBusiness, setEditBusiness] = useState<Business | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', description: '', category: '' });
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const { data, isLoading, error, refetch } = useAdminBusinesses({
@@ -139,6 +171,44 @@ export default function BusinessesPage() {
     } finally {
       setIsDeleting(false);
       setDeleteBusinessId(null);
+    }
+  };
+
+  const handleOpenEdit = (business: Business) => {
+    setEditBusiness(business);
+    setEditForm({
+      name: business.name,
+      description: business.description || '',
+      category: business.category,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editBusiness) return;
+    setIsSaving(true);
+    try {
+      await updateBusiness.mutateAsync({
+        id: editBusiness.id,
+        data: {
+          name: editForm.name,
+          description: editForm.description,
+          category: editForm.category,
+        },
+      });
+      toast({
+        title: 'Успешно',
+        description: 'Бизнес обновлён',
+      });
+      setEditBusiness(null);
+      refetch();
+    } catch {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить бизнес',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -322,11 +392,11 @@ export default function BusinessesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Действия</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setViewBusiness(business)}>
                             <Eye className="w-4 h-4 mr-2" />
                             Просмотреть
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenEdit(business)}>
                             <Edit className="w-4 h-4 mr-2" />
                             Редактировать
                           </DropdownMenuItem>
@@ -391,6 +461,159 @@ export default function BusinessesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View business dialog */}
+      <Dialog open={!!viewBusiness} onOpenChange={() => setViewBusiness(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{viewBusiness?.name}</DialogTitle>
+            <DialogDescription>
+              Информация о бизнесе
+            </DialogDescription>
+          </DialogHeader>
+          {viewBusiness && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge className={tierColors[viewBusiness.tier]} variant="secondary">
+                  {tierLabels[viewBusiness.tier]}
+                </Badge>
+                {viewBusiness.isVerified ? (
+                  <Badge className="bg-green-100 text-green-800">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Верифицирован
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                    Ожидает верификации
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Категория:</span>{' '}
+                  <span className="font-medium">{categoryLabels[viewBusiness.category] || viewBusiness.category}</span>
+                </div>
+
+                {viewBusiness.description && (
+                  <div>
+                    <span className="text-muted-foreground">Описание:</span>
+                    <p className="mt-1">{viewBusiness.description}</p>
+                  </div>
+                )}
+
+                {viewBusiness.cityName && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span>{viewBusiness.cityName}</span>
+                    {viewBusiness.address && <span className="text-muted-foreground">• {viewBusiness.address}</span>}
+                  </div>
+                )}
+
+                {viewBusiness.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span>{viewBusiness.phone}</span>
+                  </div>
+                )}
+
+                {viewBusiness.website && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <a href={viewBusiness.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      {viewBusiness.website}
+                    </a>
+                  </div>
+                )}
+
+                {viewBusiness.workingHours && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span>{viewBusiness.workingHours}</span>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t">
+                  <span className="text-muted-foreground">Владелец:</span>{' '}
+                  <span className="font-medium">{viewBusiness.ownerName || viewBusiness.ownerEmail || 'Не указан'}</span>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground">Публикаций в этом месяце:</span>{' '}
+                  <span className="font-medium">{viewBusiness.postsThisMonth}/{tierLimits[viewBusiness.tier]}</span>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground">Дата создания:</span>{' '}
+                  <span className="font-medium">{new Date(viewBusiness.createdAt).toLocaleDateString('ru-RU')}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit business dialog */}
+      <Dialog open={!!editBusiness} onOpenChange={() => setEditBusiness(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Редактировать бизнес</DialogTitle>
+            <DialogDescription>
+              Внесите изменения в информацию о бизнесе
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Название</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Название бизнеса"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Описание</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder="Описание бизнеса"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-category">Категория</Label>
+              <Select
+                value={editForm.category}
+                onValueChange={(value) => setEditForm({ ...editForm, category: value })}
+              >
+                <SelectTrigger id="edit-category">
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(categoryLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditBusiness(null)} disabled={isSaving}>
+              Отмена
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSaving || !editForm.name.trim()}>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
