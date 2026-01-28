@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig, businessMembers, favorites, autoPublishSettings, autoPublishHistory, aiImageGenerations, payments, reviews, reviewReplies, reviewVotes } from '../db';
+import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig, businessMembers, favorites, autoPublishSettings, autoPublishHistory, aiImageGenerations, payments, reviews, reviewReplies, reviewVotes, complaints } from '../db';
 import { eq, desc, sql, count, and, gte, lte, like, or, isNull, inArray } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 import { onUserBecamePremium } from './referral';
@@ -950,6 +950,68 @@ admin.get('/moderation', async (c) => {
       .orderBy(desc(businesses.createdAt))
       .limit(20);
 
+    // Get pending complaints - handle case where table may not exist
+    let pendingComplaints: Array<{
+      id: string;
+      targetType: string;
+      targetId: string;
+      reason: string;
+      description: string | null;
+      status: string;
+      createdAt: Date;
+      reporterName: string | null;
+      reporterEmail: string | null;
+      targetName: string | null;
+    }> = [];
+    let complaintsCount = 0;
+
+    try {
+      const complaintsData = await db
+        .select({
+          id: complaints.id,
+          targetType: complaints.targetType,
+          targetId: complaints.targetId,
+          reason: complaints.reason,
+          description: complaints.description,
+          status: complaints.status,
+          createdAt: complaints.createdAt,
+          reporterName: users.name,
+          reporterEmail: users.email,
+        })
+        .from(complaints)
+        .leftJoin(users, eq(complaints.reporterId, users.id))
+        .where(eq(complaints.status, 'pending'))
+        .orderBy(desc(complaints.createdAt))
+        .limit(20);
+
+      // Resolve target names
+      pendingComplaints = await Promise.all(complaintsData.map(async (complaint) => {
+        let targetName: string | null = null;
+
+        if (complaint.targetType === 'business') {
+          const [business] = await db.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, complaint.targetId)).limit(1);
+          targetName = business?.name || null;
+        } else if (complaint.targetType === 'event') {
+          const [event] = await db.select({ title: events.title }).from(events).where(eq(events.id, complaint.targetId)).limit(1);
+          targetName = event?.title || null;
+        } else if (complaint.targetType === 'promotion') {
+          const [promo] = await db.select({ title: promotions.title }).from(promotions).where(eq(promotions.id, complaint.targetId)).limit(1);
+          targetName = promo?.title || null;
+        } else if (complaint.targetType === 'user') {
+          const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, complaint.targetId)).limit(1);
+          targetName = user?.name || null;
+        }
+
+        return { ...complaint, targetName };
+      }));
+
+      const [complaintsCountResult] = await db.select({ count: count() }).from(complaints).where(eq(complaints.status, 'pending'));
+      complaintsCount = complaintsCountResult.count;
+    } catch (err) {
+      // Complaints table may not exist yet
+      console.log('[Moderation] Complaints table not available');
+    }
+
     // Counts
     const [pendingEventsCount] = await db.select({ count: count() }).from(events).where(eq(events.isApproved, false));
     const [pendingBusinessesCount] = await db.select({ count: count() }).from(businesses).where(eq(businesses.isVerified, false));
@@ -963,15 +1025,65 @@ admin.get('/moderation', async (c) => {
         ...b,
         type: 'business',
       })),
+      pendingComplaints,
       counts: {
         events: pendingEventsCount.count,
         businesses: pendingBusinessesCount.count,
-        total: pendingEventsCount.count + pendingBusinessesCount.count,
+        complaints: complaintsCount,
+        total: pendingEventsCount.count + pendingBusinessesCount.count + complaintsCount,
       },
     });
   } catch (error) {
     console.error('Moderation error:', error);
     return c.json({ error: 'Failed to fetch moderation data' }, 500);
+  }
+});
+
+// Resolve complaint (approve action taken)
+admin.post('/complaints/:id/resolve', async (c) => {
+  const { id } = c.req.param();
+  const currentUser = c.get('user');
+  const { resolution } = await c.req.json();
+
+  try {
+    await db.update(complaints)
+      .set({
+        status: 'resolved',
+        resolution,
+        resolvedById: currentUser.id,
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(complaints.id, id));
+
+    return c.json({ success: true, message: 'Complaint resolved' });
+  } catch (error) {
+    console.error('Resolve complaint error:', error);
+    return c.json({ error: 'Failed to resolve complaint' }, 500);
+  }
+});
+
+// Reject complaint
+admin.post('/complaints/:id/reject', async (c) => {
+  const { id } = c.req.param();
+  const currentUser = c.get('user');
+  const { resolution } = await c.req.json();
+
+  try {
+    await db.update(complaints)
+      .set({
+        status: 'rejected',
+        resolution,
+        resolvedById: currentUser.id,
+        resolvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(complaints.id, id));
+
+    return c.json({ success: true, message: 'Complaint rejected' });
+  } catch (error) {
+    console.error('Reject complaint error:', error);
+    return c.json({ error: 'Failed to reject complaint' }, 500);
   }
 });
 

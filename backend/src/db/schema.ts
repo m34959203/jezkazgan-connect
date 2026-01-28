@@ -836,3 +836,40 @@ export const reviewVotesRelations = relations(reviewVotes, ({ one }) => ({
   review: one(reviews, { fields: [reviewVotes.reviewId], references: [reviews.id] }),
   user: one(users, { fields: [reviewVotes.userId], references: [users.id] }),
 }));
+
+// ============================================
+// COMPLAINTS SYSTEM
+// ============================================
+
+export const complaintTargetTypeEnum = pgEnum('complaint_target_type', ['business', 'event', 'promotion', 'review', 'user']);
+export const complaintStatusEnum = pgEnum('complaint_status', ['pending', 'reviewing', 'resolved', 'rejected']);
+export const complaintReasonEnum = pgEnum('complaint_reason', [
+  'spam',              // Спам
+  'fraud',             // Мошенничество
+  'inappropriate',     // Неприемлемый контент
+  'outdated',          // Неактуальная информация
+  'copyright',         // Нарушение авторских прав
+  'fake',              // Недостоверная информация
+  'offensive',         // Оскорбительный контент
+  'other'              // Другое
+]);
+
+export const complaints = pgTable('complaints', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reporterId: uuid('reporter_id').references(() => users.id).notNull(),
+  targetType: complaintTargetTypeEnum('target_type').notNull(),
+  targetId: uuid('target_id').notNull(),
+  reason: complaintReasonEnum('reason').notNull(),
+  description: text('description'),
+  status: complaintStatusEnum('status').default('pending').notNull(),
+  resolution: text('resolution'),
+  resolvedById: uuid('resolved_by_id').references(() => users.id),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const complaintsRelations = relations(complaints, ({ one }) => ({
+  reporter: one(users, { fields: [complaints.reporterId], references: [users.id], relationName: 'reporter' }),
+  resolvedBy: one(users, { fields: [complaints.resolvedById], references: [users.id], relationName: 'resolver' }),
+}));

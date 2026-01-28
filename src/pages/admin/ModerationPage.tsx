@@ -13,38 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { fetchAdminModeration, approveEvent, rejectEvent, verifyBusiness, type ModerationData } from '@/lib/api';
+import { fetchAdminModeration, approveEvent, rejectEvent, verifyBusiness, resolveComplaint, rejectComplaint, type ModerationData, type Complaint, type ComplaintReason } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock complaints data (complaints API not yet implemented)
-const mockComplaints = [
-  {
-    id: '1',
-    type: 'business',
-    target: 'Ресторан "Тюльпан"',
-    reporter: 'Айдар К.',
-    reason: 'Неактуальная информация',
-    description: 'Указанные цены не соответствуют действительности, меню устарело.',
-    status: 'pending',
-    createdAt: '2026-01-17 14:30',
-  },
-  {
-    id: '2',
-    type: 'event',
-    target: 'Концерт Димаша',
-    reporter: 'Дана О.',
-    reason: 'Мошенничество',
-    description: 'Событие уже отменено, но публикация активна.',
-    status: 'pending',
-    createdAt: '2026-01-17 10:15',
-  },
-];
 
 const typeIcons: Record<string, typeof Building2> = {
   business: Building2,
   event: Flag,
   comment: MessageSquare,
   promotion: Flag,
+  review: MessageSquare,
+  user: User,
 };
 
 const typeLabels: Record<string, string> = {
@@ -52,6 +30,19 @@ const typeLabels: Record<string, string> = {
   event: 'Событие',
   comment: 'Комментарий',
   promotion: 'Акция',
+  review: 'Отзыв',
+  user: 'Пользователь',
+};
+
+const reasonLabels: Record<ComplaintReason, string> = {
+  spam: 'Спам',
+  fraud: 'Мошенничество',
+  inappropriate: 'Неприемлемый контент',
+  outdated: 'Неактуальная информация',
+  copyright: 'Нарушение авторских прав',
+  fake: 'Недостоверная информация',
+  offensive: 'Оскорбительный контент',
+  other: 'Другое',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -73,7 +64,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function ModerationPage() {
-  const [selectedComplaint, setSelectedComplaint] = useState<typeof mockComplaints[0] | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [resolution, setResolution] = useState('');
   const [moderation, setModeration] = useState<ModerationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,8 +151,60 @@ export default function ModerationPage() {
     }
   };
 
-  const pendingComplaints = mockComplaints.filter((c) => c.status === 'pending').length;
-  const pendingContent = moderation?.counts.total ?? 0;
+  const handleResolveComplaint = async (id: string) => {
+    if (!resolution.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Укажите принятые меры',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setProcessingId(id);
+    try {
+      await resolveComplaint(id, resolution);
+      toast({
+        title: 'Успешно',
+        description: 'Жалоба рассмотрена, меры приняты',
+      });
+      setSelectedComplaint(null);
+      setResolution('');
+      loadModeration();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обработать жалобу',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectComplaint = async (id: string) => {
+    setProcessingId(id);
+    try {
+      await rejectComplaint(id, resolution || 'Жалоба отклонена');
+      toast({
+        title: 'Успешно',
+        description: 'Жалоба отклонена',
+      });
+      setSelectedComplaint(null);
+      setResolution('');
+      loadModeration();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось отклонить жалобу',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const complaintsCount = moderation?.counts.complaints ?? 0;
+  const pendingContent = (moderation?.counts.events ?? 0) + (moderation?.counts.businesses ?? 0);
 
   if (isLoading) {
     return (
@@ -186,9 +229,9 @@ export default function ModerationPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Обновить
           </Button>
-          {(pendingComplaints > 0 || pendingContent > 0) && (
+          {(complaintsCount > 0 || pendingContent > 0) && (
             <Badge variant="destructive" className="text-sm px-3 py-1">
-              {pendingComplaints + pendingContent} требуют внимания
+              {complaintsCount + pendingContent} требуют внимания
             </Badge>
           )}
         </div>
@@ -200,7 +243,7 @@ export default function ModerationPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <div className="text-2xl font-bold">{pendingComplaints}</div>
+              <div className="text-2xl font-bold">{complaintsCount}</div>
             </div>
             <p className="text-sm text-muted-foreground">Жалоб на рассмотрении</p>
           </CardContent>
@@ -247,9 +290,9 @@ export default function ModerationPage() {
           </TabsTrigger>
           <TabsTrigger value="complaints" className="relative">
             Жалобы
-            {pendingComplaints > 0 && (
+            {complaintsCount > 0 && (
               <span className="ml-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-                {pendingComplaints}
+                {complaintsCount}
               </span>
             )}
           </TabsTrigger>
@@ -392,46 +435,37 @@ export default function ModerationPage() {
         </TabsContent>
 
         <TabsContent value="complaints" className="space-y-4">
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              Система жалоб находится в разработке. Показаны демо-данные.
-            </p>
-          </div>
-          {mockComplaints.map((complaint) => {
-            const TypeIcon = typeIcons[complaint.type];
-            return (
-              <Card key={complaint.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        complaint.status === 'pending' ? 'bg-amber-100' : 'bg-green-100'
-                      }`}>
-                        <TypeIcon className={`w-5 h-5 ${
-                          complaint.status === 'pending' ? 'text-amber-600' : 'text-green-600'
-                        }`} />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{complaint.target}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {typeLabels[complaint.type]}
-                          </Badge>
-                          {complaint.status === 'pending' ? (
+          {moderation?.pendingComplaints && moderation.pendingComplaints.length > 0 ? (
+            moderation.pendingComplaints.map((complaint) => {
+              const TypeIcon = typeIcons[complaint.targetType] || Flag;
+              return (
+                <Card key={complaint.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-100">
+                          <TypeIcon className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{complaint.targetName || 'Неизвестно'}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {typeLabels[complaint.targetType] || complaint.targetType}
+                            </Badge>
                             <Badge className="bg-amber-100 text-amber-800">Ожидает</Badge>
-                          ) : (
-                            <Badge className="bg-green-100 text-green-800">Решено</Badge>
+                          </div>
+                          <p className="text-sm text-red-600 font-medium">
+                            {reasonLabels[complaint.reason] || complaint.reason}
+                          </p>
+                          {complaint.description && (
+                            <p className="text-sm text-muted-foreground">{complaint.description}</p>
                           )}
-                        </div>
-                        <p className="text-sm text-red-600 font-medium">{complaint.reason}</p>
-                        <p className="text-sm text-muted-foreground">{complaint.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
-                          <span>От: {complaint.reporter}</span>
-                          <span>{complaint.createdAt}</span>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                            <span>От: {complaint.reporterName || complaint.reporterEmail || 'Аноним'}</span>
+                            <span>{new Date(complaint.createdAt).toLocaleString('ru-RU')}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {complaint.status === 'pending' && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -442,29 +476,39 @@ export default function ModerationPage() {
                           Рассмотреть
                         </Button>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">Нет жалоб</h3>
+                  <p className="text-muted-foreground">Все жалобы рассмотрены</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
       {/* Complaint resolution dialog */}
-      <Dialog open={!!selectedComplaint} onOpenChange={() => setSelectedComplaint(null)}>
+      <Dialog open={!!selectedComplaint} onOpenChange={() => { setSelectedComplaint(null); setResolution(''); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Рассмотрение жалобы</DialogTitle>
             <DialogDescription>
-              {selectedComplaint?.target} - {selectedComplaint?.reason}
+              {selectedComplaint?.targetName || 'Неизвестно'} - {selectedComplaint ? (reasonLabels[selectedComplaint.reason] || selectedComplaint.reason) : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm">{selectedComplaint?.description}</p>
+              <p className="text-sm">{selectedComplaint?.description || 'Описание не указано'}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                От: {selectedComplaint?.reporter} · {selectedComplaint?.createdAt}
+                От: {selectedComplaint?.reporterName || selectedComplaint?.reporterEmail || 'Аноним'} · {selectedComplaint ? new Date(selectedComplaint.createdAt).toLocaleString('ru-RU') : ''}
               </p>
             </div>
             <div className="space-y-2">
@@ -477,15 +521,31 @@ export default function ModerationPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setSelectedComplaint(null)}>
+            <Button variant="outline" onClick={() => { setSelectedComplaint(null); setResolution(''); }}>
               Отмена
             </Button>
-            <Button variant="destructive" onClick={() => setSelectedComplaint(null)}>
-              <XCircle className="w-4 h-4 mr-1" />
+            <Button
+              variant="destructive"
+              onClick={() => selectedComplaint && handleRejectComplaint(selectedComplaint.id)}
+              disabled={processingId === selectedComplaint?.id}
+            >
+              {processingId === selectedComplaint?.id ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-1" />
+              )}
               Отклонить жалобу
             </Button>
-            <Button className="bg-green-600 hover:bg-green-700" onClick={() => setSelectedComplaint(null)}>
-              <CheckCircle className="w-4 h-4 mr-1" />
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => selectedComplaint && handleResolveComplaint(selectedComplaint.id)}
+              disabled={processingId === selectedComplaint?.id}
+            >
+              {processingId === selectedComplaint?.id ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <CheckCircle className="w-4 h-4 mr-1" />
+              )}
               Принять меры
             </Button>
           </DialogFooter>

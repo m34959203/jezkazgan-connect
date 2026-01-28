@@ -1231,6 +1231,23 @@ export async function fetchAdminAnalytics(period: number = 30): Promise<AdminAna
 // Admin Moderation API
 // ============================================
 
+export type ComplaintReason = 'spam' | 'fraud' | 'inappropriate' | 'outdated' | 'copyright' | 'fake' | 'offensive' | 'other';
+export type ComplaintTargetType = 'business' | 'event' | 'promotion' | 'review' | 'user';
+export type ComplaintStatus = 'pending' | 'reviewing' | 'resolved' | 'rejected';
+
+export interface Complaint {
+  id: string;
+  targetType: ComplaintTargetType;
+  targetId: string;
+  targetName: string | null;
+  reason: ComplaintReason;
+  description: string | null;
+  status: ComplaintStatus;
+  createdAt: string;
+  reporterName: string | null;
+  reporterEmail: string | null;
+}
+
 export interface ModerationData {
   pendingEvents: Array<{
     id: string;
@@ -1252,9 +1269,11 @@ export interface ModerationData {
     ownerName: string | null;
     type: 'business';
   }>;
+  pendingComplaints: Complaint[];
   counts: {
     events: number;
     businesses: number;
+    complaints: number;
     total: number;
   };
 }
@@ -1264,6 +1283,26 @@ export async function fetchAdminModeration(): Promise<ModerationData> {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch moderation data');
+  return res.json();
+}
+
+export async function resolveComplaint(id: string, resolution: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/complaints/${id}/resolve`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resolution }),
+  });
+  if (!res.ok) throw new Error('Failed to resolve complaint');
+  return res.json();
+}
+
+export async function rejectComplaint(id: string, resolution: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/admin/complaints/${id}/reject`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resolution }),
+  });
+  if (!res.ok) throw new Error('Failed to reject complaint');
   return res.json();
 }
 
