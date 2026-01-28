@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, uuid, pgEnum, numeric } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -9,6 +9,58 @@ export const eventCategoryEnum = pgEnum('event_category', [
 ]);
 export const businessCategoryEnum = pgEnum('business_category', [
   'restaurants', 'cafes', 'sports', 'beauty', 'education', 'services', 'shopping', 'entertainment', 'other'
+]);
+
+// Cashback system enums
+export const cashbackTransactionTypeEnum = pgEnum('cashback_transaction_type', [
+  'earn',           // Начисление за покупку
+  'spend',          // Списание при оплате
+  'refund',         // Возврат кешбека
+  'bonus',          // Бонусное начисление
+  'referral',       // Начисление за реферала
+  'premium_bonus',  // Бонус за premium подписку
+  'expired'         // Истекший кешбек
+]);
+
+export const cashbackTransactionStatusEnum = pgEnum('cashback_transaction_status', [
+  'pending',    // Ожидает подтверждения
+  'completed',  // Завершена
+  'cancelled',  // Отменена
+  'expired'     // Истекла
+]);
+
+export const cashbackPaymentStatusEnum = pgEnum('cashback_payment_status', [
+  'pending',    // Ожидает оплаты
+  'confirmed',  // Подтверждена
+  'rejected',   // Отклонена
+  'refunded'    // Возвращена
+]);
+
+export const cashbackPaymentMethodEnum = pgEnum('cashback_payment_method', [
+  'cash',          // Наличные
+  'card',          // Карта
+  'qr',            // QR оплата
+  'cashback_only', // Только кешбек
+  'mixed'          // Смешанная оплата
+]);
+
+export const cashbackRuleTypeEnum = pgEnum('cashback_rule_type', [
+  'percentage', // Процент от покупки
+  'fixed'       // Фиксированная сумма
+]);
+
+// Referral system enums
+export const referralStatusEnum = pgEnum('referral_status', [
+  'pending',           // Ожидает регистрации
+  'registered',        // Зарегистрирован
+  'activated',         // Активирован (первый вход)
+  'premium_converted'  // Стал premium пользователем
+]);
+
+export const referralRewardTypeEnum = pgEnum('referral_reward_type', [
+  'registration',        // За регистрацию
+  'premium_conversion',  // За конверсию в premium
+  'first_purchase'       // За первую покупку
 ]);
 
 // Users
@@ -249,12 +301,164 @@ export const aiImageGenerations = pgTable('ai_image_generations', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// ============================================
+// CASHBACK SYSTEM - Premium Users (B2C)
+// ============================================
+
+// Кошелёк кешбека пользователя
+export const cashbackWallets = pgTable('cashback_wallets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  balance: numeric('balance', { precision: 12, scale: 2 }).default('0').notNull(), // Текущий баланс в тенге
+  totalEarned: numeric('total_earned', { precision: 12, scale: 2 }).default('0').notNull(), // Всего заработано
+  totalSpent: numeric('total_spent', { precision: 12, scale: 2 }).default('0').notNull(), // Всего потрачено
+  totalExpired: numeric('total_expired', { precision: 12, scale: 2 }).default('0').notNull(), // Всего истекло
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Транзакции кешбека
+export const cashbackTransactions = pgTable('cashback_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  walletId: uuid('wallet_id').references(() => cashbackWallets.id).notNull(),
+  type: cashbackTransactionTypeEnum('type').notNull(),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(), // Сумма транзакции
+  balanceBefore: numeric('balance_before', { precision: 12, scale: 2 }).notNull(), // Баланс до
+  balanceAfter: numeric('balance_after', { precision: 12, scale: 2 }).notNull(), // Баланс после
+  description: text('description'), // Описание транзакции
+  status: cashbackTransactionStatusEnum('status').default('completed').notNull(),
+  // Связи с бизнесами и контентом
+  relatedBusinessId: uuid('related_business_id').references(() => businesses.id),
+  relatedEventId: uuid('related_event_id').references(() => events.id),
+  relatedPromotionId: uuid('related_promotion_id').references(() => promotions.id),
+  relatedPaymentId: uuid('related_payment_id'), // FK на cashback_partner_payments
+  relatedReferralId: uuid('related_referral_id'), // FK на referrals
+  // Дата истечения (для ограниченного кешбека)
+  expiresAt: timestamp('expires_at'),
+  expiredAt: timestamp('expired_at'), // Когда фактически истёк
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Правила начисления кешбека
+export const cashbackRules = pgTable('cashback_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  businessId: uuid('business_id').references(() => businesses.id), // null = глобальное правило
+  name: text('name').notNull(), // Название правила
+  description: text('description'), // Описание для пользователей
+  type: cashbackRuleTypeEnum('type').notNull(),
+  value: numeric('value', { precision: 5, scale: 2 }).notNull(), // Процент или фикс. сумма
+  minPurchase: numeric('min_purchase', { precision: 12, scale: 2 }).default('0'), // Минимальная сумма покупки
+  maxCashback: numeric('max_cashback', { precision: 12, scale: 2 }), // Макс. кешбек за транзакцию
+  // Ограничения
+  category: businessCategoryEnum('category'), // null = все категории
+  isPremiumOnly: boolean('is_premium_only').default(true).notNull(), // Только для premium
+  isActive: boolean('is_active').default(true).notNull(),
+  priority: integer('priority').default(0), // Приоритет (выше = важнее)
+  validFrom: timestamp('valid_from').defaultNow().notNull(),
+  validUntil: timestamp('valid_until'),
+  // Статистика
+  usageCount: integer('usage_count').default(0),
+  totalCashbackGiven: numeric('total_cashback_given', { precision: 12, scale: 2 }).default('0'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Платежи с кешбеком у партнёров
+export const cashbackPartnerPayments = pgTable('cashback_partner_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  businessId: uuid('business_id').references(() => businesses.id).notNull(),
+  // Суммы
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(), // Общая сумма покупки
+  cashbackUsed: numeric('cashback_used', { precision: 12, scale: 2 }).default('0').notNull(), // Использовано кешбека
+  cashbackEarned: numeric('cashback_earned', { precision: 12, scale: 2 }).default('0').notNull(), // Начислено кешбека
+  amountPaid: numeric('amount_paid', { precision: 12, scale: 2 }).notNull(), // Доплата (totalAmount - cashbackUsed)
+  // Метод оплаты
+  paymentMethod: cashbackPaymentMethodEnum('payment_method').default('mixed').notNull(),
+  // Статус
+  status: cashbackPaymentStatusEnum('status').default('pending').notNull(),
+  // Код подтверждения (генерируется для пользователя)
+  confirmationCode: text('confirmation_code').notNull().unique(),
+  // Подтверждение бизнесом
+  confirmedAt: timestamp('confirmed_at'),
+  confirmedBy: uuid('confirmed_by').references(() => users.id), // Сотрудник бизнеса
+  rejectionReason: text('rejection_reason'),
+  // Примененное правило
+  appliedRuleId: uuid('applied_rule_id').references(() => cashbackRules.id),
+  // Связь с событием/акцией (опционально)
+  relatedEventId: uuid('related_event_id').references(() => events.id),
+  relatedPromotionId: uuid('related_promotion_id').references(() => promotions.id),
+  // Метаданные
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================
+// REFERRAL SYSTEM - Premium Users
+// ============================================
+
+// Реферальные коды
+export const referralCodes = pgTable('referral_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  code: text('code').notNull().unique(), // Уникальный код, например IVAN2024
+  isActive: boolean('is_active').default(true).notNull(),
+  usageCount: integer('usage_count').default(0).notNull(), // Сколько раз использован
+  maxUsages: integer('max_usages'), // null = безлимит
+  // Статистика
+  totalRewardsEarned: numeric('total_rewards_earned', { precision: 12, scale: 2 }).default('0'),
+  premiumConversions: integer('premium_conversions').default(0), // Сколько стали premium
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at'), // Дата истечения кода
+});
+
+// Реферальные связи
+export const referrals = pgTable('referrals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  referrerId: uuid('referrer_id').references(() => users.id).notNull(), // Кто пригласил
+  referredId: uuid('referred_id').references(() => users.id).notNull(), // Кто был приглашён
+  codeId: uuid('code_id').references(() => referralCodes.id).notNull(), // Использованный код
+  status: referralStatusEnum('status').default('pending').notNull(),
+  // Награды
+  referrerReward: numeric('referrer_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашающему
+  referredReward: numeric('referred_reward', { precision: 12, scale: 2 }).default('0'), // Награда приглашённому
+  referrerRewardPaid: boolean('referrer_reward_paid').default(false),
+  referredRewardPaid: boolean('referred_reward_paid').default(false),
+  // Даты
+  registeredAt: timestamp('registered_at'), // Когда зарегистрировался
+  activatedAt: timestamp('activated_at'), // Когда активировался
+  convertedAt: timestamp('converted_at'), // Когда стал premium
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Настройки наград реферальной программы (админ)
+export const referralRewardsConfig = pgTable('referral_rewards_config', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  rewardType: referralRewardTypeEnum('reward_type').notNull().unique(),
+  referrerAmount: numeric('referrer_amount', { precision: 12, scale: 2 }).notNull(), // Награда приглашающему
+  referredAmount: numeric('referred_amount', { precision: 12, scale: 2 }).notNull(), // Награда приглашённому
+  description: text('description'), // Описание для отображения
+  isActive: boolean('is_active').default(true).notNull(),
+  validFrom: timestamp('valid_from').defaultNow().notNull(),
+  validUntil: timestamp('valid_until'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   businesses: many(businesses),
   events: many(events),
   favorites: many(favorites),
   communities: many(communityMembers),
+  // Cashback
+  cashbackWallet: one(cashbackWallets),
+  cashbackPayments: many(cashbackPartnerPayments),
+  // Referral
+  referralCodes: many(referralCodes),
+  referralsAsReferrer: many(referrals, { relationName: 'referrer' }),
+  referralsAsReferred: many(referrals, { relationName: 'referred' }),
 }));
 
 export const citiesRelations = relations(cities, ({ many }) => ({
@@ -284,6 +488,9 @@ export const businessesRelations = relations(businesses, ({ one, many }) => ({
   autoPublishSettings: many(autoPublishSettings),
   autoPublishHistory: many(autoPublishHistory),
   aiImageGenerations: many(aiImageGenerations),
+  // Cashback
+  cashbackRules: many(cashbackRules),
+  cashbackPayments: many(cashbackPartnerPayments),
 }));
 
 export const businessMembersRelations = relations(businessMembers, ({ one }) => ({
@@ -326,338 +533,48 @@ export const aiImageGenerationsRelations = relations(aiImageGenerations, ({ one 
 }));
 
 // ============================================
-// REFERRAL SYSTEM (Реферальная система)
+// CASHBACK SYSTEM RELATIONS
 // ============================================
 
-export const referralStatusEnum = pgEnum('referral_status', ['pending', 'registered', 'converted', 'expired']);
+export const cashbackWalletsRelations = relations(cashbackWallets, ({ one, many }) => ({
+  user: one(users, { fields: [cashbackWallets.userId], references: [users.id] }),
+  transactions: many(cashbackTransactions),
+}));
 
-// Реферальные коды пользователей
-export const referralCodes = pgTable('referral_codes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull().unique(),
-  code: text('code').notNull().unique(), // Уникальный код, например: "ALEX2024"
-  usageCount: integer('usage_count').default(0),
-  totalEarnings: integer('total_earnings').default(0), // В тенге
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const cashbackTransactionsRelations = relations(cashbackTransactions, ({ one }) => ({
+  wallet: one(cashbackWallets, { fields: [cashbackTransactions.walletId], references: [cashbackWallets.id] }),
+  business: one(businesses, { fields: [cashbackTransactions.relatedBusinessId], references: [businesses.id] }),
+  event: one(events, { fields: [cashbackTransactions.relatedEventId], references: [events.id] }),
+  promotion: one(promotions, { fields: [cashbackTransactions.relatedPromotionId], references: [promotions.id] }),
+}));
 
-// Рефералы (приглашённые пользователи)
-export const referrals = pgTable('referrals', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  referrerId: uuid('referrer_id').references(() => users.id).notNull(), // Кто пригласил
-  referredId: uuid('referred_id').references(() => users.id).notNull(), // Кого пригласили
-  referralCodeId: uuid('referral_code_id').references(() => referralCodes.id).notNull(),
-  status: referralStatusEnum('status').default('registered').notNull(),
-  firstPurchaseAt: timestamp('first_purchase_at'), // Дата первой покупки
-  firstPurchaseAmount: integer('first_purchase_amount'), // Сумма первой покупки
-  bonusEarned: integer('bonus_earned').default(0), // Бонус реферера
-  bonusGiven: integer('bonus_given').default(0), // Бонус рефералу
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const cashbackRulesRelations = relations(cashbackRules, ({ one, many }) => ({
+  business: one(businesses, { fields: [cashbackRules.businessId], references: [businesses.id] }),
+  payments: many(cashbackPartnerPayments),
+}));
 
-// Реферальные бонусы и выплаты
-export const referralBonusTypeEnum = pgEnum('referral_bonus_type', ['registration', 'first_purchase', 'subscription', 'withdrawal']);
-export const referralBonusStatusEnum = pgEnum('referral_bonus_status', ['pending', 'approved', 'paid', 'rejected']);
-
-export const referralBonuses = pgTable('referral_bonuses', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  referralId: uuid('referral_id').references(() => referrals.id),
-  type: referralBonusTypeEnum('type').notNull(),
-  amount: integer('amount').notNull(), // В тенге
-  status: referralBonusStatusEnum('status').default('pending').notNull(),
-  description: text('description'),
-  processedAt: timestamp('processed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const cashbackPartnerPaymentsRelations = relations(cashbackPartnerPayments, ({ one }) => ({
+  user: one(users, { fields: [cashbackPartnerPayments.userId], references: [users.id] }),
+  business: one(businesses, { fields: [cashbackPartnerPayments.businessId], references: [businesses.id] }),
+  confirmer: one(users, { fields: [cashbackPartnerPayments.confirmedBy], references: [users.id] }),
+  rule: one(cashbackRules, { fields: [cashbackPartnerPayments.appliedRuleId], references: [cashbackRules.id] }),
+  event: one(events, { fields: [cashbackPartnerPayments.relatedEventId], references: [events.id] }),
+  promotion: one(promotions, { fields: [cashbackPartnerPayments.relatedPromotionId], references: [promotions.id] }),
+}));
 
 // ============================================
-// PAYMENTS (Платежи Kaspi/Halyk)
+// REFERRAL SYSTEM RELATIONS
 // ============================================
 
-export const paymentProviderEnum = pgEnum('payment_provider', ['kaspi', 'halyk', 'stripe', 'manual']);
-export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled']);
-export const paymentTypeEnum = pgEnum('payment_type', ['subscription', 'premium', 'banner', 'other']);
-
-// Платежи
-export const payments = pgTable('payments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  businessId: uuid('business_id').references(() => businesses.id), // Если оплата от бизнеса
-  provider: paymentProviderEnum('provider').notNull(),
-  type: paymentTypeEnum('type').notNull(),
-  amount: integer('amount').notNull(), // В тенге
-  currency: text('currency').default('KZT').notNull(),
-  status: paymentStatusEnum('status').default('pending').notNull(),
-  // Данные провайдера
-  externalId: text('external_id'), // ID транзакции у провайдера
-  externalStatus: text('external_status'), // Статус у провайдера
-  paymentUrl: text('payment_url'), // URL для оплаты (QR код, ссылка)
-  qrCode: text('qr_code'), // QR код для Kaspi
-  // Метаданные
-  description: text('description'),
-  metadata: text('metadata'), // JSON с доп. данными
-  // Для подписок
-  subscriptionType: text('subscription_type'), // 'user_premium', 'business_lite', 'business_premium'
-  subscriptionDays: integer('subscription_days'), // Количество дней подписки
-  // Timestamps
-  expiresAt: timestamp('expires_at'), // Срок действия ссылки на оплату
-  paidAt: timestamp('paid_at'),
-  refundedAt: timestamp('refunded_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-// Webhook логи для платежей
-export const paymentWebhooks = pgTable('payment_webhooks', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  provider: paymentProviderEnum('provider').notNull(),
-  paymentId: uuid('payment_id').references(() => payments.id),
-  eventType: text('event_type').notNull(), // 'payment.success', 'payment.failed', etc.
-  payload: text('payload').notNull(), // Raw JSON
-  signature: text('signature'), // Подпись для верификации
-  isProcessed: boolean('is_processed').default(false),
-  processedAt: timestamp('processed_at'),
-  errorMessage: text('error_message'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// ============================================
-// FRAUD PROTECTION (Защита от мошенничества)
-// ============================================
-
-export const fraudEventTypeEnum = pgEnum('fraud_event_type', [
-  'suspicious_login', 'multiple_accounts', 'payment_fraud',
-  'referral_abuse', 'rate_limit_exceeded', 'bot_detected'
-]);
-export const fraudActionEnum = pgEnum('fraud_action', ['warn', 'block_temporary', 'block_permanent', 'require_verification']);
-
-// Логи подозрительной активности
-export const fraudLogs = pgTable('fraud_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  eventType: fraudEventTypeEnum('event_type').notNull(),
-  riskScore: integer('risk_score').default(0), // 0-100
-  details: text('details'), // JSON с деталями
-  action: fraudActionEnum('action'),
-  isReviewed: boolean('is_reviewed').default(false),
-  reviewedBy: uuid('reviewed_by').references(() => users.id),
-  reviewedAt: timestamp('reviewed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// Заблокированные IP и устройства
-export const blockedEntities = pgTable('blocked_entities', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  entityType: text('entity_type').notNull(), // 'ip', 'device', 'email_domain', 'phone_prefix'
-  entityValue: text('entity_value').notNull(),
-  reason: text('reason'),
-  blockedBy: uuid('blocked_by').references(() => users.id),
-  expiresAt: timestamp('expires_at'), // null = permanent
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// Fingerprints устройств для обнаружения мульти-аккаунтов
-export const deviceFingerprints = pgTable('device_fingerprints', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  fingerprint: text('fingerprint').notNull(), // Hash устройства
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  lastSeenAt: timestamp('last_seen_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// ============================================
-// PUSH NOTIFICATIONS (Push-уведомления)
-// ============================================
-
-export const pushSubscriptions = pgTable('push_subscriptions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  endpoint: text('endpoint').notNull(), // Push service endpoint
-  p256dh: text('p256dh').notNull(), // Public key
-  auth: text('auth').notNull(), // Auth secret
-  userAgent: text('user_agent'),
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  lastUsedAt: timestamp('last_used_at'),
-});
-
-export const notificationTypeEnum = pgEnum('notification_type', [
-  'event_reminder', 'promotion_new', 'business_verified',
-  'payment_success', 'subscription_expiring', 'referral_bonus',
-  'event_approved', 'event_rejected', 'system'
-]);
-
-export const notifications = pgTable('notifications', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  type: notificationTypeEnum('type').notNull(),
-  title: text('title').notNull(),
-  body: text('body').notNull(),
-  icon: text('icon'),
-  link: text('link'), // URL при клике
-  data: text('data'), // JSON с доп. данными
-  isRead: boolean('is_read').default(false),
-  isPushed: boolean('is_pushed').default(false), // Отправлено через push
-  readAt: timestamp('read_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// ============================================
-// REVIEWS & RATINGS (Отзывы и рейтинги)
-// ============================================
-
-export const reviewTargetTypeEnum = pgEnum('review_target_type', ['business', 'event']);
-
-export const reviews = pgTable('reviews', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  targetType: reviewTargetTypeEnum('target_type').notNull(),
-  businessId: uuid('business_id').references(() => businesses.id),
-  eventId: uuid('event_id').references(() => events.id),
-  rating: integer('rating').notNull(), // 1-5
-  title: text('title'),
-  content: text('content'),
-  pros: text('pros'), // Плюсы
-  cons: text('cons'), // Минусы
-  images: text('images'), // JSON массив URL изображений
-  isVerifiedPurchase: boolean('is_verified_purchase').default(false), // Подтверждённая покупка
-  isApproved: boolean('is_approved').default(false), // Модерация
-  likesCount: integer('likes_count').default(0),
-  dislikesCount: integer('dislikes_count').default(0),
-  replyCount: integer('reply_count').default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-
-// Ответы на отзывы (от бизнеса или других пользователей)
-export const reviewReplies = pgTable('review_replies', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  reviewId: uuid('review_id').references(() => reviews.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  content: text('content').notNull(),
-  isBusinessReply: boolean('is_business_reply').default(false), // Ответ от бизнеса
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// Голоса за полезность отзывов
-export const reviewVotes = pgTable('review_votes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  reviewId: uuid('review_id').references(() => reviews.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  isHelpful: boolean('is_helpful').notNull(), // true = like, false = dislike
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// ============================================
-// ANALYTICS EVENTS (События аналитики)
-// ============================================
-
-export const analyticsEventTypeEnum = pgEnum('analytics_event_type', [
-  'page_view', 'event_view', 'business_view', 'promotion_view',
-  'premium_conversion', 'business_tier_upgrade', 'referral_signup',
-  'first_purchase', 'subscription_started', 'subscription_cancelled'
-]);
-
-export const analyticsEvents = pgTable('analytics_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id),
-  sessionId: text('session_id'),
-  eventType: analyticsEventTypeEnum('event_type').notNull(),
-  eventData: text('event_data'), // JSON с данными события
-  // Источник
-  source: text('source'), // 'web', 'mobile', 'api'
-  referrer: text('referrer'),
-  utmSource: text('utm_source'),
-  utmMedium: text('utm_medium'),
-  utmCampaign: text('utm_campaign'),
-  // Устройство
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  deviceType: text('device_type'), // 'desktop', 'mobile', 'tablet'
-  // Геолокация
-  country: text('country'),
-  city: text('city'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// ============================================
-// NEW RELATIONS
-// ============================================
-
-// Referral Relations
 export const referralCodesRelations = relations(referralCodes, ({ one, many }) => ({
   user: one(users, { fields: [referralCodes.userId], references: [users.id] }),
   referrals: many(referrals),
 }));
 
-export const referralsRelations = relations(referrals, ({ one, many }) => ({
+export const referralsRelations = relations(referrals, ({ one }) => ({
   referrer: one(users, { fields: [referrals.referrerId], references: [users.id] }),
   referred: one(users, { fields: [referrals.referredId], references: [users.id] }),
-  referralCode: one(referralCodes, { fields: [referrals.referralCodeId], references: [referralCodes.id] }),
-  bonuses: many(referralBonuses),
+  code: one(referralCodes, { fields: [referrals.codeId], references: [referralCodes.id] }),
 }));
 
-export const referralBonusesRelations = relations(referralBonuses, ({ one }) => ({
-  user: one(users, { fields: [referralBonuses.userId], references: [users.id] }),
-  referral: one(referrals, { fields: [referralBonuses.referralId], references: [referrals.id] }),
-}));
-
-// Payment Relations
-export const paymentsRelations = relations(payments, ({ one, many }) => ({
-  user: one(users, { fields: [payments.userId], references: [users.id] }),
-  business: one(businesses, { fields: [payments.businessId], references: [businesses.id] }),
-  webhooks: many(paymentWebhooks),
-}));
-
-export const paymentWebhooksRelations = relations(paymentWebhooks, ({ one }) => ({
-  payment: one(payments, { fields: [paymentWebhooks.paymentId], references: [payments.id] }),
-}));
-
-// Fraud Relations
-export const fraudLogsRelations = relations(fraudLogs, ({ one }) => ({
-  user: one(users, { fields: [fraudLogs.userId], references: [users.id] }),
-  reviewer: one(users, { fields: [fraudLogs.reviewedBy], references: [users.id] }),
-}));
-
-export const deviceFingerprintsRelations = relations(deviceFingerprints, ({ one }) => ({
-  user: one(users, { fields: [deviceFingerprints.userId], references: [users.id] }),
-}));
-
-// Push Notification Relations
-export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
-  user: one(users, { fields: [pushSubscriptions.userId], references: [users.id] }),
-}));
-
-export const notificationsRelations = relations(notifications, ({ one }) => ({
-  user: one(users, { fields: [notifications.userId], references: [users.id] }),
-}));
-
-// Review Relations
-export const reviewsRelations = relations(reviews, ({ one, many }) => ({
-  user: one(users, { fields: [reviews.userId], references: [users.id] }),
-  business: one(businesses, { fields: [reviews.businessId], references: [businesses.id] }),
-  event: one(events, { fields: [reviews.eventId], references: [events.id] }),
-  replies: many(reviewReplies),
-  votes: many(reviewVotes),
-}));
-
-export const reviewRepliesRelations = relations(reviewReplies, ({ one }) => ({
-  review: one(reviews, { fields: [reviewReplies.reviewId], references: [reviews.id] }),
-  user: one(users, { fields: [reviewReplies.userId], references: [users.id] }),
-}));
-
-export const reviewVotesRelations = relations(reviewVotes, ({ one }) => ({
-  review: one(reviews, { fields: [reviewVotes.reviewId], references: [reviews.id] }),
-  user: one(users, { fields: [reviewVotes.userId], references: [users.id] }),
-}));
-
-// Analytics Relations
-export const analyticsEventsRelations = relations(analyticsEvents, ({ one }) => ({
-  user: one(users, { fields: [analyticsEvents.userId], references: [users.id] }),
-}));
+export const referralRewardsConfigRelations = relations(referralRewardsConfig, () => ({}));

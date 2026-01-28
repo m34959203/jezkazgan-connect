@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos } from '../db';
-import { eq, desc, sql, count, and, gte, like, or } from 'drizzle-orm';
+import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig } from '../db';
+import { eq, desc, sql, count, and, gte, lte, like, or, isNull } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
+import { onUserBecamePremium } from './referral';
 
 const admin = new Hono<{ Variables: { user: AuthUser } }>();
 
@@ -109,6 +110,15 @@ admin.patch('/users/:id', async (c) => {
   const body = await c.req.json();
 
   try {
+    // Get current user state to check if premium status is changing
+    const [currentUser] = await db.select().from(users).where(eq(users.id, id));
+    if (!currentUser) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const wasNotPremium = !currentUser.isPremium;
+    const becomingPremium = body.isPremium === true;
+
     const [updated] = await db
       .update(users)
       .set({
@@ -118,6 +128,16 @@ admin.patch('/users/:id', async (c) => {
       })
       .where(eq(users.id, id))
       .returning();
+
+    // If user just became premium, trigger referral reward
+    if (wasNotPremium && becomingPremium) {
+      try {
+        await onUserBecamePremium(id);
+      } catch (err) {
+        console.error('Failed to process referral premium bonus:', err);
+        // Don't fail the request, just log the error
+      }
+    }
 
     return c.json({ ...updated, passwordHash: undefined });
   } catch {
@@ -932,6 +952,486 @@ admin.delete('/cities/:cityId/photos/:photoId', async (c) => {
   } catch (error) {
     console.error('Delete photo error:', error);
     return c.json({ error: 'Failed to delete photo' }, 500);
+  }
+});
+
+// ==================== CASHBACK SYSTEM MANAGEMENT ====================
+
+// Get cashback statistics
+admin.get('/cashback/stats', async (c) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Total wallets and balance
+    const [walletsStats] = await db.select({
+      count: count(),
+      totalBalance: sql<number>`COALESCE(SUM(CAST(${cashbackWallets.balance} AS NUMERIC)), 0)::numeric`,
+      totalEarned: sql<number>`COALESCE(SUM(CAST(${cashbackWallets.totalEarned} AS NUMERIC)), 0)::numeric`,
+      totalSpent: sql<number>`COALESCE(SUM(CAST(${cashbackWallets.totalSpent} AS NUMERIC)), 0)::numeric`,
+    }).from(cashbackWallets);
+
+    // Payments stats
+    const [paymentsTotal] = await db.select({ count: count() }).from(cashbackPartnerPayments);
+    const [paymentsConfirmed] = await db.select({ count: count() }).from(cashbackPartnerPayments).where(eq(cashbackPartnerPayments.status, 'confirmed'));
+    const [paymentsPending] = await db.select({ count: count() }).from(cashbackPartnerPayments).where(eq(cashbackPartnerPayments.status, 'pending'));
+
+    // Recent payments
+    const [recentPayments] = await db.select({
+      totalAmount: sql<number>`COALESCE(SUM(CAST(${cashbackPartnerPayments.totalAmount} AS NUMERIC)), 0)::numeric`,
+      cashbackUsed: sql<number>`COALESCE(SUM(CAST(${cashbackPartnerPayments.cashbackUsed} AS NUMERIC)), 0)::numeric`,
+      cashbackGiven: sql<number>`COALESCE(SUM(CAST(${cashbackPartnerPayments.cashbackEarned} AS NUMERIC)), 0)::numeric`,
+    })
+    .from(cashbackPartnerPayments)
+    .where(and(
+      eq(cashbackPartnerPayments.status, 'confirmed'),
+      gte(cashbackPartnerPayments.createdAt, thirtyDaysAgo)
+    ));
+
+    // Active rules
+    const [activeRules] = await db.select({ count: count() }).from(cashbackRules).where(eq(cashbackRules.isActive, true));
+
+    return c.json({
+      wallets: {
+        total: walletsStats.count,
+        totalBalance: parseFloat(String(walletsStats.totalBalance || 0)),
+        totalEarned: parseFloat(String(walletsStats.totalEarned || 0)),
+        totalSpent: parseFloat(String(walletsStats.totalSpent || 0)),
+      },
+      payments: {
+        total: paymentsTotal.count,
+        confirmed: paymentsConfirmed.count,
+        pending: paymentsPending.count,
+      },
+      last30Days: {
+        totalRevenue: parseFloat(String(recentPayments.totalAmount || 0)),
+        cashbackUsed: parseFloat(String(recentPayments.cashbackUsed || 0)),
+        cashbackGiven: parseFloat(String(recentPayments.cashbackGiven || 0)),
+      },
+      activeRules: activeRules.count,
+    });
+  } catch (error) {
+    console.error('Cashback stats error:', error);
+    return c.json({ error: 'Failed to fetch cashback stats' }, 500);
+  }
+});
+
+// Get cashback rules
+admin.get('/cashback/rules', async (c) => {
+  try {
+    const rules = await db
+      .select({
+        id: cashbackRules.id,
+        name: cashbackRules.name,
+        description: cashbackRules.description,
+        type: cashbackRules.type,
+        value: cashbackRules.value,
+        minPurchase: cashbackRules.minPurchase,
+        maxCashback: cashbackRules.maxCashback,
+        category: cashbackRules.category,
+        isPremiumOnly: cashbackRules.isPremiumOnly,
+        isActive: cashbackRules.isActive,
+        priority: cashbackRules.priority,
+        validFrom: cashbackRules.validFrom,
+        validUntil: cashbackRules.validUntil,
+        usageCount: cashbackRules.usageCount,
+        totalCashbackGiven: cashbackRules.totalCashbackGiven,
+        businessId: cashbackRules.businessId,
+        businessName: businesses.name,
+        createdAt: cashbackRules.createdAt,
+      })
+      .from(cashbackRules)
+      .leftJoin(businesses, eq(cashbackRules.businessId, businesses.id))
+      .orderBy(desc(cashbackRules.priority), desc(cashbackRules.createdAt));
+
+    return c.json({
+      rules: rules.map(r => ({
+        ...r,
+        value: parseFloat(r.value),
+        minPurchase: r.minPurchase ? parseFloat(r.minPurchase) : 0,
+        maxCashback: r.maxCashback ? parseFloat(r.maxCashback) : null,
+        totalCashbackGiven: parseFloat(r.totalCashbackGiven || '0'),
+      })),
+    });
+  } catch (error) {
+    console.error('Cashback rules error:', error);
+    return c.json({ error: 'Failed to fetch rules' }, 500);
+  }
+});
+
+// Create cashback rule
+admin.post('/cashback/rules', async (c) => {
+  const body = await c.req.json();
+
+  try {
+    const [rule] = await db
+      .insert(cashbackRules)
+      .values({
+        name: body.name,
+        description: body.description,
+        type: body.type,
+        value: String(body.value),
+        minPurchase: body.minPurchase ? String(body.minPurchase) : '0',
+        maxCashback: body.maxCashback ? String(body.maxCashback) : null,
+        category: body.category || null,
+        businessId: body.businessId || null,
+        isPremiumOnly: body.isPremiumOnly ?? true,
+        isActive: body.isActive ?? true,
+        priority: body.priority ?? 0,
+        validFrom: body.validFrom ? new Date(body.validFrom) : new Date(),
+        validUntil: body.validUntil ? new Date(body.validUntil) : null,
+      })
+      .returning();
+
+    return c.json(rule);
+  } catch (error) {
+    console.error('Create rule error:', error);
+    return c.json({ error: 'Failed to create rule' }, 500);
+  }
+});
+
+// Update cashback rule
+admin.patch('/cashback/rules/:id', async (c) => {
+  const { id } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    const updateData: any = { updatedAt: new Date() };
+
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.type !== undefined) updateData.type = body.type;
+    if (body.value !== undefined) updateData.value = String(body.value);
+    if (body.minPurchase !== undefined) updateData.minPurchase = String(body.minPurchase);
+    if (body.maxCashback !== undefined) updateData.maxCashback = body.maxCashback ? String(body.maxCashback) : null;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.businessId !== undefined) updateData.businessId = body.businessId || null;
+    if (body.isPremiumOnly !== undefined) updateData.isPremiumOnly = body.isPremiumOnly;
+    if (body.isActive !== undefined) updateData.isActive = body.isActive;
+    if (body.priority !== undefined) updateData.priority = body.priority;
+    if (body.validFrom !== undefined) updateData.validFrom = new Date(body.validFrom);
+    if (body.validUntil !== undefined) updateData.validUntil = body.validUntil ? new Date(body.validUntil) : null;
+
+    const [updated] = await db
+      .update(cashbackRules)
+      .set(updateData)
+      .where(eq(cashbackRules.id, id))
+      .returning();
+
+    return c.json(updated);
+  } catch (error) {
+    console.error('Update rule error:', error);
+    return c.json({ error: 'Failed to update rule' }, 500);
+  }
+});
+
+// Delete cashback rule
+admin.delete('/cashback/rules/:id', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    await db.delete(cashbackRules).where(eq(cashbackRules.id, id));
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Delete rule error:', error);
+    return c.json({ error: 'Failed to delete rule' }, 500);
+  }
+});
+
+// Get cashback payments
+admin.get('/cashback/payments', async (c) => {
+  const { status, limit = '20', offset = '0' } = c.req.query();
+
+  try {
+    let conditions = [];
+    if (status && status !== 'all') {
+      conditions.push(eq(cashbackPartnerPayments.status, status as any));
+    }
+
+    const payments = await db
+      .select({
+        id: cashbackPartnerPayments.id,
+        totalAmount: cashbackPartnerPayments.totalAmount,
+        cashbackUsed: cashbackPartnerPayments.cashbackUsed,
+        cashbackEarned: cashbackPartnerPayments.cashbackEarned,
+        status: cashbackPartnerPayments.status,
+        confirmationCode: cashbackPartnerPayments.confirmationCode,
+        createdAt: cashbackPartnerPayments.createdAt,
+        confirmedAt: cashbackPartnerPayments.confirmedAt,
+        userName: users.name,
+        userEmail: users.email,
+        businessName: businesses.name,
+      })
+      .from(cashbackPartnerPayments)
+      .leftJoin(users, eq(cashbackPartnerPayments.userId, users.id))
+      .leftJoin(businesses, eq(cashbackPartnerPayments.businessId, businesses.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(cashbackPartnerPayments.createdAt))
+      .limit(Number(limit))
+      .offset(Number(offset));
+
+    const [total] = await db.select({ count: count() }).from(cashbackPartnerPayments);
+
+    return c.json({
+      payments: payments.map(p => ({
+        ...p,
+        totalAmount: parseFloat(p.totalAmount),
+        cashbackUsed: parseFloat(p.cashbackUsed),
+        cashbackEarned: parseFloat(p.cashbackEarned),
+      })),
+      total: total.count,
+    });
+  } catch (error) {
+    console.error('Payments error:', error);
+    return c.json({ error: 'Failed to fetch payments' }, 500);
+  }
+});
+
+// ==================== REFERRAL SYSTEM MANAGEMENT ====================
+
+// Get referral statistics
+admin.get('/referral/stats', async (c) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Total codes
+    const [codesTotal] = await db.select({ count: count() }).from(referralCodes);
+    const [codesActive] = await db.select({ count: count() }).from(referralCodes).where(eq(referralCodes.isActive, true));
+
+    // Total referrals
+    const [referralsTotal] = await db.select({ count: count() }).from(referrals);
+    const [referralsConverted] = await db.select({ count: count() }).from(referrals).where(eq(referrals.status, 'premium_converted'));
+
+    // Total rewards
+    const [totalRewardsGiven] = await db.select({
+      total: sql<number>`COALESCE(SUM(CAST(${referralCodes.totalRewardsEarned} AS NUMERIC)), 0)::numeric`,
+    }).from(referralCodes);
+
+    // Recent referrals
+    const [recentReferrals] = await db.select({ count: count() }).from(referrals).where(gte(referrals.createdAt, thirtyDaysAgo));
+
+    // Top referrers
+    const topReferrers = await db
+      .select({
+        userId: referralCodes.userId,
+        userName: users.name,
+        userEmail: users.email,
+        code: referralCodes.code,
+        usageCount: referralCodes.usageCount,
+        totalRewards: referralCodes.totalRewardsEarned,
+        premiumConversions: referralCodes.premiumConversions,
+      })
+      .from(referralCodes)
+      .leftJoin(users, eq(referralCodes.userId, users.id))
+      .orderBy(desc(referralCodes.usageCount))
+      .limit(10);
+
+    return c.json({
+      codes: {
+        total: codesTotal.count,
+        active: codesActive.count,
+      },
+      referrals: {
+        total: referralsTotal.count,
+        premiumConverted: referralsConverted.count,
+        conversionRate: referralsTotal.count > 0
+          ? Math.round((referralsConverted.count / referralsTotal.count) * 100 * 10) / 10
+          : 0,
+      },
+      rewards: {
+        totalGiven: parseFloat(String(totalRewardsGiven.total || 0)),
+      },
+      last30Days: {
+        newReferrals: recentReferrals.count,
+      },
+      topReferrers: topReferrers.map(r => ({
+        ...r,
+        totalRewards: parseFloat(r.totalRewards || '0'),
+      })),
+    });
+  } catch (error) {
+    console.error('Referral stats error:', error);
+    return c.json({ error: 'Failed to fetch referral stats' }, 500);
+  }
+});
+
+// Get referral reward configs
+admin.get('/referral/rewards', async (c) => {
+  try {
+    const configs = await db
+      .select()
+      .from(referralRewardsConfig)
+      .orderBy(referralRewardsConfig.rewardType);
+
+    return c.json({
+      rewards: configs.map(r => ({
+        ...r,
+        referrerAmount: parseFloat(r.referrerAmount),
+        referredAmount: parseFloat(r.referredAmount),
+      })),
+    });
+  } catch (error) {
+    console.error('Rewards config error:', error);
+    return c.json({ error: 'Failed to fetch rewards config' }, 500);
+  }
+});
+
+// Create/Update referral reward config
+admin.put('/referral/rewards/:type', async (c) => {
+  const { type } = c.req.param();
+  const body = await c.req.json();
+
+  try {
+    // Check if exists
+    const [existing] = await db
+      .select()
+      .from(referralRewardsConfig)
+      .where(eq(referralRewardsConfig.rewardType, type as any))
+      .limit(1);
+
+    if (existing) {
+      // Update
+      const [updated] = await db
+        .update(referralRewardsConfig)
+        .set({
+          referrerAmount: String(body.referrerAmount),
+          referredAmount: String(body.referredAmount),
+          description: body.description,
+          isActive: body.isActive ?? true,
+          validFrom: body.validFrom ? new Date(body.validFrom) : undefined,
+          validUntil: body.validUntil ? new Date(body.validUntil) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(referralRewardsConfig.id, existing.id))
+        .returning();
+
+      return c.json(updated);
+    } else {
+      // Create
+      const [created] = await db
+        .insert(referralRewardsConfig)
+        .values({
+          rewardType: type as any,
+          referrerAmount: String(body.referrerAmount),
+          referredAmount: String(body.referredAmount),
+          description: body.description,
+          isActive: body.isActive ?? true,
+          validFrom: body.validFrom ? new Date(body.validFrom) : new Date(),
+          validUntil: body.validUntil ? new Date(body.validUntil) : null,
+        })
+        .returning();
+
+      return c.json(created);
+    }
+  } catch (error) {
+    console.error('Update rewards error:', error);
+    return c.json({ error: 'Failed to update rewards config' }, 500);
+  }
+});
+
+// Get all referral codes (for admin overview)
+admin.get('/referral/codes', async (c) => {
+  const { limit = '20', offset = '0' } = c.req.query();
+
+  try {
+    const codes = await db
+      .select({
+        id: referralCodes.id,
+        code: referralCodes.code,
+        isActive: referralCodes.isActive,
+        usageCount: referralCodes.usageCount,
+        maxUsages: referralCodes.maxUsages,
+        totalRewardsEarned: referralCodes.totalRewardsEarned,
+        premiumConversions: referralCodes.premiumConversions,
+        expiresAt: referralCodes.expiresAt,
+        createdAt: referralCodes.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(referralCodes)
+      .leftJoin(users, eq(referralCodes.userId, users.id))
+      .orderBy(desc(referralCodes.createdAt))
+      .limit(Number(limit))
+      .offset(Number(offset));
+
+    const [total] = await db.select({ count: count() }).from(referralCodes);
+
+    return c.json({
+      codes: codes.map(c => ({
+        ...c,
+        totalRewardsEarned: parseFloat(c.totalRewardsEarned || '0'),
+      })),
+      total: total.count,
+    });
+  } catch (error) {
+    console.error('Codes error:', error);
+    return c.json({ error: 'Failed to fetch codes' }, 500);
+  }
+});
+
+// Deactivate referral code
+admin.patch('/referral/codes/:id/deactivate', async (c) => {
+  const { id } = c.req.param();
+
+  try {
+    const [updated] = await db
+      .update(referralCodes)
+      .set({ isActive: false })
+      .where(eq(referralCodes.id, id))
+      .returning();
+
+    return c.json(updated);
+  } catch (error) {
+    console.error('Deactivate code error:', error);
+    return c.json({ error: 'Failed to deactivate code' }, 500);
+  }
+});
+
+// Get all referrals
+admin.get('/referral/list', async (c) => {
+  const { status, limit = '20', offset = '0' } = c.req.query();
+
+  try {
+    let conditions = [];
+    if (status && status !== 'all') {
+      conditions.push(eq(referrals.status, status as any));
+    }
+
+    // This is a complex query, we'll use raw SQL for the aliases
+    const referralsList = await db
+      .select({
+        id: referrals.id,
+        status: referrals.status,
+        referrerReward: referrals.referrerReward,
+        referredReward: referrals.referredReward,
+        referrerRewardPaid: referrals.referrerRewardPaid,
+        referredRewardPaid: referrals.referredRewardPaid,
+        registeredAt: referrals.registeredAt,
+        convertedAt: referrals.convertedAt,
+        createdAt: referrals.createdAt,
+        code: referralCodes.code,
+      })
+      .from(referrals)
+      .leftJoin(referralCodes, eq(referrals.codeId, referralCodes.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(referrals.createdAt))
+      .limit(Number(limit))
+      .offset(Number(offset));
+
+    const [total] = await db.select({ count: count() }).from(referrals);
+
+    return c.json({
+      referrals: referralsList.map(r => ({
+        ...r,
+        referrerReward: parseFloat(r.referrerReward || '0'),
+        referredReward: parseFloat(r.referredReward || '0'),
+      })),
+      total: total.count,
+    });
+  } catch (error) {
+    console.error('Referrals list error:', error);
+    return c.json({ error: 'Failed to fetch referrals' }, 500);
   }
 });
 

@@ -41,11 +41,41 @@ import {
   updateCityPhoto,
   deleteCityPhoto,
   fetchPublicCityPhotos,
-  // New imports for referrals, payments, push, reviews, analytics
-  fetchMyReferralCode,
-  fetchReferralStats,
-  fetchReferralList,
+  // Cashback
+  fetchCashbackWallet,
+  fetchCashbackTransactions,
+  createCashbackPayment,
+  fetchCashbackPayments,
+  fetchCashbackPaymentById,
+  confirmCashbackPayment,
+  rejectCashbackPayment,
+  fetchCashbackRules,
+  fetchCashbackPartners,
+  fetchBusinessCashbackStats,
+  fetchBusinessCashbackPayments,
+  // Referral
   validateReferralCode,
+  fetchReferralCode,
+  generateReferralCode,
+  applyReferralCode,
+  fetchReferralStats,
+  fetchReferralRewards,
+  deactivateReferralCode,
+  // Admin Cashback & Referral
+  fetchAdminCashbackStats,
+  fetchAdminCashbackRules,
+  createAdminCashbackRule,
+  updateAdminCashbackRule,
+  deleteAdminCashbackRule,
+  fetchAdminCashbackPayments,
+  fetchAdminReferralStats,
+  fetchAdminReferralRewards,
+  updateAdminReferralReward,
+  fetchAdminReferralCodes,
+  deactivateAdminReferralCode,
+  // New imports for payments, push, reviews, analytics
+  fetchMyReferralCode,
+  fetchReferralList,
   fetchReferralBonuses,
   requestReferralWithdrawal,
   createPayment,
@@ -88,8 +118,14 @@ import {
   type TeamData,
   type TeamMember,
   type CityBanner,
-  type ReferralCode,
+  type CashbackWallet,
+  type CashbackTransaction,
+  type CashbackPayment,
+  type CashbackRule,
+  type CashbackPartner,
   type ReferralStats,
+  type ReferralRewards,
+  type ReferralCode,
   type Referral,
   type ReferralBonus,
   type Payment,
@@ -670,8 +706,138 @@ export function usePublicCityPhotos(citySlug: string) {
 }
 
 // ============================================
-// REFERRAL SYSTEM HOOKS
+// CASHBACK SYSTEM HOOKS (Premium Users)
 // ============================================
+
+export function useCashbackWallet() {
+  return useQuery({
+    queryKey: ['cashback', 'wallet'],
+    queryFn: fetchCashbackWallet,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useCashbackTransactions(params?: { limit?: number; offset?: number; type?: string }) {
+  return useQuery({
+    queryKey: ['cashback', 'transactions', params],
+    queryFn: () => fetchCashbackTransactions(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useCreateCashbackPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      businessId: string;
+      totalAmount: number;
+      useCashback?: number;
+      eventId?: string;
+      promotionId?: string;
+      notes?: string;
+    }) => createCashbackPayment(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashback', 'wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['cashback', 'payments'] });
+    },
+  });
+}
+
+export function useCashbackPayments(params?: { limit?: number; offset?: number; status?: string }) {
+  return useQuery({
+    queryKey: ['cashback', 'payments', params],
+    queryFn: () => fetchCashbackPayments(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useCashbackPayment(id: string) {
+  return useQuery({
+    queryKey: ['cashback', 'payment', id],
+    queryFn: () => fetchCashbackPaymentById(id),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useConfirmCashbackPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (confirmationCode: string) => confirmCashbackPayment(confirmationCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashback'] });
+      queryClient.invalidateQueries({ queryKey: ['business', 'cashback'] });
+    },
+  });
+}
+
+export function useRejectCashbackPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ confirmationCode, reason }: { confirmationCode: string; reason: string }) =>
+      rejectCashbackPayment(confirmationCode, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashback'] });
+      queryClient.invalidateQueries({ queryKey: ['business', 'cashback'] });
+    },
+  });
+}
+
+export function useCashbackRules(businessId?: string) {
+  return useQuery({
+    queryKey: ['cashback', 'rules', businessId],
+    queryFn: () => fetchCashbackRules(businessId),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useCashbackPartners(params?: { cityId?: string; category?: string }) {
+  return useQuery({
+    queryKey: ['cashback', 'partners', params],
+    queryFn: () => fetchCashbackPartners(params),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useBusinessCashbackStats() {
+  return useQuery({
+    queryKey: ['business', 'cashback', 'stats'],
+    queryFn: fetchBusinessCashbackStats,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useBusinessCashbackPayments(params?: { limit?: number; offset?: number; status?: string }) {
+  return useQuery({
+    queryKey: ['business', 'cashback', 'payments', params],
+    queryFn: () => fetchBusinessCashbackPayments(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ============================================
+// REFERRAL SYSTEM HOOKS (Premium Users)
+// ============================================
+
+export function useValidateReferralCode(code: string) {
+  return useQuery({
+    queryKey: ['referral', 'validate', code],
+    queryFn: () => validateReferralCode(code),
+    enabled: !!code && code.length >= 4,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useReferralCode() {
+  return useQuery({
+    queryKey: ['referral', 'code'],
+    queryFn: fetchReferralCode,
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
 export function useMyReferralCode() {
   return useQuery<ReferralCode>({
@@ -681,8 +847,32 @@ export function useMyReferralCode() {
   });
 }
 
+export function useGenerateReferralCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: generateReferralCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referral', 'code'] });
+      queryClient.invalidateQueries({ queryKey: ['referral', 'stats'] });
+    },
+  });
+}
+
+export function useApplyReferralCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (code: string) => applyReferralCode(code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashback', 'wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['referral'] });
+    },
+  });
+}
+
 export function useReferralStats() {
-  return useQuery<ReferralStats>({
+  return useQuery({
     queryKey: ['referral', 'stats'],
     queryFn: fetchReferralStats,
     staleTime: 1000 * 60 * 2,
@@ -697,20 +887,19 @@ export function useReferralList(params?: { limit?: number; offset?: number }) {
   });
 }
 
-export function useValidateReferralCode(code: string) {
-  return useQuery({
-    queryKey: ['referral', 'validate', code],
-    queryFn: () => validateReferralCode(code),
-    enabled: !!code && code.length >= 4,
-    staleTime: 1000 * 60 * 5,
-  });
-}
-
 export function useReferralBonuses(params?: { limit?: number; offset?: number }) {
   return useQuery<ReferralBonus[]>({
     queryKey: ['referral', 'bonuses', params],
     queryFn: () => fetchReferralBonuses(params),
     staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useReferralRewards() {
+  return useQuery({
+    queryKey: ['referral', 'rewards'],
+    queryFn: fetchReferralRewards,
+    staleTime: 1000 * 60 * 10,
   });
 }
 
@@ -722,6 +911,18 @@ export function useRequestWithdrawal() {
       requestReferralWithdrawal(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referral'] });
+    },
+  });
+}
+
+export function useDeactivateReferralCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deactivateReferralCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referral', 'code'] });
+      queryClient.invalidateQueries({ queryKey: ['referral', 'stats'] });
     },
   });
 }
@@ -971,6 +1172,123 @@ export function useMyReviews(params?: { limit?: number; offset?: number }) {
     queryKey: ['myReviews', params],
     queryFn: () => fetchMyReviews(params),
     staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ============================================
+// ADMIN: CASHBACK MANAGEMENT HOOKS
+// ============================================
+
+export function useAdminCashbackStats() {
+  return useQuery({
+    queryKey: ['admin', 'cashback', 'stats'],
+    queryFn: fetchAdminCashbackStats,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminCashbackRules() {
+  return useQuery({
+    queryKey: ['admin', 'cashback', 'rules'],
+    queryFn: fetchAdminCashbackRules,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useCreateAdminCashbackRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAdminCashbackRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cashback', 'rules'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cashback', 'stats'] });
+    },
+  });
+}
+
+export function useUpdateAdminCashbackRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateAdminCashbackRule>[1] }) =>
+      updateAdminCashbackRule(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cashback', 'rules'] });
+    },
+  });
+}
+
+export function useDeleteAdminCashbackRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteAdminCashbackRule(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cashback', 'rules'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'cashback', 'stats'] });
+    },
+  });
+}
+
+export function useAdminCashbackPayments(params?: { status?: string; limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ['admin', 'cashback', 'payments', params],
+    queryFn: () => fetchAdminCashbackPayments(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ============================================
+// ADMIN: REFERRAL MANAGEMENT HOOKS
+// ============================================
+
+export function useAdminReferralStats() {
+  return useQuery({
+    queryKey: ['admin', 'referral', 'stats'],
+    queryFn: fetchAdminReferralStats,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useAdminReferralRewards() {
+  return useQuery({
+    queryKey: ['admin', 'referral', 'rewards'],
+    queryFn: fetchAdminReferralRewards,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useUpdateAdminReferralReward() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ type, data }: { type: string; data: Parameters<typeof updateAdminReferralReward>[1] }) =>
+      updateAdminReferralReward(type, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'referral', 'rewards'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'referral', 'stats'] });
+    },
+  });
+}
+
+export function useAdminReferralCodes(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ['admin', 'referral', 'codes', params],
+    queryFn: () => fetchAdminReferralCodes(params),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useDeactivateAdminReferralCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deactivateAdminReferralCode(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'referral', 'codes'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'referral', 'stats'] });
+    },
   });
 }
 

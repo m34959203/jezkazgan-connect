@@ -16,6 +16,8 @@ import upload from './routes/upload';
 import favorites from './routes/favorites';
 import ai from './routes/ai';
 import autopublish from './routes/autopublish';
+import cashback from './routes/cashback';
+import referral from './routes/referral';
 // New feature routes
 import referrals from './routes/referrals';
 import payments from './routes/payments';
@@ -61,7 +63,7 @@ app.use('*', cors({
 }));
 
 // Health check with version info
-const BUILD_VERSION = '2.3.0-full';
+const BUILD_VERSION = '2.6.0-full-features';
 const BUILD_DATE = '2026-01-28';
 
 app.get('/', (c) => {
@@ -104,6 +106,9 @@ app.route('/favorites', favorites);
 // Business Premium routes
 app.route('/ai', ai);
 app.route('/autopublish', autopublish);
+// User Premium routes (Cashback & Referral)
+app.route('/cashback', cashback);
+app.route('/referral', referral);
 
 // New feature routes
 app.route('/referrals', referrals);
