@@ -376,6 +376,290 @@ export async function runMigrations() {
     `;
     console.log('[Migration] ✓ Default cashback rule inserted');
 
+    // ============================================
+    // ADD MISSING COLUMNS TO EXISTING TABLES
+    // ============================================
+
+    // Add missing columns to referral_codes table
+    await sql`
+      DO $$ BEGIN
+        ALTER TABLE referral_codes ADD COLUMN IF NOT EXISTS total_earnings NUMERIC(12, 2) DEFAULT 0;
+      EXCEPTION
+        WHEN duplicate_column THEN NULL;
+      END $$;
+    `;
+
+    // Add missing columns to referrals table
+    await sql`
+      DO $$ BEGIN
+        ALTER TABLE referrals ADD COLUMN IF NOT EXISTS referral_code_id UUID REFERENCES referral_codes(id);
+        ALTER TABLE referrals ADD COLUMN IF NOT EXISTS first_purchase_at TIMESTAMP;
+        ALTER TABLE referrals ADD COLUMN IF NOT EXISTS first_purchase_amount INTEGER;
+        ALTER TABLE referrals ADD COLUMN IF NOT EXISTS bonus_earned NUMERIC(12, 2) DEFAULT 0;
+        ALTER TABLE referrals ADD COLUMN IF NOT EXISTS bonus_given NUMERIC(12, 2) DEFAULT 0;
+      EXCEPTION
+        WHEN duplicate_column THEN NULL;
+      END $$;
+    `;
+    console.log('[Migration] ✓ Added missing columns to referral tables');
+
+    // ============================================
+    // REFERRAL BONUSES TABLE
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE referral_bonus_type AS ENUM ('first_purchase', 'registration', 'withdrawal');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE referral_bonus_status AS ENUM ('pending', 'approved', 'paid', 'rejected');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS referral_bonuses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        referral_id UUID REFERENCES referrals(id),
+        type referral_bonus_type NOT NULL,
+        amount NUMERIC(12, 2) NOT NULL,
+        status referral_bonus_status NOT NULL DEFAULT 'pending',
+        description TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ referral_bonuses table ready');
+
+    // ============================================
+    // ANALYTICS EVENTS TABLE
+    // ============================================
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id),
+        session_id TEXT,
+        event_type TEXT NOT NULL,
+        event_data TEXT,
+        source TEXT DEFAULT 'web',
+        referrer TEXT,
+        utm_source TEXT,
+        utm_medium TEXT,
+        utm_campaign TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        device_type TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ analytics_events table ready');
+
+    // ============================================
+    // PAYMENTS SYSTEM TABLES
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE payment_provider AS ENUM ('kaspi', 'halyk');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE payment_type AS ENUM ('subscription', 'premium', 'banner', 'other');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded', 'cancelled');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE subscription_type AS ENUM ('user_premium', 'business_lite', 'business_premium');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS payments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        business_id UUID REFERENCES businesses(id),
+        provider payment_provider NOT NULL,
+        type payment_type NOT NULL,
+        amount INTEGER NOT NULL,
+        status payment_status NOT NULL DEFAULT 'pending',
+        description TEXT,
+        subscription_type subscription_type,
+        subscription_days INTEGER,
+        payment_url TEXT,
+        qr_code TEXT,
+        external_id TEXT,
+        external_status TEXT,
+        paid_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ payments table ready');
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS payment_webhooks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        provider payment_provider NOT NULL,
+        event_type TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        signature TEXT,
+        is_processed BOOLEAN DEFAULT false,
+        processed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ payment_webhooks table ready');
+
+    // ============================================
+    // PUSH NOTIFICATIONS TABLES
+    // ============================================
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        is_active BOOLEAN DEFAULT true,
+        last_used_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ push_subscriptions table ready');
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE notification_type AS ENUM (
+          'event_reminder', 'promotion_new', 'business_verified', 'payment_success',
+          'subscription_expiring', 'referral_bonus', 'event_approved', 'event_rejected', 'system'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        type notification_type NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        icon TEXT,
+        link TEXT,
+        data TEXT,
+        is_read BOOLEAN DEFAULT false,
+        read_at TIMESTAMP,
+        is_pushed BOOLEAN DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ notifications table ready');
+
+    // ============================================
+    // REVIEWS SYSTEM TABLES
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE review_target_type AS ENUM ('business', 'event');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        target_type review_target_type NOT NULL,
+        business_id UUID REFERENCES businesses(id),
+        event_id UUID REFERENCES events(id),
+        rating INTEGER NOT NULL,
+        title TEXT,
+        content TEXT,
+        pros TEXT,
+        cons TEXT,
+        images TEXT,
+        likes_count INTEGER DEFAULT 0,
+        dislikes_count INTEGER DEFAULT 0,
+        reply_count INTEGER DEFAULT 0,
+        is_approved BOOLEAN DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ reviews table ready');
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS review_replies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        review_id UUID NOT NULL REFERENCES reviews(id),
+        user_id UUID NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        is_business_reply BOOLEAN DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ review_replies table ready');
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS review_votes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        review_id UUID NOT NULL REFERENCES reviews(id),
+        user_id UUID NOT NULL REFERENCES users(id),
+        is_helpful BOOLEAN NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ review_votes table ready');
+
+    // Create indexes for new tables
+    await sql`
+      CREATE INDEX IF NOT EXISTS referral_bonuses_user_id_idx ON referral_bonuses(user_id);
+      CREATE INDEX IF NOT EXISTS analytics_events_user_id_idx ON analytics_events(user_id);
+      CREATE INDEX IF NOT EXISTS analytics_events_event_type_idx ON analytics_events(event_type);
+      CREATE INDEX IF NOT EXISTS analytics_events_created_at_idx ON analytics_events(created_at);
+      CREATE INDEX IF NOT EXISTS payments_user_id_idx ON payments(user_id);
+      CREATE INDEX IF NOT EXISTS payments_status_idx ON payments(status);
+      CREATE INDEX IF NOT EXISTS push_subscriptions_user_id_idx ON push_subscriptions(user_id);
+      CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS notifications_is_read_idx ON notifications(is_read);
+      CREATE INDEX IF NOT EXISTS reviews_user_id_idx ON reviews(user_id);
+      CREATE INDEX IF NOT EXISTS reviews_business_id_idx ON reviews(business_id);
+      CREATE INDEX IF NOT EXISTS reviews_event_id_idx ON reviews(event_id);
+      CREATE INDEX IF NOT EXISTS review_replies_review_id_idx ON review_replies(review_id);
+      CREATE INDEX IF NOT EXISTS review_votes_review_id_idx ON review_votes(review_id);
+    `;
+    console.log('[Migration] ✓ Indexes created for new tables');
+
     console.log('[Migration] All migrations completed successfully!');
   } catch (error) {
     console.error('[Migration] Error running migrations:', error);
