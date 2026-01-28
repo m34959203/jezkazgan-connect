@@ -167,7 +167,6 @@ admin.get('/businesses', async (c) => {
         address: businesses.address,
         phone: businesses.phone,
         website: businesses.website,
-        workingHours: businesses.workingHours,
       })
       .from(businesses)
       .leftJoin(users, eq(businesses.ownerId, users.id))
