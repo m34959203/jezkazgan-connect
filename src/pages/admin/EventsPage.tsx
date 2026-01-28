@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar, MapPin, Loader2, AlertCircle, Star, Crown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { ImageUpload } from '@/components/ui/image-upload';
 import {
   Table,
   TableBody,
@@ -28,8 +32,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAdminEvents, useApproveEvent, useRejectEvent, useToggleEventFeatured } from '@/hooks/use-api';
-import { deleteAdminEvent } from '@/lib/api';
+import { deleteAdminEvent, createEvent, fetchCities, fetchAdminBusinesses, type City, type AdminBusiness } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -48,14 +60,29 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const eventCategories = [
+  { value: 'concerts', label: 'Концерты' },
+  { value: 'education', label: 'Обучение' },
+  { value: 'seminars', label: 'Семинары' },
+  { value: 'leisure', label: 'Досуг' },
+  { value: 'sports', label: 'Спорт' },
+  { value: 'children', label: 'Для детей' },
+  { value: 'exhibitions', label: 'Выставки' },
+  { value: 'other', label: 'Другое' },
+];
+
 const categoryLabels: Record<string, string> = {
   concerts: 'Концерты',
-  workshops: 'Мастер-классы',
+  education: 'Обучение',
+  seminars: 'Семинары',
+  leisure: 'Досуг',
   sports: 'Спорт',
+  children: 'Для детей',
   kids: 'Детям',
+  exhibitions: 'Выставки',
+  workshops: 'Мастер-классы',
   business: 'Бизнес',
   theatre: 'Театр',
-  exhibitions: 'Выставки',
   other: 'Другое',
 };
 
@@ -67,6 +94,45 @@ export default function EventsPage() {
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
+
+  // Create event modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cities, setCities] = useState<City[]>([]);
+  const [businesses, setBusinesses] = useState<AdminBusiness[]>([]);
+
+  // Form fields for new event
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    category: '',
+    cityId: '',
+    businessId: '',
+    date: '',
+    time: '',
+    location: '',
+    address: '',
+    price: '',
+    isFree: true,
+    image: '',
+  });
+
+  // Load cities and businesses for dropdowns
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [citiesData, businessesData] = await Promise.all([
+          fetchCities(),
+          fetchAdminBusinesses({ limit: 100 }),
+        ]);
+        setCities(citiesData);
+        setBusinesses(businessesData.businesses);
+      } catch (error) {
+        console.error('Failed to load dropdown data:', error);
+      }
+    };
+    loadData();
+  }, []);
 
   const { data, isLoading, error, refetch } = useAdminEvents({
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -156,6 +222,70 @@ export default function EventsPage() {
     }
   };
 
+  const resetForm = () => {
+    setNewEvent({
+      title: '',
+      description: '',
+      category: '',
+      cityId: '',
+      businessId: '',
+      date: '',
+      time: '',
+      location: '',
+      address: '',
+      price: '',
+      isFree: true,
+      image: '',
+    });
+  };
+
+  const handleCreateEvent = async () => {
+    if (!newEvent.title || !newEvent.category || !newEvent.date || !newEvent.time || !newEvent.cityId) {
+      toast({
+        title: 'Заполните обязательные поля',
+        description: 'Название, категория, город, дата и время обязательны',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const dateTime = new Date(`${newEvent.date}T${newEvent.time}`).toISOString();
+
+      await createEvent({
+        cityId: newEvent.cityId,
+        businessId: newEvent.businessId || undefined,
+        title: newEvent.title,
+        description: newEvent.description || undefined,
+        category: newEvent.category,
+        date: dateTime,
+        location: newEvent.location || undefined,
+        address: newEvent.address || undefined,
+        price: newEvent.isFree ? undefined : (newEvent.price ? parseInt(newEvent.price) : undefined),
+        isFree: newEvent.isFree,
+        image: newEvent.image || undefined,
+      });
+
+      toast({
+        title: 'Событие создано',
+        description: 'Событие успешно добавлено и автоматически одобрено',
+      });
+
+      setIsCreateOpen(false);
+      resetForm();
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось создать событие',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -202,7 +332,7 @@ export default function EventsPage() {
               {pendingCount} на модерации
             </Badge>
           )}
-          <Button>
+          <Button onClick={() => setIsCreateOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Добавить
           </Button>
@@ -479,6 +609,178 @@ export default function EventsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create event dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Создать событие</DialogTitle>
+            <DialogDescription>
+              Добавьте новое событие в афишу. События от администратора публикуются автоматически.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Название *</Label>
+              <Input
+                id="title"
+                placeholder="Название события"
+                value={newEvent.title}
+                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Описание</Label>
+              <Textarea
+                id="description"
+                placeholder="Описание события..."
+                rows={3}
+                value={newEvent.description}
+                onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+              />
+            </div>
+
+            {/* Category and City */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Категория *</Label>
+                <Select value={newEvent.category} onValueChange={(value) => setNewEvent({ ...newEvent, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите категорию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eventCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Город *</Label>
+                <Select value={newEvent.cityId} onValueChange={(value) => setNewEvent({ ...newEvent, cityId: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите город" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.id}>{city.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Date and Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Дата *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={newEvent.date}
+                  onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time">Время *</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  value={newEvent.time}
+                  onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Location and Address */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="location">Место проведения</Label>
+                <Input
+                  id="location"
+                  placeholder="Например: ДК Горняков"
+                  value={newEvent.location}
+                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Адрес</Label>
+                <Input
+                  id="address"
+                  placeholder="ул. Ленина, 1"
+                  value={newEvent.address}
+                  onChange={(e) => setNewEvent({ ...newEvent, address: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Business (optional) */}
+            <div className="space-y-2">
+              <Label>Организатор (бизнес)</Label>
+              <Select value={newEvent.businessId} onValueChange={(value) => setNewEvent({ ...newEvent, businessId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Без организатора (городское событие)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Без организатора</SelectItem>
+                  {businesses.map((business) => (
+                    <SelectItem key={business.id} value={business.id}>
+                      {business.name} {business.tier === 'premium' && '⭐'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Price */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Стоимость</Label>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newEvent.isFree}
+                    onCheckedChange={(checked) => setNewEvent({ ...newEvent, isFree: checked })}
+                  />
+                  <span className="text-sm text-muted-foreground">Бесплатно</span>
+                </div>
+              </div>
+              {!newEvent.isFree && (
+                <Input
+                  type="number"
+                  placeholder="Цена в тенге"
+                  value={newEvent.price}
+                  onChange={(e) => setNewEvent({ ...newEvent, price: e.target.value })}
+                />
+              )}
+            </div>
+
+            {/* Image */}
+            <div className="space-y-2">
+              <Label>Обложка события</Label>
+              <ImageUpload
+                value={newEvent.image}
+                onChange={(url) => setNewEvent({ ...newEvent, image: url })}
+                folder="events"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
+              Отмена
+            </Button>
+            <Button onClick={handleCreateEvent} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Создать событие
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
