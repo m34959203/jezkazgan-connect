@@ -52,6 +52,200 @@ admin.get('/stats', async (c) => {
   }
 });
 
+// ==================== FINANCE ====================
+
+admin.get('/finance', async (c) => {
+  try {
+    const { period = 'month' } = c.req.query();
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate = new Date();
+    let previousStartDate = new Date();
+
+    switch (period) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        previousStartDate.setDate(now.getDate() - 14);
+        break;
+      case 'quarter':
+        startDate.setMonth(now.getMonth() - 3);
+        previousStartDate.setMonth(now.getMonth() - 6);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        previousStartDate.setFullYear(now.getFullYear() - 2);
+        break;
+      default: // month
+        startDate.setMonth(now.getMonth() - 1);
+        previousStartDate.setMonth(now.getMonth() - 2);
+    }
+
+    // Get payments for current period
+    const currentPayments = await db
+      .select({
+        id: payments.id,
+        type: payments.type,
+        amount: payments.amount,
+        status: payments.status,
+        description: payments.description,
+        subscriptionType: payments.subscriptionType,
+        createdAt: payments.createdAt,
+        paidAt: payments.paidAt,
+        userId: payments.userId,
+        businessId: payments.businessId,
+        userName: users.name,
+        userEmail: users.email,
+        businessName: businesses.name,
+      })
+      .from(payments)
+      .leftJoin(users, eq(payments.userId, users.id))
+      .leftJoin(businesses, eq(payments.businessId, businesses.id))
+      .where(gte(payments.createdAt, startDate))
+      .orderBy(desc(payments.createdAt));
+
+    // Calculate current period revenue
+    const currentRevenue = currentPayments
+      .filter(p => p.status === 'completed')
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Get previous period revenue for comparison
+    const [previousRevenueResult] = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${payments.amount}), 0)::integer`
+      })
+      .from(payments)
+      .where(
+        and(
+          gte(payments.createdAt, previousStartDate),
+          lte(payments.createdAt, startDate),
+          eq(payments.status, 'completed')
+        )
+      );
+
+    const previousRevenue = previousRevenueResult?.total || 0;
+    const revenueChange = previousRevenue > 0
+      ? Math.round(((currentRevenue - previousRevenue) / previousRevenue) * 100)
+      : 0;
+
+    // Get subscription counts from businesses
+    const [premiumCount] = await db
+      .select({ count: count() })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.tier, 'premium'),
+          or(
+            isNull(businesses.tierUntil),
+            gte(businesses.tierUntil, now)
+          )
+        )
+      );
+
+    const [liteCount] = await db
+      .select({ count: count() })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.tier, 'lite'),
+          or(
+            isNull(businesses.tierUntil),
+            gte(businesses.tierUntil, now)
+          )
+        )
+      );
+
+    // Get expiring subscriptions (within 7 days)
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(now.getDate() + 7);
+
+    const [expiringCount] = await db
+      .select({ count: count() })
+      .from(businesses)
+      .where(
+        and(
+          or(eq(businesses.tier, 'premium'), eq(businesses.tier, 'lite')),
+          gte(businesses.tierUntil, now),
+          lte(businesses.tierUntil, sevenDaysFromNow)
+        )
+      );
+
+    // Get premium users count
+    const [premiumUsersCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.isPremium, true));
+
+    // Get active subscriptions with business details
+    const activeSubscriptions = await db
+      .select({
+        id: businesses.id,
+        business: businesses.name,
+        tier: businesses.tier,
+        tierUntil: businesses.tierUntil,
+        createdAt: businesses.createdAt,
+        ownerName: users.name,
+        ownerEmail: users.email,
+      })
+      .from(businesses)
+      .leftJoin(users, eq(businesses.ownerId, users.id))
+      .where(
+        and(
+          or(eq(businesses.tier, 'premium'), eq(businesses.tier, 'lite')),
+          or(
+            isNull(businesses.tierUntil),
+            gte(businesses.tierUntil, now)
+          )
+        )
+      )
+      .orderBy(desc(businesses.tierUntil));
+
+    // Format transactions
+    const transactions = currentPayments.map(p => ({
+      id: p.id,
+      type: p.subscriptionType || p.type,
+      description: p.description || `${p.subscriptionType || p.type} - ${p.businessName || p.userName || 'Unknown'}`,
+      amount: p.amount,
+      status: p.status,
+      date: p.paidAt || p.createdAt,
+      businessName: p.businessName,
+      userName: p.userName,
+    }));
+
+    // Format subscriptions
+    const subscriptions = activeSubscriptions.map(s => {
+      const isExpiring = s.tierUntil && new Date(s.tierUntil) <= sevenDaysFromNow;
+      return {
+        id: s.id,
+        business: s.business,
+        tier: s.tier,
+        amount: s.tier === 'premium' ? 200000 : 50000,
+        startDate: s.createdAt,
+        endDate: s.tierUntil,
+        status: isExpiring ? 'expiring' : 'active',
+        ownerName: s.ownerName,
+        ownerEmail: s.ownerEmail,
+      };
+    });
+
+    return c.json({
+      stats: {
+        totalRevenue: currentRevenue,
+        revenueChange,
+        premiumSubscriptions: premiumCount.count,
+        liteSubscriptions: liteCount.count,
+        expiringSubscriptions: expiringCount.count,
+        premiumUsers: premiumUsersCount.count,
+      },
+      transactions,
+      subscriptions,
+    });
+  } catch (error) {
+    console.error('Finance error:', error);
+    return c.json({ error: 'Failed to fetch finance data' }, 500);
+  }
+});
+
 // ==================== USERS ====================
 
 admin.get('/users', async (c) => {

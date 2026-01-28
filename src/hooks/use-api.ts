@@ -13,6 +13,7 @@ import {
   fetchMyBusinessStats,
   fetchMyBusinessPublications,
   fetchAdminStats,
+  fetchAdminFinance,
   fetchAdminUsers,
   updateAdminUser,
   fetchAdminBusinesses,
@@ -109,6 +110,7 @@ import {
   type Business,
   type Promotion,
   type AdminStats,
+  type AdminFinanceData,
   type AdminUser,
   type AdminBusiness,
   type AdminEvent,
@@ -306,6 +308,14 @@ export function useAdminStats() {
   return useQuery<AdminStats>({
     queryKey: ['admin', 'stats'],
     queryFn: fetchAdminStats,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+export function useAdminFinance(period?: string) {
+  return useQuery<AdminFinanceData>({
+    queryKey: ['admin', 'finance', period],
+    queryFn: () => fetchAdminFinance(period),
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
