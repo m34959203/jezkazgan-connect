@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig } from '../db';
+import { db, users, businesses, events, promotions, cities, cityBanners, cityPhotos, cashbackWallets, cashbackTransactions, cashbackRules, cashbackPartnerPayments, referralCodes, referrals, referralRewardsConfig, businessMembers, favorites, autoPublishSettings, autoPublishHistory, aiImageGenerations, payments, reviews } from '../db';
 import { eq, desc, sql, count, and, gte, lte, like, or, isNull } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 import { onUserBecamePremium } from './referral';
@@ -805,7 +805,18 @@ admin.delete('/businesses/:id', async (c) => {
 
     const ownerId = business[0].ownerId;
 
-    // Delete related data
+    // Delete all related data (order matters due to foreign key constraints)
+    // First delete tables that may reference other related tables
+    await db.delete(cashbackPartnerPayments).where(eq(cashbackPartnerPayments.businessId, id));
+    await db.delete(cashbackTransactions).where(eq(cashbackTransactions.relatedBusinessId, id));
+    await db.delete(cashbackRules).where(eq(cashbackRules.businessId, id));
+    await db.delete(autoPublishHistory).where(eq(autoPublishHistory.businessId, id));
+    await db.delete(autoPublishSettings).where(eq(autoPublishSettings.businessId, id));
+    await db.delete(aiImageGenerations).where(eq(aiImageGenerations.businessId, id));
+    await db.delete(reviews).where(eq(reviews.businessId, id));
+    await db.delete(favorites).where(eq(favorites.businessId, id));
+    await db.delete(businessMembers).where(eq(businessMembers.businessId, id));
+    await db.delete(payments).where(eq(payments.businessId, id));
     await db.delete(events).where(eq(events.businessId, id));
     await db.delete(promotions).where(eq(promotions.businessId, id));
     await db.delete(cityBanners).where(eq(cityBanners.businessId, id));
