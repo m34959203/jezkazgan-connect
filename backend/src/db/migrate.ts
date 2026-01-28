@@ -660,6 +660,60 @@ export async function runMigrations() {
     `;
     console.log('[Migration] ✓ Indexes created for new tables');
 
+    // ============================================
+    // COMPLAINTS SYSTEM TABLE
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE complaint_target_type AS ENUM ('business', 'event', 'promotion', 'review', 'user');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE complaint_status AS ENUM ('pending', 'reviewing', 'resolved', 'rejected');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE complaint_reason AS ENUM ('spam', 'fraud', 'inappropriate', 'outdated', 'copyright', 'fake', 'offensive', 'other');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS complaints (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        reporter_id UUID NOT NULL REFERENCES users(id),
+        target_type complaint_target_type NOT NULL,
+        target_id UUID NOT NULL,
+        reason complaint_reason NOT NULL,
+        description TEXT,
+        status complaint_status NOT NULL DEFAULT 'pending',
+        resolution TEXT,
+        resolved_by_id UUID REFERENCES users(id),
+        resolved_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ complaints table ready');
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS complaints_reporter_id_idx ON complaints(reporter_id);
+      CREATE INDEX IF NOT EXISTS complaints_target_type_idx ON complaints(target_type);
+      CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
+      CREATE INDEX IF NOT EXISTS complaints_created_at_idx ON complaints(created_at);
+    `;
+    console.log('[Migration] ✓ Indexes created for complaints table');
+
     console.log('[Migration] All migrations completed successfully!');
   } catch (error) {
     console.error('[Migration] Error running migrations:', error);
