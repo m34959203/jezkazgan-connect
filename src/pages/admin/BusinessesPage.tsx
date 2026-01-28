@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MoreHorizontal, CheckCircle, XCircle, Eye, Edit, Trash2, Loader2, AlertCircle, MapPin, Phone, Globe, Clock } from 'lucide-react';
+import { Search, MoreHorizontal, CheckCircle, XCircle, Eye, Edit, Trash2, Loader2, AlertCircle, MapPin, Phone, Globe } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,7 +94,6 @@ interface Business {
   address?: string;
   phone?: string;
   website?: string;
-  workingHours?: string;
   postsThisMonth: number;
   createdAt: string;
 }
@@ -523,13 +522,6 @@ export default function BusinessesPage() {
                     <a href={viewBusiness.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       {viewBusiness.website}
                     </a>
-                  </div>
-                )}
-
-                {viewBusiness.workingHours && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span>{viewBusiness.workingHours}</span>
                   </div>
                 )}
 
