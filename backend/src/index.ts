@@ -18,6 +18,13 @@ import ai from './routes/ai';
 import autopublish from './routes/autopublish';
 import cashback from './routes/cashback';
 import referral from './routes/referral';
+// New feature routes
+import referrals from './routes/referrals';
+import payments from './routes/payments';
+import push from './routes/push';
+import reviews from './routes/reviews';
+import analytics from './routes/analytics';
+import openapi from './routes/openapi';
 import { apiRateLimit, authRateLimit, securityCheck } from './middleware/rateLimit';
 
 const app = new Hono();
@@ -56,8 +63,8 @@ app.use('*', cors({
 }));
 
 // Health check with version info
-const BUILD_VERSION = '2.5.0-premium-cashback';
-const BUILD_DATE = '2026-01-21';
+const BUILD_VERSION = '2.6.0-full-features';
+const BUILD_DATE = '2026-01-28';
 
 app.get('/', (c) => {
   return c.json({
@@ -102,6 +109,14 @@ app.route('/autopublish', autopublish);
 // User Premium routes (Cashback & Referral)
 app.route('/cashback', cashback);
 app.route('/referral', referral);
+
+// New feature routes
+app.route('/referrals', referrals);
+app.route('/payments', payments);
+app.route('/push', push);
+app.route('/reviews', reviews);
+app.route('/analytics', analytics);
+app.route('/docs', openapi);
 
 // 404 handler
 app.notFound((c) => {

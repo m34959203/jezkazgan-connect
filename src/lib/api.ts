@@ -1761,7 +1761,7 @@ export async function createCashbackPayment(data: {
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to create payment');
+    throw new Error(error.error || 'Failed to create cashback payment');
   }
   return res.json();
 }
@@ -2253,6 +2253,20 @@ export async function updateAdminReferralReward(type: string, data: {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('Failed to update reward');
+  return res.json();
+}
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error('Failed to reply to review');
+  return res.json();
+}
+
+export async function deleteReviewReply(replyId: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/reviews/reply/${replyId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete reply');
   return res.json();
 }
 
