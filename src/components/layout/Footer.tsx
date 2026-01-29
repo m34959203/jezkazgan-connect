@@ -1,7 +1,14 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Instagram, Send } from 'lucide-react';
+import { useCities } from '@/hooks/use-api';
 
 export function Footer() {
+  const { data: cities } = useCities();
+  const selectedCitySlug = localStorage.getItem('selectedCity') || 'almaty';
+  const currentCity = cities?.find(c => c.slug === selectedCitySlug);
+  const cityName = currentCity?.name || 'Казахстан';
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-card border-t border-border mt-auto">
       <div className="container py-12">
@@ -10,10 +17,11 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-gold-dark flex items-center justify-center">
-                <span className="text-xl font-bold text-primary-foreground">Ж</span>
+                <span className="text-xl font-bold text-primary-foreground">A</span>
               </div>
               <div>
-                <h3 className="text-lg font-bold">Афиша Жезказган</h3>
+                <h3 className="text-lg font-bold">KazAfisha</h3>
+                <p className="text-xs text-muted-foreground">{cityName}</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
@@ -21,13 +29,17 @@ export function Footer() {
             </p>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://instagram.com/kazafisha"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <Instagram className="w-4 h-4" />
               </a>
               <a
-                href="#"
+                href="https://t.me/kazafisha"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <Send className="w-4 h-4" />
@@ -44,6 +56,7 @@ export function Footer() {
               <li><Link to="/promotions" className="hover:text-foreground transition-colors">Скидки и акции</Link></li>
               <li><Link to="/businesses" className="hover:text-foreground transition-colors">Каталог бизнесов</Link></li>
               <li><Link to="/community" className="hover:text-foreground transition-colors">Сообщество</Link></li>
+              <li><Link to="/about" className="hover:text-foreground transition-colors">О платформе</Link></li>
             </ul>
           </div>
 
@@ -51,11 +64,10 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Для бизнеса</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><Link to="/for-business" className="hover:text-foreground transition-colors">Возможности</Link></li>
               <li><Link to="/auth" className="hover:text-foreground transition-colors">Регистрация бизнеса</Link></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Разместить событие</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Добавить акцию</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">VIP-доступ</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Реклама</a></li>
+              <li><Link to="/for-business#pricing" className="hover:text-foreground transition-colors">Тарифы</Link></li>
+              <li><Link to="/for-business#advertising" className="hover:text-foreground transition-colors">Реклама</Link></li>
             </ul>
           </div>
 
@@ -65,18 +77,18 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>г. Жезказган, Улытауская область, Казахстан</span>
+                <span>{cityName}, Казахстан</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 shrink-0" />
-                <a href="tel:+77102123456" className="hover:text-foreground transition-colors">
-                  +7 (7102) 12-34-56
+                <a href="tel:+77001234567" className="hover:text-foreground transition-colors">
+                  +7 (700) 123-45-67
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 shrink-0" />
-                <a href="mailto:info@afisha-zhz.kz" className="hover:text-foreground transition-colors">
-                  info@afisha-zhz.kz
+                <a href="mailto:info@kazafisha.kz" className="hover:text-foreground transition-colors">
+                  info@kazafisha.kz
                 </a>
               </li>
             </ul>
@@ -84,10 +96,10 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
-          <p>© 2024 Афиша Жезказган. Все права защищены.</p>
+          <p>© {currentYear} KazAfisha. Все права защищены.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-foreground transition-colors">Политика конфиденциальности</a>
-            <a href="#" className="hover:text-foreground transition-colors">Пользовательское соглашение</a>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Политика конфиденциальности</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Пользовательское соглашение</Link>
           </div>
         </div>
       </div>
