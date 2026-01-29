@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Calendar, Eye, ExternalLink } from 'lucide-react';
-import { Promotion } from '@/types';
+import { Calendar, Eye, ExternalLink, Gift } from 'lucide-react';
+import { type Promotion } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
 interface PromotionCardProps {
@@ -8,7 +8,8 @@ interface PromotionCardProps {
 }
 
 export function PromotionCard({ promotion }: PromotionCardProps) {
-  const formatDate = (date: Date) => {
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
     return new Intl.DateTimeFormat('ru-RU', {
       day: 'numeric',
       month: 'short',
@@ -16,25 +17,37 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
   };
 
   const isExpiringSoon = () => {
-    const daysLeft = Math.ceil((promotion.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const validUntil = new Date(promotion.validUntil);
+    const daysLeft = Math.ceil((validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     return daysLeft <= 3 && daysLeft > 0;
   };
+
+  const businessName = promotion.business?.name || 'Бизнес';
+  const businessLogo = promotion.business?.logo;
 
   return (
     <article className="event-card h-full flex flex-col group">
       <div className="relative aspect-[16/10] overflow-hidden rounded-t-xl">
-        <img
-          src={promotion.image}
-          alt={promotion.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        
+        {promotion.image ? (
+          <img
+            src={promotion.image}
+            alt={promotion.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+            <Gift className="w-12 h-12 text-primary/40" />
+          </div>
+        )}
+
         {/* Скидка */}
-        <div className="absolute top-3 left-3">
-          <span className="badge-gold text-lg font-bold">
-            {promotion.discount}
-          </span>
-        </div>
+        {promotion.discount && (
+          <div className="absolute top-3 left-3">
+            <span className="badge-gold text-lg font-bold">
+              {promotion.discount}
+            </span>
+          </div>
+        )}
 
         {/* Скоро заканчивается */}
         {isExpiringSoon() && (
@@ -49,24 +62,24 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
       <div className="flex-1 p-4 flex flex-col">
         {/* Бизнес */}
         <div className="flex items-center gap-2 mb-2">
-          {promotion.businessLogo ? (
+          {businessLogo ? (
             <img
-              src={promotion.businessLogo}
-              alt={promotion.businessName}
+              src={businessLogo}
+              alt={businessName}
               className="w-6 h-6 rounded-full object-cover"
             />
           ) : (
             <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-xs font-medium text-primary">
-                {promotion.businessName[0]}
+                {businessName[0]}
               </span>
             </div>
           )}
-          <Link 
+          <Link
             to={`/businesses/${promotion.businessId}`}
             className="text-sm text-muted-foreground hover:text-primary transition-colors"
           >
-            {promotion.businessName}
+            {businessName}
           </Link>
         </div>
 
@@ -75,7 +88,7 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
         </h3>
 
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-          {promotion.description}
+          {promotion.description || 'Специальное предложение'}
         </p>
 
         {promotion.conditions && (
@@ -97,7 +110,7 @@ export function PromotionCard({ promotion }: PromotionCardProps) {
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Eye className="w-4 h-4" />
-              <span>{promotion.viewCount}</span>
+              <span>{promotion.viewsCount}</span>
             </div>
             <Button size="sm" className="btn-glow">
               Получить

@@ -1,18 +1,40 @@
-import { useState } from 'react';
-import { Search, X, Gift } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, X, Gift, Loader2, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { PromotionCard } from '@/components/promotions/PromotionCard';
-import { mockPromotions } from '@/data/mockData';
+import { fetchPromotions, type Promotion } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 
 export default function Promotions() {
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filteredPromotions = mockPromotions.filter((promo) => {
+  useEffect(() => {
+    loadPromotions();
+  }, []);
+
+  const loadPromotions = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchPromotions();
+      setPromotions(data);
+    } catch (err) {
+      setError('Не удалось загрузить акции');
+      console.error('Failed to load promotions:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredPromotions = promotions.filter((promo) => {
     if (!search) return true;
     const searchLower = search.toLowerCase();
     return (
       promo.title.toLowerCase().includes(searchLower) ||
-      promo.businessName.toLowerCase().includes(searchLower) ||
+      (promo.businessName && promo.businessName.toLowerCase().includes(searchLower)) ||
       promo.description.toLowerCase().includes(searchLower)
     );
   });
@@ -52,7 +74,19 @@ export default function Promotions() {
           </div>
         </div>
 
-        {filteredPromotions.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+            <p className="text-lg text-muted-foreground mb-4">{error}</p>
+            <Button variant="outline" onClick={loadPromotions}>
+              Попробовать снова
+            </Button>
+          </div>
+        ) : filteredPromotions.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPromotions.map((promo) => (
               <PromotionCard key={promo.id} promotion={promo} />
@@ -62,7 +96,7 @@ export default function Promotions() {
           <div className="text-center py-16">
             <Gift className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-lg text-muted-foreground">
-              Акции не найдены
+              {search ? 'Акции не найдены' : 'Пока нет активных акций'}
             </p>
           </div>
         )}
