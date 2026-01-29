@@ -11,53 +11,82 @@ collaborationsRouter.get('/', optionalAuthMiddleware, async (c) => {
     const cityId = c.req.query('cityId');
     const category = c.req.query('category');
     const status = c.req.query('status');
+    const currentUser = c.get('user');
 
-    let query = db
-      .select({
-        id: collaborations.id,
-        title: collaborations.title,
-        description: collaborations.description,
-        category: collaborations.category,
-        budget: collaborations.budget,
-        status: collaborations.status,
-        responseCount: collaborations.responseCount,
-        createdAt: collaborations.createdAt,
-        updatedAt: collaborations.updatedAt,
-        cityId: collaborations.cityId,
-        cityName: cities.name,
-        creatorId: collaborations.creatorId,
-        creatorName: users.name,
-        businessId: collaborations.businessId,
-        businessName: businesses.name,
-      })
-      .from(collaborations)
-      .leftJoin(cities, eq(collaborations.cityId, cities.id))
-      .leftJoin(users, eq(collaborations.creatorId, users.id))
-      .leftJoin(businesses, eq(collaborations.businessId, businesses.id))
-      .orderBy(desc(collaborations.createdAt))
-      .$dynamic();
+    let collaborationsList: any[] = [];
 
-    // Build conditions array for filtering
-    const conditions = [];
+    try {
+      let query = db
+        .select({
+          id: collaborations.id,
+          title: collaborations.title,
+          description: collaborations.description,
+          category: collaborations.category,
+          budget: collaborations.budget,
+          status: collaborations.status,
+          responseCount: collaborations.responseCount,
+          createdAt: collaborations.createdAt,
+          updatedAt: collaborations.updatedAt,
+          cityId: collaborations.cityId,
+          cityName: cities.name,
+          creatorId: collaborations.creatorId,
+          creatorName: users.name,
+          creatorAvatar: users.avatar,
+          businessId: collaborations.businessId,
+          businessName: businesses.name,
+        })
+        .from(collaborations)
+        .leftJoin(cities, eq(collaborations.cityId, cities.id))
+        .leftJoin(users, eq(collaborations.creatorId, users.id))
+        .leftJoin(businesses, eq(collaborations.businessId, businesses.id))
+        .orderBy(desc(collaborations.createdAt))
+        .$dynamic();
 
-    if (cityId) {
-      conditions.push(eq(collaborations.cityId, cityId));
+      // Build conditions array for filtering
+      const conditions = [];
+
+      if (cityId) {
+        conditions.push(eq(collaborations.cityId, cityId));
+      }
+
+      if (category) {
+        conditions.push(eq(collaborations.category, category as any));
+      }
+
+      if (status) {
+        conditions.push(eq(collaborations.status, status as any));
+      }
+
+      // Apply conditions if any exist
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      collaborationsList = await query.limit(50);
+
+      // Check if user has responded to each collaboration
+      if (currentUser && collaborationsList.length > 0) {
+        const userResponses = await db
+          .select({ collabId: collabResponses.collabId })
+          .from(collabResponses)
+          .where(eq(collabResponses.userId, currentUser.id));
+
+        const respondedIds = new Set(userResponses.map((r) => r.collabId));
+
+        collaborationsList = collaborationsList.map((collab) => ({
+          ...collab,
+          hasResponded: respondedIds.has(collab.id),
+        }));
+      }
+    } catch (tableError: any) {
+      // Table doesn't exist yet - return empty array
+      if (tableError.message?.includes('does not exist') || tableError.code === '42P01') {
+        console.log('[Collaborations] Table does not exist yet, returning empty array');
+        collaborationsList = [];
+      } else {
+        throw tableError;
+      }
     }
-
-    if (category) {
-      conditions.push(eq(collaborations.category, category as any));
-    }
-
-    if (status) {
-      conditions.push(eq(collaborations.status, status as any));
-    }
-
-    // Apply conditions if any exist
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    const collaborationsList = await query.limit(50);
 
     return c.json(collaborationsList);
   } catch (error) {
