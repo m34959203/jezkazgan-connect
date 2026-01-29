@@ -14,6 +14,8 @@ import Auth from "./pages/Auth";
 import CreateBusiness from "./pages/CreateBusiness";
 import About from "./pages/About";
 import ForBusiness from "./pages/ForBusiness";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -72,6 +74,8 @@ const App = () => (
           <Route path="/create-business" element={<CreateBusiness />} />
           <Route path="/about" element={<About />} />
           <Route path="/for-business" element={<ForBusiness />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
 
           {/* User Premium pages */}
           <Route path="/cashback" element={<CashbackWallet />} />
