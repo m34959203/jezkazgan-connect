@@ -25,6 +25,7 @@ import push from './routes/push';
 import reviews from './routes/reviews';
 import analytics from './routes/analytics';
 import openapi from './routes/openapi';
+import communities from './routes/communities';
 import { apiRateLimit, authRateLimit, securityCheck } from './middleware/rateLimit';
 
 const app = new Hono();
@@ -116,6 +117,7 @@ app.route('/payments', payments);
 app.route('/push', push);
 app.route('/reviews', reviews);
 app.route('/analytics', analytics);
+app.route('/communities', communities);
 app.route('/docs', openapi);
 
 // 404 handler

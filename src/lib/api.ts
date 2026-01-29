@@ -2863,3 +2863,79 @@ export async function fetchTrafficMetrics(period?: number): Promise<{
   if (!res.ok) throw new Error('Failed to fetch traffic metrics');
   return res.json();
 }
+
+// ============================================
+// Communities API
+// ============================================
+
+export interface Community {
+  id: string;
+  name: string;
+  description: string | null;
+  image: string | null;
+  isPrivate: boolean;
+  membersCount: number;
+  createdAt: string;
+  cityId: string;
+  cityName: string | null;
+  creatorId: string;
+  isMember: boolean;
+}
+
+export async function fetchCommunities(): Promise<Community[]> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/communities`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch communities');
+  return res.json();
+}
+
+export async function fetchCommunity(id: string): Promise<Community> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/communities/${id}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch community');
+  return res.json();
+}
+
+export async function createCommunity(data: {
+  name: string;
+  description?: string;
+  image?: string;
+  cityId: string;
+  isPrivate?: boolean;
+}): Promise<Community> {
+  const res = await fetch(`${API_URL}/communities`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create community');
+  return res.json();
+}
+
+export async function joinCommunity(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/communities/${id}/join`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to join community');
+  return res.json();
+}
+
+export async function leaveCommunity(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/communities/${id}/leave`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to leave community');
+  return res.json();
+}
