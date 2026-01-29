@@ -1,13 +1,31 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, Phone, Mail, Instagram, Send } from 'lucide-react';
 import { useCities } from '@/hooks/use-api';
 
 export function Footer() {
   const { data: cities } = useCities();
+  const location = useLocation();
+  const navigate = useNavigate();
   const selectedCitySlug = localStorage.getItem('selectedCity') || 'almaty';
   const currentCity = cities?.find(c => c.slug === selectedCitySlug);
   const cityName = currentCity?.name || 'Казахстан';
   const currentYear = new Date().getFullYear();
+
+  const handleHashLink = (e: React.MouseEvent<HTMLAnchorElement>, path: string, hash: string) => {
+    e.preventDefault();
+
+    if (location.pathname === path) {
+      // Already on the page, just scroll to section
+      const element = document.getElementById(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        window.history.pushState(null, '', `${path}#${hash}`);
+      }
+    } else {
+      // Navigate to the page with hash
+      navigate(`${path}#${hash}`);
+    }
+  };
 
   return (
     <footer className="bg-card border-t border-border mt-auto">
@@ -66,8 +84,24 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link to="/for-business" className="hover:text-foreground transition-colors">Возможности</Link></li>
               <li><Link to="/auth" className="hover:text-foreground transition-colors">Регистрация бизнеса</Link></li>
-              <li><Link to="/for-business#pricing" className="hover:text-foreground transition-colors">Тарифы</Link></li>
-              <li><Link to="/for-business#advertising" className="hover:text-foreground transition-colors">Реклама</Link></li>
+              <li>
+                <a
+                  href="/for-business#pricing"
+                  onClick={(e) => handleHashLink(e, '/for-business', 'pricing')}
+                  className="hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Тарифы
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/for-business#advertising"
+                  onClick={(e) => handleHashLink(e, '/for-business', 'advertising')}
+                  className="hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Реклама
+                </a>
+              </li>
             </ul>
           </div>
 

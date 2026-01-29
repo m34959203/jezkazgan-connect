@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Store,
   Calendar,
@@ -161,6 +162,29 @@ const steps = [
 ];
 
 export default function ForBusiness() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
+
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.history.pushState(null, '', `#${id}`);
+    }
+  };
+
   return (
     <Layout>
       <div className="container py-8 md:py-12">
@@ -186,6 +210,7 @@ export default function ForBusiness() {
             </Link>
             <a
               href="#pricing"
+              onClick={(e) => scrollToSection(e, 'pricing')}
               className="inline-flex items-center justify-center px-6 py-3 rounded-xl border border-border bg-card font-medium hover:bg-muted transition-colors"
             >
               Смотреть тарифы
