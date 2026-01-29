@@ -71,7 +71,7 @@ const plans = [
   },
   {
     name: 'Lite',
-    price: '9 900',
+    price: '50 000',
     period: 'в месяц',
     description: 'Для активно развивающегося бизнеса',
     features: [
@@ -91,7 +91,7 @@ const plans = [
   },
   {
     name: 'Premium',
-    price: '29 900',
+    price: '200 000',
     period: 'в месяц',
     description: 'Максимум возможностей для лидеров',
     features: [
