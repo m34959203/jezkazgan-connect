@@ -8,10 +8,7 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  Megaphone,
   Check,
-  Star,
-  Zap,
   Shield,
   Clock
 } from 'lucide-react';
@@ -97,44 +94,20 @@ const plans = [
     features: [
       'Безлимитные публикации',
       'Premium профиль компании',
-      'Расширенная аналитика',
+      'Расширенная аналитика + экспорт',
       'Персональный менеджер',
       'Бейдж "Premium партнёр"',
       'Топ позиция в выдаче',
-      'Баннерная реклама',
+      'Баннер на главной странице',
+      'Топ в категориях',
+      'Продвижение событий',
+      'Push-уведомления подписчикам',
       'API для автопубликации',
-      '1 баннер на главной',
+      'До 5 сотрудников',
     ],
     limitations: [],
     cta: 'Выбрать Premium',
     popular: false,
-  },
-];
-
-const advertisingOptions = [
-  {
-    icon: Megaphone,
-    title: 'Баннер на главной',
-    description: 'Яркий баннер в верхней части главной страницы города. Максимальный охват аудитории.',
-    price: 'от 50 000 ₸/неделя',
-  },
-  {
-    icon: Star,
-    title: 'Топ в категории',
-    description: 'Ваш бизнес или событие закрепляется в топе выбранной категории на 7 дней.',
-    price: 'от 15 000 ₸/неделя',
-  },
-  {
-    icon: Zap,
-    title: 'Продвижение события',
-    description: 'Выделение события в афише + push-уведомления подписчикам категории.',
-    price: 'от 10 000 ₸/событие',
-  },
-  {
-    icon: Users,
-    title: 'Таргетированная рассылка',
-    description: 'Email и push уведомления пользователям по выбранным интересам и геолокации.',
-    price: 'от 5 000 ₸/1000 контактов',
   },
 ];
 
@@ -319,31 +292,6 @@ export default function ForBusiness() {
                 >
                   {plan.cta}
                 </Link>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Реклама */}
-        <section id="advertising" className="mb-20 scroll-mt-8">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Рекламные возможности</h2>
-          <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
-            Дополнительные инструменты для максимального охвата аудитории
-          </p>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {advertisingOptions.map((option) => (
-              <div
-                key={option.title}
-                className="flex gap-4 p-6 rounded-2xl border border-border bg-card"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
-                  <option.icon className="w-6 h-6 text-gold" />
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">{option.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">{option.description}</p>
-                  <p className="text-sm font-medium text-primary">{option.price}</p>
-                </div>
               </div>
             ))}
           </div>

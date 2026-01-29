@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronDown,
   ExternalLink,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ const sidebarLinks = [
   { href: '/admin/events', label: 'События', icon: Calendar },
   { href: '/admin/promotions', label: 'Акции', icon: Tag },
   { href: '/admin/cities', label: 'Города', icon: MapPin },
+  { href: '/admin/advertising', label: 'Реклама', icon: Megaphone },
   { href: '/admin/finance', label: 'Финансы', icon: DollarSign },
   { href: '/admin/moderation', label: 'Модерация', icon: Shield },
   { href: '/admin/analytics', label: 'Аналитика', icon: BarChart3 },
