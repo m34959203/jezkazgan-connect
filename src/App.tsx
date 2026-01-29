@@ -34,6 +34,7 @@ import AdminAnalytics from "./pages/admin/AnalyticsPage";
 import AdminSettings from "./pages/admin/SettingsPage";
 import AdminCashback from "./pages/admin/CashbackPage";
 import AdminReferral from "./pages/admin/ReferralPage";
+import AdminAdvertising from "./pages/admin/AdvertisingPage";
 
 // User Premium pages
 import CashbackWallet from "./pages/CashbackWallet";
@@ -91,6 +92,7 @@ const App = () => (
             <Route path="cities" element={<AdminCities />} />
             <Route path="cities/:cityId/banners" element={<AdminCityBanners />} />
             <Route path="cities/:cityId/photos" element={<AdminCityPhotos />} />
+            <Route path="advertising" element={<AdminAdvertising />} />
             <Route path="finance" element={<AdminFinance />} />
             <Route path="moderation" element={<AdminModeration />} />
             <Route path="analytics" element={<AdminAnalytics />} />

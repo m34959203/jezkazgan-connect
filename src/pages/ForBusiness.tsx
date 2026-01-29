@@ -8,12 +8,14 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  Megaphone,
   Check,
+  Shield,
+  Clock,
+  Megaphone,
   Star,
   Zap,
-  Shield,
-  Clock
+  Mail,
+  Sparkles
 } from 'lucide-react';
 
 const features = [
@@ -97,13 +99,16 @@ const plans = [
     features: [
       'Безлимитные публикации',
       'Premium профиль компании',
-      'Расширенная аналитика',
+      'Расширенная аналитика + экспорт',
       'Персональный менеджер',
       'Бейдж "Premium партнёр"',
       'Топ позиция в выдаче',
-      'Баннерная реклама',
+      'Баннер на главной странице',
+      'Топ в категориях',
+      'Продвижение событий',
+      'Push-уведомления подписчикам',
       'API для автопубликации',
-      '1 баннер на главной',
+      'До 5 сотрудников',
     ],
     limitations: [],
     cta: 'Выбрать Premium',
@@ -115,26 +120,30 @@ const advertisingOptions = [
   {
     icon: Megaphone,
     title: 'Баннер на главной',
-    description: 'Яркий баннер в верхней части главной страницы города. Максимальный охват аудитории.',
-    price: 'от 50 000 ₸/неделя',
+    description: 'Яркий баннер в верхней части главной страницы города. Максимальный охват целевой аудитории.',
+    price: '50 000 ₸',
+    period: 'неделя',
   },
   {
     icon: Star,
     title: 'Топ в категории',
     description: 'Ваш бизнес или событие закрепляется в топе выбранной категории на 7 дней.',
-    price: 'от 15 000 ₸/неделя',
+    price: '15 000 ₸',
+    period: 'неделя',
   },
   {
     icon: Zap,
     title: 'Продвижение события',
     description: 'Выделение события в афише + push-уведомления подписчикам категории.',
-    price: 'от 10 000 ₸/событие',
+    price: '10 000 ₸',
+    period: 'событие',
   },
   {
-    icon: Users,
+    icon: Mail,
     title: 'Таргетированная рассылка',
     description: 'Email и push уведомления пользователям по выбранным интересам и геолокации.',
-    price: 'от 5 000 ₸/1000 контактов',
+    price: '5 000 ₸',
+    period: '1000 контактов',
   },
 ];
 
@@ -324,28 +333,56 @@ export default function ForBusiness() {
           </div>
         </section>
 
-        {/* Реклама */}
+        {/* Рекламные возможности */}
         <section id="advertising" className="mb-20 scroll-mt-8">
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center">Рекламные возможности</h2>
-          <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-center mb-4 max-w-2xl mx-auto">
             Дополнительные инструменты для максимального охвата аудитории
           </p>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold/10 text-gold-dark text-sm font-medium">
+              <Sparkles className="w-4 h-4" />
+              Включено в тариф Premium
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-8">
             {advertisingOptions.map((option) => (
               <div
                 key={option.title}
-                className="flex gap-4 p-6 rounded-2xl border border-border bg-card"
+                className="flex gap-4 p-6 rounded-2xl border border-border bg-card hover:border-gold/50 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
                   <option.icon className="w-6 h-6 text-gold" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold mb-1">{option.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">{option.description}</p>
-                  <p className="text-sm font-medium text-primary">{option.price}</p>
+                  <p className="text-sm text-muted-foreground mb-3">{option.description}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-bold text-primary">{option.price}</span>
+                    <span className="text-sm text-muted-foreground">/ {option.period}</span>
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="max-w-2xl mx-auto p-6 rounded-2xl bg-muted/50 border border-border">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1">
+                <h4 className="font-semibold mb-1">Разовые заказы</h4>
+                <p className="text-sm text-muted-foreground">
+                  Для бизнесов без подписки Premium доступны разовые рекламные размещения.
+                  Свяжитесь с нами для оформления заказа.
+                </p>
+              </div>
+              <a
+                href="mailto:ads@kazafisha.kz"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-gold text-gold-foreground font-medium hover:bg-gold/90 transition-colors whitespace-nowrap"
+              >
+                Заказать рекламу
+              </a>
+            </div>
           </div>
         </section>
 
