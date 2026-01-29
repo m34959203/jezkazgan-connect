@@ -77,7 +77,7 @@ export default function Categories() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Object.entries(EVENT_CATEGORIES).map(([key, { label, icon }]) => {
+            {Object.entries(EVENT_CATEGORIES).map(([key, { label }]) => {
               const category = key as EventCategory;
               const count = getEventCount(category);
 
@@ -98,7 +98,6 @@ export default function Categories() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
                   <div className="absolute inset-0 flex flex-col justify-end p-6">
-                    <div className="text-4xl mb-2">{icon}</div>
                     <h3 className="text-xl font-bold text-white mb-1">{label}</h3>
                     <p className="text-white/70 text-sm">
                       {formatEventCount(count)}
