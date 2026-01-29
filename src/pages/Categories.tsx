@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 
 const categoryImages: Record<EventCategory, string> = {
   concerts: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600',
+  theater: 'https://images.unsplash.com/photo-1507924538820-ede94a04019d?w=600',
+  festivals: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600',
   education: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600',
   seminars: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600',
-  leisure: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600',
+  leisure: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600',
   sports: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600',
   children: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600',
   exhibitions: 'https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=600',

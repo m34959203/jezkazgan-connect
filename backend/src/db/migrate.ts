@@ -773,6 +773,27 @@ export async function runMigrations() {
     `;
     console.log('[Migration] ✓ Indexes created for collaborations tables');
 
+    // ============================================
+    // ADD NEW EVENT CATEGORIES
+    // ============================================
+
+    // Add 'theater' and 'festivals' to event_category enum if they don't exist
+    await sql`
+      DO $$ BEGIN
+        ALTER TYPE event_category ADD VALUE IF NOT EXISTS 'theater';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+    await sql`
+      DO $$ BEGIN
+        ALTER TYPE event_category ADD VALUE IF NOT EXISTS 'festivals';
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+    console.log('[Migration] ✓ New event categories (theater, festivals) added');
+
     console.log('[Migration] All migrations completed successfully!');
   } catch (error) {
     console.error('[Migration] Error running migrations:', error);

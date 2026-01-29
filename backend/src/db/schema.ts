@@ -5,7 +5,7 @@ import { relations } from 'drizzle-orm';
 export const userRoleEnum = pgEnum('user_role', ['user', 'business', 'moderator', 'admin']);
 export const businessTierEnum = pgEnum('business_tier', ['free', 'lite', 'premium']);
 export const eventCategoryEnum = pgEnum('event_category', [
-  'concerts', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other'
+  'concerts', 'theater', 'festivals', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other'
 ]);
 export const businessCategoryEnum = pgEnum('business_category', [
   'restaurants', 'cafes', 'sports', 'beauty', 'education', 'services', 'shopping', 'entertainment', 'other'

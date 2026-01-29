@@ -207,7 +207,7 @@ const createEventSchema = z.object({
   businessId: z.string().uuid().optional(),
   title: z.string().min(3).max(200),
   description: z.string().optional(),
-  category: z.enum(['concerts', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other']),
+  category: z.enum(['concerts', 'theater', 'festivals', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other']),
   image: z.string().url().optional(),
   videoUrl: z.string().url().optional(), // Business Premium: видео формат
   videoThumbnail: z.string().url().optional(), // Превью для видео
