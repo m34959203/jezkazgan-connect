@@ -565,7 +565,7 @@ Authorization: Bearer <your_token>
           id: { type: 'string', format: 'uuid' },
           title: { type: 'string' },
           description: { type: 'string' },
-          category: { type: 'string', enum: ['concerts', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other'] },
+          category: { type: 'string', enum: ['concerts', 'theater', 'festivals', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other'] },
           image: { type: 'string', format: 'uri' },
           isImageAiGenerated: { type: 'boolean' },
           date: { type: 'string', format: 'date-time' },

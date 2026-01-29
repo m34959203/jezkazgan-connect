@@ -124,7 +124,7 @@ export async function fetchEventById(id: string): Promise<Event> {
   return res.json();
 }
 
-export type EventCategory = 'concerts' | 'education' | 'seminars' | 'leisure' | 'sports' | 'children' | 'exhibitions' | 'other';
+export type EventCategory = 'concerts' | 'theater' | 'festivals' | 'education' | 'seminars' | 'leisure' | 'sports' | 'children' | 'exhibitions' | 'other';
 
 export type CategoryStats = Record<EventCategory, number>;
 

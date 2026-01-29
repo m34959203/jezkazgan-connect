@@ -31,8 +31,10 @@ export interface EntrepreneurProfile {
   createdAt: Date;
 }
 
-export type EventCategory = 
+export type EventCategory =
   | 'concerts'
+  | 'theater'
+  | 'festivals'
   | 'education'
   | 'seminars'
   | 'leisure'
@@ -43,6 +45,8 @@ export type EventCategory =
 
 export const EVENT_CATEGORIES: Record<EventCategory, { label: string; icon: string; color: string }> = {
   concerts: { label: 'Концерты', icon: '🎵', color: 'bg-pink-500' },
+  theater: { label: 'Театр/Кино', icon: '🎭', color: 'bg-red-500' },
+  festivals: { label: 'Фестивали', icon: '🎪', color: 'bg-amber-500' },
   education: { label: 'Обучение', icon: '📚', color: 'bg-blue-500' },
   seminars: { label: 'Семинары', icon: '🎤', color: 'bg-purple-500' },
   leisure: { label: 'Досуг', icon: '🎉', color: 'bg-orange-500' },
