@@ -873,3 +873,56 @@ export const complaintsRelations = relations(complaints, ({ one }) => ({
   reporter: one(users, { fields: [complaints.reporterId], references: [users.id], relationName: 'reporter' }),
   resolvedBy: one(users, { fields: [complaints.resolvedById], references: [users.id], relationName: 'resolver' }),
 }));
+
+// ============================================
+// COLLABORATIONS SYSTEM
+// ============================================
+
+export const collabStatusEnum = pgEnum('collab_status', ['open', 'in_progress', 'closed']);
+export const collabCategoryEnum = pgEnum('collab_category', [
+  'photo_video',   // Фото/видео съёмка
+  'partnership',   // Партнёрство
+  'events',        // Мероприятия
+  'marketing',     // Маркетинг
+  'delivery',      // Доставка
+  'other'          // Другое
+]);
+
+export const collaborations = pgTable('collaborations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  cityId: uuid('city_id').references(() => cities.id).notNull(),
+  creatorId: uuid('creator_id').references(() => users.id).notNull(),
+  businessId: uuid('business_id').references(() => businesses.id), // optional
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  category: collabCategoryEnum('category').notNull(),
+  budget: text('budget'), // nullable
+  status: collabStatusEnum('status').default('open').notNull(),
+  responseCount: integer('response_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const collabResponses = pgTable('collab_responses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  collabId: uuid('collab_id').references(() => collaborations.id).notNull(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  message: text('message').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================
+// COLLABORATIONS RELATIONS
+// ============================================
+
+export const collaborationsRelations = relations(collaborations, ({ one, many }) => ({
+  city: one(cities, { fields: [collaborations.cityId], references: [cities.id] }),
+  creator: one(users, { fields: [collaborations.creatorId], references: [users.id] }),
+  business: one(businesses, { fields: [collaborations.businessId], references: [businesses.id] }),
+  responses: many(collabResponses),
+}));
+
+export const collabResponsesRelations = relations(collabResponses, ({ one }) => ({
+  collaboration: one(collaborations, { fields: [collabResponses.collabId], references: [collaborations.id] }),
+  user: one(users, { fields: [collabResponses.userId], references: [users.id] }),
+}));

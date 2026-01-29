@@ -6,22 +6,34 @@ import { CommunityCard } from '@/components/community/CommunityCard';
 import { CollabCard } from '@/components/community/CollabCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { fetchCommunities, joinCommunity, leaveCommunity, type Community } from '@/lib/api';
+import {
+  fetchCommunities,
+  joinCommunity,
+  leaveCommunity,
+  fetchCollaborations,
+  respondToCollaboration,
+  type Community,
+  type Collaboration,
+} from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { mockCollabs } from '@/data/mockData';
 
 export default function CommunityPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCollabsLoading, setIsCollabsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [collabsError, setCollabsError] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   const isLoggedIn = !!localStorage.getItem('token');
 
   useEffect(() => {
     loadCommunities();
+    loadCollaborations();
   }, []);
 
   const loadCommunities = async () => {
@@ -35,6 +47,20 @@ export default function CommunityPage() {
       console.error('Failed to load communities:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadCollaborations = async () => {
+    setIsCollabsLoading(true);
+    setCollabsError(null);
+    try {
+      const data = await fetchCollaborations();
+      setCollaborations(data);
+    } catch (err) {
+      setCollabsError('Не удалось загрузить коллаборации');
+      console.error('Failed to load collaborations:', err);
+    } finally {
+      setIsCollabsLoading(false);
     }
   };
 
@@ -120,6 +146,36 @@ export default function CommunityPage() {
       title: 'В разработке',
       description: 'Создание запросов скоро будет доступно',
     });
+  };
+
+  const handleRespond = async (collabId: string) => {
+    if (!isLoggedIn) {
+      toast({
+        title: 'Требуется авторизация',
+        description: 'Войдите, чтобы откликнуться',
+        variant: 'destructive',
+      });
+      navigate('/auth');
+      return;
+    }
+
+    setRespondingId(collabId);
+    try {
+      await respondToCollaboration(collabId, 'Здравствуйте! Заинтересован в сотрудничестве.');
+      toast({
+        title: 'Успешно',
+        description: 'Ваш отклик отправлен',
+      });
+      loadCollaborations();
+    } catch (err) {
+      toast({
+        title: 'Ошибка',
+        description: err instanceof Error ? err.message : 'Не удалось откликнуться',
+        variant: 'destructive',
+      });
+    } finally {
+      setRespondingId(null);
+    }
   };
 
   return (
@@ -214,17 +270,42 @@ export default function CommunityPage() {
               )}
             </div>
 
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Раздел коллабораций находится в разработке
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockCollabs.map((collab) => (
-                <CollabCard key={collab.id} collab={collab} />
-              ))}
-            </div>
+            {isCollabsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : collabsError ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+                <p className="text-muted-foreground">{collabsError}</p>
+                <Button variant="outline" className="mt-4" onClick={loadCollaborations}>
+                  Попробовать снова
+                </Button>
+              </div>
+            ) : collaborations.length === 0 ? (
+              <div className="text-center py-12">
+                <Handshake className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Пока нет активных запросов на коллаборацию</p>
+                {isLoggedIn && (
+                  <Button className="mt-4" onClick={handleCreateCollab}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Создать первый запрос
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {collaborations.map((collab) => (
+                  <CollabCard
+                    key={collab.id}
+                    collab={collab}
+                    onRespond={() => handleRespond(collab.id)}
+                    isLoading={respondingId === collab.id}
+                    isLoggedIn={isLoggedIn}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
