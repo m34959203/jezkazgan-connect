@@ -93,6 +93,15 @@ export function Footer() {
                   Тарифы
                 </a>
               </li>
+              <li>
+                <a
+                  href="/for-business#advertising"
+                  onClick={(e) => handleHashLink(e, '/for-business', 'advertising')}
+                  className="hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Реклама
+                </a>
+              </li>
             </ul>
           </div>
 
