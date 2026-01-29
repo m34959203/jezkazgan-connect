@@ -714,6 +714,65 @@ export async function runMigrations() {
     `;
     console.log('[Migration] ✓ Indexes created for complaints table');
 
+    // ============================================
+    // COLLABORATIONS SYSTEM TABLES
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE collab_status AS ENUM ('open', 'in_progress', 'closed');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      DO $$ BEGIN
+        CREATE TYPE collab_category AS ENUM ('photo_video', 'partnership', 'events', 'marketing', 'delivery', 'other');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS collaborations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        city_id UUID NOT NULL REFERENCES cities(id),
+        creator_id UUID NOT NULL REFERENCES users(id),
+        business_id UUID REFERENCES businesses(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        category collab_category NOT NULL,
+        budget INTEGER,
+        status collab_status NOT NULL DEFAULT 'open',
+        response_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ collaborations table ready');
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS collab_responses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        collab_id UUID NOT NULL REFERENCES collaborations(id),
+        user_id UUID NOT NULL REFERENCES users(id),
+        message TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+    console.log('[Migration] ✓ collab_responses table ready');
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS collaborations_city_id_idx ON collaborations(city_id);
+      CREATE INDEX IF NOT EXISTS collaborations_creator_id_idx ON collaborations(creator_id);
+      CREATE INDEX IF NOT EXISTS collaborations_status_idx ON collaborations(status);
+      CREATE INDEX IF NOT EXISTS collaborations_category_idx ON collaborations(category);
+      CREATE INDEX IF NOT EXISTS collab_responses_collab_id_idx ON collab_responses(collab_id);
+      CREATE INDEX IF NOT EXISTS collab_responses_user_id_idx ON collab_responses(user_id);
+    `;
+    console.log('[Migration] ✓ Indexes created for collaborations tables');
+
     console.log('[Migration] All migrations completed successfully!');
   } catch (error) {
     console.error('[Migration] Error running migrations:', error);

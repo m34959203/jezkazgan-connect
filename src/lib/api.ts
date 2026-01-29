@@ -2939,3 +2939,151 @@ export async function leaveCommunity(id: string): Promise<{ success: boolean; me
   if (!res.ok) throw new Error('Failed to leave community');
   return res.json();
 }
+
+// ============================================
+// Collaborations API
+// ============================================
+
+export type CollabStatus = 'open' | 'in_progress' | 'closed';
+export type CollabCategory = 'photo_video' | 'partnership' | 'events' | 'marketing' | 'delivery' | 'other';
+
+export const COLLAB_CATEGORY_LABELS: Record<CollabCategory, string> = {
+  photo_video: 'Фото/Видео',
+  partnership: 'Партнёрство',
+  events: 'Мероприятия',
+  marketing: 'Маркетинг',
+  delivery: 'Доставка',
+  other: 'Другое',
+};
+
+export const COLLAB_STATUS_LABELS: Record<CollabStatus, string> = {
+  open: 'Открыто',
+  in_progress: 'В работе',
+  closed: 'Закрыто',
+};
+
+export interface Collaboration {
+  id: string;
+  cityId: string;
+  cityName: string | null;
+  creatorId: string;
+  creatorName: string | null;
+  creatorAvatar: string | null;
+  businessId: string | null;
+  businessName: string | null;
+  title: string;
+  description: string;
+  category: CollabCategory;
+  budget: string | null;
+  status: CollabStatus;
+  responseCount: number;
+  createdAt: string;
+  updatedAt: string;
+  hasResponded?: boolean;
+}
+
+export interface CollabResponse {
+  id: string;
+  collabId: string;
+  userId: string;
+  userName: string | null;
+  userAvatar: string | null;
+  message: string;
+  createdAt: string;
+}
+
+export interface CollaborationWithResponses extends Collaboration {
+  responses: CollabResponse[];
+}
+
+export async function fetchCollaborations(params?: {
+  cityId?: string;
+  category?: CollabCategory;
+  status?: CollabStatus;
+}): Promise<Collaboration[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.cityId) searchParams.set('cityId', params.cityId);
+  if (params?.category) searchParams.set('category', params.category);
+  if (params?.status) searchParams.set('status', params.status);
+
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const url = `${API_URL}/collaborations${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error('Failed to fetch collaborations');
+  return res.json();
+}
+
+export async function fetchCollaboration(id: string): Promise<CollaborationWithResponses> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}/collaborations/${id}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch collaboration');
+  return res.json();
+}
+
+export async function createCollaboration(data: {
+  title: string;
+  description: string;
+  category: CollabCategory;
+  cityId: string;
+  businessId?: string;
+  budget?: string;
+}): Promise<Collaboration> {
+  const res = await fetch(`${API_URL}/collaborations`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create collaboration');
+  }
+  return res.json();
+}
+
+export async function respondToCollaboration(id: string, message: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_URL}/collaborations/${id}/respond`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to respond to collaboration');
+  }
+  return res.json();
+}
+
+export async function updateCollaborationStatus(id: string, status: 'in_progress' | 'closed'): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/collaborations/${id}/status`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to update collaboration status');
+  }
+  return res.json();
+}
+
+export async function deleteCollaboration(id: string): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_URL}/collaborations/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete collaboration');
+  }
+  return res.json();
+}
