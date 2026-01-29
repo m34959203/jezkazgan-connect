@@ -124,6 +124,20 @@ export async function fetchEventById(id: string): Promise<Event> {
   return res.json();
 }
 
+export type EventCategory = 'concerts' | 'education' | 'seminars' | 'leisure' | 'sports' | 'children' | 'exhibitions' | 'other';
+
+export type CategoryStats = Record<EventCategory, number>;
+
+export async function fetchCategoryStats(cityId?: string): Promise<CategoryStats> {
+  const searchParams = new URLSearchParams();
+  if (cityId) searchParams.set('cityId', cityId);
+
+  const url = `${API_URL}/events/categories${searchParams.toString() ? '?' + searchParams : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch category stats');
+  return res.json();
+}
+
 export async function fetchBusinesses(params?: {
   cityId?: string;
   category?: string;

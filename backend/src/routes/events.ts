@@ -7,6 +7,45 @@ import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/aut
 
 const app = new Hono<{ Variables: { user: AuthUser } }>();
 
+// GET /events/categories - статистика по категориям
+app.get('/categories', async (c) => {
+  try {
+    const cityId = c.req.query('cityId');
+
+    // Get counts by category for approved upcoming events
+    const conditions = [
+      eq(events.isApproved, true),
+      gte(events.date, new Date()),
+    ];
+
+    if (cityId) {
+      conditions.push(eq(events.cityId, cityId));
+    }
+
+    const categoryCounts = await db
+      .select({
+        category: events.category,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(events)
+      .where(and(...conditions))
+      .groupBy(events.category);
+
+    // Transform to object for easier frontend use
+    const result: Record<string, number> = {};
+    categoryCounts.forEach((c) => {
+      if (c.category) {
+        result[c.category] = c.count;
+      }
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error('Categories fetch error:', error);
+    return c.json({ error: 'Failed to fetch category stats' }, 500);
+  }
+});
+
 // Query params schema
 const listQuerySchema = z.object({
   cityId: z.string().uuid().optional(),
