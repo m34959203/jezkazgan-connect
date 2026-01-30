@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, Crown } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Crown, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +50,9 @@ export default function CreateEvent() {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoThumbnail, setVideoThumbnail] = useState('');
   const [selectedIdea, setSelectedIdea] = useState<ImageIdea | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [publishDate, setPublishDate] = useState('');
+  const [publishTime, setPublishTime] = useState('');
 
   // Handle idea selection - opens AI generator with pre-filled prompt
   const handleIdeaSelected = (idea: ImageIdea) => {
@@ -97,6 +100,12 @@ export default function CreateEvent() {
       // Combine date and time into ISO datetime
       const dateTime = new Date(`${date}T${time}`).toISOString();
 
+      // Calculate publishAt for scheduled posting (Premium only)
+      let publishAt: string | undefined;
+      if (isPremium && isScheduled && publishDate && publishTime) {
+        publishAt = new Date(`${publishDate}T${publishTime}`).toISOString();
+      }
+
       await createEvent({
         cityId: business.city?.id || '',
         businessId: business.id,
@@ -111,11 +120,14 @@ export default function CreateEvent() {
         image: image || undefined,
         videoUrl: videoUrl || undefined,
         videoThumbnail: videoThumbnail || undefined,
+        publishAt,
       });
 
       toast({
-        title: 'Событие создано!',
-        description: 'Событие отправлено на модерацию',
+        title: isScheduled && publishAt ? 'Публикация запланирована!' : 'Событие создано!',
+        description: isScheduled && publishAt
+          ? `Событие будет опубликовано ${new Date(publishAt).toLocaleString('ru-RU')}`
+          : 'Событие отправлено на модерацию',
       });
 
       navigate('/business/publications');
@@ -328,6 +340,84 @@ export default function CreateEvent() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Scheduled Posting (Premium) */}
+        <Card className={!isPremium ? 'opacity-60' : ''}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="w-5 h-5" />
+                  Отложенный постинг
+                  <Badge variant="outline" className="text-amber-700 border-amber-300">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Запланируйте публикацию на определённое время
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="isScheduled">Запланировать публикацию</Label>
+                <p className="text-sm text-muted-foreground">
+                  Событие будет опубликовано автоматически
+                </p>
+              </div>
+              <Switch
+                id="isScheduled"
+                checked={isScheduled}
+                onCheckedChange={setIsScheduled}
+                disabled={!isPremium}
+              />
+            </div>
+
+            {isScheduled && isPremium && (
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="publishDate">Дата публикации</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="publishDate"
+                      type="date"
+                      className="pl-10"
+                      value={publishDate}
+                      onChange={(e) => setPublishDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="publishTime">Время публикации</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="publishTime"
+                      type="time"
+                      className="pl-10"
+                      value={publishTime}
+                      onChange={(e) => setPublishTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isPremium && (
+              <p className="text-sm text-muted-foreground">
+                Отложенный постинг доступен только для Premium подписки.{' '}
+                <Link to="/business/subscription" className="text-primary hover:underline">
+                  Улучшить тариф
+                </Link>
+              </p>
+            )}
           </CardContent>
         </Card>
 
