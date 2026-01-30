@@ -447,22 +447,31 @@ export async function generatePromotionalVideo(request: VideoGenerationRequest):
   // Step 3: Call Veo 3.1 API (January 2026)
   const veoEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning';
 
-  const requestBody = {
+  // Parse duration to number (e.g., '8s' -> 8)
+  const durationNumber = parseInt(duration.replace('s', ''));
+
+  const requestBody: {
+    instances: Array<{ prompt: string; image?: { inlineData: { mimeType: string; data: string } } }>;
+    parameters: Record<string, unknown>;
+  } = {
     instances: [{
       prompt: videoPrompt,
     }],
     parameters: {
       aspectRatio: aspectRatio,
-      sampleCount: 1,
-      durationSeconds: parseInt(duration),
-      personGeneration: 'allow_adult',
+      numberOfVideos: 1,
+      durationSeconds: durationNumber,
+      resolution: '720p',
     },
   };
 
   // If source image provided (image-to-video)
   if (request.sourceImage) {
-    (requestBody.instances[0] as Record<string, unknown>).image = {
-      bytesBase64Encoded: request.sourceImage.replace(/^data:image\/\w+;base64,/, ''),
+    requestBody.instances[0].image = {
+      inlineData: {
+        mimeType: 'image/png',
+        data: request.sourceImage.replace(/^data:image\/\w+;base64,/, ''),
+      },
     };
   }
 
