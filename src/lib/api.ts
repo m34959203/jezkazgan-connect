@@ -1462,134 +1462,6 @@ export async function fetchPublicCityPhotos(citySlug: string): Promise<{
 }
 
 // ============================================
-// Business Premium: AI Image Generation (Nano Banana)
-// ============================================
-
-export interface AiGenerationResult {
-  id: string;
-  imageUrl: string;
-  revisedPrompt?: string;
-  prompt: string;
-  style?: string;
-}
-
-export interface AiGenerationHistory {
-  id: string;
-  prompt: string;
-  style: string | null;
-  generatedImageUrl: string | null;
-  status: string;
-  usedFor: string | null;
-  createdAt: string;
-}
-
-export interface AiStatus {
-  available: boolean;
-  provider: 'ideogram';
-  model: string;
-  isFree: boolean;
-}
-
-export async function checkAiGenerationStatus(): Promise<AiStatus> {
-  const res = await fetch(`${API_URL}/ai/status`);
-  if (!res.ok) throw new Error('Failed to check AI status');
-  return res.json();
-}
-
-export async function getAiPromptSuggestions(params: {
-  contentType: 'event' | 'promotion' | 'banner';
-  title?: string;
-  description?: string;
-  category?: string;
-  discount?: string;
-}): Promise<{ suggestions: string[] }> {
-  const searchParams = new URLSearchParams();
-  searchParams.set('contentType', params.contentType);
-  if (params.title) searchParams.set('title', params.title);
-  if (params.description) searchParams.set('description', params.description);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.discount) searchParams.set('discount', params.discount);
-
-  const res = await fetch(`${API_URL}/ai/suggestions?${searchParams}`);
-  if (!res.ok) throw new Error('Failed to get prompt suggestions');
-  return res.json();
-}
-
-// Image idea structure for AI-generated suggestions
-export interface ImageIdea {
-  id: number;
-  title: string;
-  description: string;
-  prompt: string;
-  style: 'banner' | 'promo' | 'event' | 'poster' | 'social';
-  tags: string[];
-}
-
-export async function getAiImageIdeas(params: {
-  title?: string;
-  description?: string;
-  category?: string;
-  date?: string;
-  location?: string;
-}): Promise<{ ideas: ImageIdea[] }> {
-  const searchParams = new URLSearchParams();
-  if (params.title) searchParams.set('title', params.title);
-  if (params.description) searchParams.set('description', params.description);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.date) searchParams.set('date', params.date);
-  if (params.location) searchParams.set('location', params.location);
-
-  const res = await fetch(`${API_URL}/ai/ideas?${searchParams}`);
-  if (!res.ok) throw new Error('Failed to get image ideas');
-  return res.json();
-}
-
-export async function generateAiImage(data: {
-  prompt: string;
-  style?: 'banner' | 'promo' | 'event' | 'poster' | 'social';
-  translatePrompt?: boolean;
-}): Promise<AiGenerationResult> {
-  const res = await fetch(`${API_URL}/ai/generate`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to generate image');
-  }
-  return res.json();
-}
-
-export async function fetchAiGenerationHistory(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<AiGenerationHistory[]> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set('limit', params.limit.toString());
-  if (params?.offset) searchParams.set('offset', params.offset.toString());
-
-  const res = await fetch(`${API_URL}/ai/history?${searchParams}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch AI generation history');
-  return res.json();
-}
-
-export async function markAiGenerationUsed(id: string, data: {
-  usedFor: 'event' | 'promotion' | 'banner';
-  usedForId: string;
-}): Promise<AiGenerationHistory> {
-  const res = await fetch(`${API_URL}/ai/${id}/used`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to mark generation as used');
-  return res.json();
-}
-
-// ============================================
 // Business Premium: Auto-Publish to Social Media
 // ============================================
 
@@ -3099,5 +2971,207 @@ export async function deleteCollaboration(id: string): Promise<{ success: boolea
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to delete collaboration');
   }
+  return res.json();
+}
+
+// ============================================
+// KZ Connect Studio - AI Poster Generation
+// ============================================
+
+export interface StudioStatus {
+  available: boolean;
+  provider: string;
+  features: string[];
+  video?: {
+    available: boolean;
+    maxDuration: string;
+    aspectRatios: string[];
+  };
+}
+
+export interface StudioTheme {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface StudioPosterDetails {
+  title: string;
+  tagline: string;
+  date: string;
+  location: string;
+  description: string;
+  theme: string;
+  imagePrompt?: string;
+}
+
+export interface StudioGenerationResult {
+  id: string;
+  imageUrl: string;
+  details: StudioPosterDetails;
+  isAiGenerated: boolean;
+  aiDisclaimer: string;
+  generatedAt: string;
+}
+
+export interface StudioHistoryItem {
+  id: string;
+  prompt: string;
+  style: string | null;
+  generatedImageUrl: string | null;
+  status: string;
+  usedFor: string | null;
+  createdAt: string;
+}
+
+export type PosterTheme =
+  | 'modern-nomad'
+  | 'urban-pulse'
+  | 'great-steppe'
+  | 'cyber-shanyrak'
+  | 'silk-road';
+
+/**
+ * Check KZ Connect Studio availability
+ */
+export async function checkStudioStatus(): Promise<StudioStatus> {
+  const res = await fetch(`${API_URL}/studio/status`);
+  if (!res.ok) {
+    return { available: false, provider: 'gemini', features: [] };
+  }
+  return res.json();
+}
+
+/**
+ * Get available poster themes
+ */
+export async function getStudioThemes(): Promise<{ themes: StudioTheme[] }> {
+  const res = await fetch(`${API_URL}/studio/themes`);
+  if (!res.ok) {
+    return { themes: [] };
+  }
+  return res.json();
+}
+
+/**
+ * Refine event details using AI (without image generation)
+ */
+export async function refineStudioDetails(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+}): Promise<{ details: StudioPosterDetails }> {
+  const res = await fetch(`${API_URL}/studio/refine`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to refine details');
+  }
+
+  return res.json();
+}
+
+/**
+ * Generate full poster (text refinement + image generation)
+ * Requires Business Premium subscription
+ */
+export async function generateStudioPoster(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+}): Promise<StudioGenerationResult> {
+  const res = await fetch(`${API_URL}/studio/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to generate poster');
+  }
+
+  return res.json();
+}
+
+/**
+ * Get studio generation history
+ */
+export async function fetchStudioHistory(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<StudioHistoryItem[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/studio/history${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    return [];
+  }
+
+  return res.json();
+}
+
+// ============================================
+// KZ Connect Studio - Video Generation (Veo 2)
+// ============================================
+
+export interface StudioVideoResult {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  duration: string;
+  aspectRatio: string;
+  details: StudioPosterDetails;
+  isAiGenerated: boolean;
+  aiDisclaimer: string;
+  generatedAt: string;
+}
+
+export type VideoAspectRatio = '16:9' | '9:16';
+export type VideoDuration = '4s' | '8s';
+
+/**
+ * Generate promotional video using Veo 2
+ * Requires Business Premium subscription and VEO_ENABLED=true
+ */
+export async function generateStudioVideo(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+  duration?: VideoDuration;
+  aspectRatio?: VideoAspectRatio;
+  sourceImage?: string; // Base64 for image-to-video
+}): Promise<StudioVideoResult> {
+  const res = await fetch(`${API_URL}/studio/generate-video`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      ...data,
+      duration: data.duration || '8s',
+      aspectRatio: data.aspectRatio || '16:9',
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || error.message || 'Failed to generate video');
+  }
+
   return res.json();
 }
