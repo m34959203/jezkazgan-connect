@@ -36,12 +36,6 @@ export interface PosterGenerationResult {
 }
 
 export type PosterTheme =
-  // Региональные стили Казахстана
-  | 'modern-nomad'    // Этно-футуризм
-  | 'urban-pulse'     // Мегаполис
-  | 'great-steppe'    // Природа и простор
-  | 'cyber-shanyrak'  // Технологии
-  | 'silk-road'       // Классика и история
   // Стили по категориям событий
   | 'concert-vibe'    // Концерты
   | 'edu-smart'       // Обучение
@@ -87,33 +81,6 @@ export interface VideoGenerationResult {
 
 // Theme descriptions for visual prompts
 const THEME_CONFIGS: Record<PosterTheme, { name: string; visualStyle: string; colors: string }> = {
-  // === Региональные стили Казахстана ===
-  'modern-nomad': {
-    name: 'Modern Nomad',
-    visualStyle: 'ethno-futurism, traditional Kazakh patterns reimagined in modern minimalist style, subtle shanyrak elements, nomadic heritage meets contemporary design',
-    colors: 'gold and deep blue, warm earth tones with modern accents',
-  },
-  'urban-pulse': {
-    name: 'Urban Pulse',
-    visualStyle: 'metropolitan cityscape, modern architecture, dynamic urban energy, night city lights, glass and steel',
-    colors: 'neon accents on dark backgrounds, electric blue and purple, city lights glow',
-  },
-  'great-steppe': {
-    name: 'Great Steppe',
-    visualStyle: 'vast Kazakh steppe landscape, dramatic sky, mountains, natural beauty, open spaces, eagles, horses',
-    colors: 'natural greens and browns, golden sunset tones, clear blue sky',
-  },
-  'cyber-shanyrak': {
-    name: 'Cyber Shanyrak',
-    visualStyle: 'technological futurism, digital elements, circuit patterns inspired by traditional ornaments, holographic effects, AI and innovation',
-    colors: 'cyan and magenta, digital gradients, glowing tech accents',
-  },
-  'silk-road': {
-    name: 'Silk Road',
-    visualStyle: 'classical elegance, historical architecture, oriental patterns, ancient trade route heritage, traditional craftsmanship',
-    colors: 'rich burgundy and gold, warm amber, antique tones',
-  },
-  // === Стили по категориям событий ===
   'concert-vibe': {
     name: 'Concert Vibe',
     visualStyle: 'live music atmosphere, stage lights, crowd silhouettes, microphones, guitars, dynamic performance energy, concert hall ambiance, rock and pop aesthetics',
@@ -386,29 +353,21 @@ export async function generatePoster(request: PosterGenerationRequest): Promise<
   };
 }
 
-// Get available themes grouped by type
+// Get available themes (event category styles)
 export function getAvailableThemes(): Array<{
   id: PosterTheme;
   name: string;
   description: string;
-  category?: 'regional' | 'event';
   forEventCategory?: string;
 }> {
   return [
-    // Региональные стили Казахстана
-    { id: 'modern-nomad', name: 'Modern Nomad', description: 'Этно-футуризм — традиции в современном прочтении', category: 'regional' },
-    { id: 'urban-pulse', name: 'Urban Pulse', description: 'Мегаполис — энергия большого города', category: 'regional' },
-    { id: 'great-steppe', name: 'Great Steppe', description: 'Великая степь — природа и простор', category: 'regional' },
-    { id: 'cyber-shanyrak', name: 'Cyber Shanyrak', description: 'Технологии — цифровое будущее', category: 'regional' },
-    { id: 'silk-road', name: 'Silk Road', description: 'Шёлковый путь — классика и история', category: 'regional' },
-    // Стили по категориям событий
-    { id: 'concert-vibe', name: 'Concert Vibe', description: 'Концерты — живая музыка и энергия', category: 'event', forEventCategory: 'concerts' },
-    { id: 'edu-smart', name: 'Edu Smart', description: 'Обучение — знания и развитие', category: 'event', forEventCategory: 'education' },
-    { id: 'business-pro', name: 'Business Pro', description: 'Семинары — профессионализм и нетворкинг', category: 'event', forEventCategory: 'seminars' },
-    { id: 'leisure-fun', name: 'Leisure Fun', description: 'Досуг — отдых и развлечения', category: 'event', forEventCategory: 'leisure' },
-    { id: 'sport-energy', name: 'Sport Energy', description: 'Спорт — движение и победы', category: 'event', forEventCategory: 'sports' },
-    { id: 'kids-magic', name: 'Kids Magic', description: 'Для детей — волшебство и радость', category: 'event', forEventCategory: 'children' },
-    { id: 'art-gallery', name: 'Art Gallery', description: 'Выставки — искусство и культура', category: 'event', forEventCategory: 'exhibitions' },
+    { id: 'concert-vibe', name: 'Concert Vibe', description: 'Концерты — живая музыка и энергия', forEventCategory: 'concerts' },
+    { id: 'edu-smart', name: 'Edu Smart', description: 'Обучение — знания и развитие', forEventCategory: 'education' },
+    { id: 'business-pro', name: 'Business Pro', description: 'Семинары — профессионализм и нетворкинг', forEventCategory: 'seminars' },
+    { id: 'leisure-fun', name: 'Leisure Fun', description: 'Досуг — отдых и развлечения', forEventCategory: 'leisure' },
+    { id: 'sport-energy', name: 'Sport Energy', description: 'Спорт — движение и победы', forEventCategory: 'sports' },
+    { id: 'kids-magic', name: 'Kids Magic', description: 'Для детей — волшебство и радость', forEventCategory: 'children' },
+    { id: 'art-gallery', name: 'Art Gallery', description: 'Выставки — искусство и культура', forEventCategory: 'exhibitions' },
   ];
 }
 
@@ -422,9 +381,9 @@ export function getRecommendedTheme(eventCategory?: string): PosterTheme {
     'sports': 'sport-energy',
     'children': 'kids-magic',
     'exhibitions': 'art-gallery',
-    'other': 'modern-nomad',
+    'other': 'leisure-fun',
   };
-  return categoryMap[eventCategory || ''] || 'modern-nomad';
+  return categoryMap[eventCategory || ''] || 'concert-vibe';
 }
 
 // ============================================

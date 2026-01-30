@@ -42,11 +42,8 @@ app.get('/themes', async (c) => {
   return c.json({ themes });
 });
 
-// All available poster themes
+// All available poster themes (event categories)
 const posterThemes = [
-  // Regional
-  'modern-nomad', 'urban-pulse', 'great-steppe', 'cyber-shanyrak', 'silk-road',
-  // Event categories
   'concert-vibe', 'edu-smart', 'business-pro', 'leisure-fun', 'sport-energy', 'kids-magic', 'art-gallery',
 ] as const;
 
