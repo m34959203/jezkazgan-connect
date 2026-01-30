@@ -1,6 +1,6 @@
 // Gemini AI Service for KZ Connect Studio
 // Generates event posters with context-aware Kazakhstan city themes
-// Provider: Google Gemini (gemini-2.0-flash for text, imagen-3.0-generate-001 for images)
+// Provider: Google Gemini (gemini-2.0-flash for text, imagen-4.0-generate-001 for images)
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -249,12 +249,12 @@ NO Latin letters. NO mixed alphabets. High-quality Cyrillic font rendering.
 Reflect the unique atmosphere and aesthetics of modern Kazakhstan.
 Vertical 9:16 aspect ratio.`;
 
-  // Models to try in order of preference
+  // Models to try in order of preference (Imagen 4 - January 2026)
   const imageModels = [
-    // Imagen 3 - dedicated image generation model (most reliable)
-    { name: 'imagen-3.0-generate-001', method: 'predict', useResponseModalities: false },
-    // Imagen 3 Fast - faster but slightly lower quality
-    { name: 'imagen-3.0-fast-generate-001', method: 'predict', useResponseModalities: false },
+    // Imagen 4 - latest image generation model
+    { name: 'imagen-4.0-generate-001', method: 'predict', useResponseModalities: false },
+    // Imagen 4 Fast - faster variant
+    { name: 'imagen-4.0-fast-generate-001', method: 'predict', useResponseModalities: false },
   ];
 
   let lastError: string = '';
