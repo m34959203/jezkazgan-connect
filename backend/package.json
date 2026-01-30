@@ -13,6 +13,7 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.1",
     "@neondatabase/serverless": "^0.10.4",
