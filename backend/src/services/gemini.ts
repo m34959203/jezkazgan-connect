@@ -243,9 +243,9 @@ export async function generatePosterBackground(prompt: string): Promise<string> 
 
   const enhancedPrompt = `Professional high-end cinematic poster background: ${prompt}.
 Cinematic lighting, 8k resolution, artistic composition.
-CRITICAL TEXT REQUIREMENTS: If any text is present, it MUST be in Cyrillic (Russian) alphabet only.
-Use professional Russian typography with clear, readable Cyrillic letters (А-Я, а-я).
-NO Latin letters. NO mixed alphabets. High-quality Cyrillic font rendering.
+CRITICAL: Generate ONLY the background image. DO NOT include ANY text, letters, words, typography, or written content.
+The image must be completely text-free - no titles, no captions, no watermarks, no signs with text.
+Create a clean visual background suitable for text overlay.
 Reflect the unique atmosphere and aesthetics of modern Kazakhstan.
 Vertical 9:16 aspect ratio.`;
 
