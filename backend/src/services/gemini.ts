@@ -452,9 +452,7 @@ export async function generatePromotionalVideo(request: VideoGenerationRequest):
     }],
     parameters: {
       aspectRatio: aspectRatio,
-      numberOfVideos: 1,
       durationSeconds: durationNumber,
-      resolution: '720p',
     },
   };
 
