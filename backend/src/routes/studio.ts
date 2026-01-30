@@ -42,13 +42,21 @@ app.get('/themes', async (c) => {
   return c.json({ themes });
 });
 
+// All available poster themes
+const posterThemes = [
+  // Regional
+  'modern-nomad', 'urban-pulse', 'great-steppe', 'cyber-shanyrak', 'silk-road',
+  // Event categories
+  'concert-vibe', 'edu-smart', 'business-pro', 'leisure-fun', 'sport-energy', 'kids-magic', 'art-gallery',
+] as const;
+
 // Poster generation request schema
 const generatePosterSchema = z.object({
   title: z.string().min(3).max(200),
   date: z.string().min(1),
   location: z.string().min(2).max(200),
   description: z.string().max(1000).optional(),
-  theme: z.enum(['modern-nomad', 'urban-pulse', 'great-steppe', 'cyber-shanyrak', 'silk-road']),
+  theme: z.enum(posterThemes),
 });
 
 // Refine event details only (without image generation)
@@ -218,7 +226,7 @@ const generateVideoSchema = z.object({
   date: z.string().min(1),
   location: z.string().min(2).max(200),
   description: z.string().max(1000).optional(),
-  theme: z.enum(['modern-nomad', 'urban-pulse', 'great-steppe', 'cyber-shanyrak', 'silk-road']),
+  theme: z.enum(posterThemes),
   duration: z.enum(['4s', '8s']).default('8s'),
   aspectRatio: z.enum(['16:9', '9:16']).default('16:9'),
   sourceImage: z.string().optional(), // Base64 for image-to-video
