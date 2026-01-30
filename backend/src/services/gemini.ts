@@ -221,12 +221,12 @@ export async function refineEventDetails(input: PosterGenerationRequest): Promis
   }
 }
 
-// Generate poster background image using Gemini Imagen
+// Generate poster background image using Gemini/Imagen
 export async function generatePosterBackground(prompt: string): Promise<string> {
-  const ai = getGeminiClient();
-
-  // Use Imagen 3 for image generation
-  const model = ai.getGenerativeModel({ model: 'imagen-3.0-generate-002' });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
+  if (!apiKey) {
+    throw new Error('Gemini API key not configured');
+  }
 
   const enhancedPrompt = `Professional high-end cinematic poster background: ${prompt}.
 Cinematic lighting, 8k resolution, artistic composition.
@@ -236,49 +236,90 @@ NO Latin letters. NO mixed alphabets. High-quality Cyrillic font rendering.
 Reflect the unique atmosphere and aesthetics of modern Kazakhstan.
 Vertical 9:16 aspect ratio.`;
 
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: enhancedPrompt }] }],
-      generationConfig: {
-        responseMimeType: 'image/png',
-      },
-    });
+  // Models to try in order of preference (2025-2026 models)
+  const imageModels = [
+    // Gemini 2.5 Flash Image (Nano Banana) - fast image generation
+    { name: 'gemini-2.5-flash-preview-04-17', method: 'generateContent', useResponseModalities: true },
+    // Imagen 4 models
+    { name: 'imagen-4.0-generate-preview-05-20', method: 'predict', useResponseModalities: false },
+    // Fallback to older stable models
+    { name: 'gemini-2.0-flash', method: 'generateContent', useResponseModalities: true },
+  ];
 
-    const response = result.response;
+  let lastError: string = '';
 
-    // Check for inline image data
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if ('inlineData' in part && part.inlineData?.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
+  for (const modelConfig of imageModels) {
+    try {
+      if (modelConfig.method === 'generateContent') {
+        // Gemini native image generation
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelConfig.name}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: `Generate a professional event poster image: ${enhancedPrompt}` }]
+              }],
+              generationConfig: modelConfig.useResponseModalities
+                ? { responseModalities: ['IMAGE', 'TEXT'] }
+                : {},
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const parts = data.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData?.data) {
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              return `data:${mimeType};base64,${part.inlineData.data}`;
+            }
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          lastError = errorData.error?.message || `Model ${modelConfig.name} returned ${response.status}`;
+        }
+      } else if (modelConfig.method === 'predict') {
+        // Imagen API
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelConfig.name}:predict?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instances: [{ prompt: enhancedPrompt }],
+              parameters: {
+                sampleCount: 1,
+                aspectRatio: '9:16',
+                safetyFilterLevel: 'block_few',
+              },
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.predictions?.[0]?.bytesBase64Encoded) {
+            return `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          lastError = errorData.error?.message || `Model ${modelConfig.name} returned ${response.status}`;
         }
       }
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : 'Unknown error';
+      continue;
     }
-
-    throw new Error('No image data in response');
-  } catch (error) {
-    // Fallback to gemini-2.0-flash-exp for image generation
-    const fallbackModel = ai.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
-    const result = await fallbackModel.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{ text: `Generate an image: ${enhancedPrompt}` }]
-      }],
-    });
-
-    const response = result.response;
-
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if ('inlineData' in part && part.inlineData?.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-
-    throw new Error('Не удалось сгенерировать изображение. Попробуйте другой промпт.');
   }
+
+  // All models failed
+  throw new Error(
+    `Не удалось сгенерировать изображение. ${lastError}. ` +
+    'Попробуйте загрузить своё изображение или повторите попытку позже.'
+  );
 }
 
 // Full poster generation pipeline
