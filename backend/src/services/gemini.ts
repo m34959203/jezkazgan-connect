@@ -168,7 +168,7 @@ export async function refineEventDetails(input: PosterGenerationRequest): Promis
   const ai = getGeminiClient();
   const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const themeConfig = THEME_CONFIGS[input.theme] || THEME_CONFIGS['modern-nomad'];
+  const themeConfig = THEME_CONFIGS[input.theme] || THEME_CONFIGS['concert-vibe'];
   const cityContext = getCityContext(input.location);
 
   const prompt = `Ты — ведущий креативный директор платформы 'KZ Connect'.
@@ -390,13 +390,6 @@ export function getRecommendedTheme(eventCategory?: string): PosterTheme {
 
 // Video-specific motion styles for each theme
 const VIDEO_THEME_MOTION: Record<PosterTheme, string> = {
-  // Региональные стили
-  'modern-nomad': 'slow elegant camera movement, traditional patterns gently animating, subtle wind effects on fabrics',
-  'urban-pulse': 'dynamic camera movement through city, lights flickering, traffic motion blur, cinematic dolly shots',
-  'great-steppe': 'sweeping panoramic shot across steppe, clouds moving, grass swaying, eagles soaring',
-  'cyber-shanyrak': 'digital particles flowing, holographic elements morphing, tech interfaces animating',
-  'silk-road': 'gentle camera drift through historical scenes, fabric textures flowing, candlelight flickering',
-  // Стили по категориям событий
   'concert-vibe': 'dynamic stage lighting sweeps, crowd energy waves, guitar strings vibrating, smoke effects rising, spotlight movements',
   'edu-smart': 'pages turning smoothly, lightbulb illuminating, knowledge symbols floating, smooth zoom on learning elements',
   'business-pro': 'professional steadicam through conference, charts animating, handshake motion, elegant corporate pan',
@@ -411,8 +404,8 @@ const VIDEO_THEME_MOTION: Record<PosterTheme, string> = {
  */
 function generateVideoPrompt(details: RefinedEventDetails, aspectRatio: string): string {
   const theme = details.theme.toLowerCase().replace(' ', '-') as PosterTheme;
-  const themeConfig = THEME_CONFIGS[theme] || THEME_CONFIGS['modern-nomad'];
-  const motionStyle = VIDEO_THEME_MOTION[theme] || VIDEO_THEME_MOTION['modern-nomad'];
+  const themeConfig = THEME_CONFIGS[theme] || THEME_CONFIGS['concert-vibe'];
+  const motionStyle = VIDEO_THEME_MOTION[theme] || VIDEO_THEME_MOTION['concert-vibe'];
 
   return `Cinematic promotional video for "${details.title}" event.
 ${details.imagePrompt}.
