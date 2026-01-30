@@ -13,7 +13,9 @@ import { ImageUpload } from '@/components/ui/image-upload';
 import { VideoUpload } from '@/components/ui/video-upload';
 import { AiImageGenerator } from '@/components/ui/ai-image-generator';
 import { AiImageIdeas } from '@/components/ui/ai-image-ideas';
+import { AiPosterStudio } from '@/components/ui/ai-poster-studio';
 import type { ImageIdea } from '@/lib/api';
+import type { PosterDetails } from '@/components/ui/poster-preview';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createEvent } from '@/lib/api';
@@ -54,6 +56,14 @@ export default function CreateEvent() {
   // Handle idea selection - opens AI generator with pre-filled prompt
   const handleIdeaSelected = (idea: ImageIdea) => {
     setSelectedIdea(idea);
+  };
+
+  // Handle poster generation from KZ Connect Studio
+  const handlePosterGenerated = (imageUrl: string, details: PosterDetails) => {
+    setImage(imageUrl);
+    // Optionally fill form fields from generated poster details
+    if (!title && details.title) setTitle(details.title);
+    if (!description && details.description) setDescription(details.description);
   };
 
   // Check premium status
@@ -200,8 +210,21 @@ export default function CreateEvent() {
                 label="Изображение события"
               />
 
-              {/* AI Image Ideas */}
+              {/* AI Image Tools */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* KZ Connect Studio - Full Poster Generation */}
+                <AiPosterStudio
+                  onPosterGenerated={handlePosterGenerated}
+                  context={{
+                    title,
+                    date: date && time ? `${date} ${time}` : date,
+                    location: location || business?.city?.name || 'Жезказган',
+                    description,
+                  }}
+                  isPremium={isPremium}
+                />
+
+                {/* Quick AI Image Generation */}
                 <AiImageIdeas
                   title={title}
                   description={description}
@@ -227,7 +250,7 @@ export default function CreateEvent() {
                 />
                 {!isPremium && (
                   <span className="text-xs text-muted-foreground">
-                    Генерация с ИИ доступна в Premium
+                    AI инструменты доступны в Premium
                   </span>
                 )}
               </div>

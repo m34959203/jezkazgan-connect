@@ -15,6 +15,7 @@ import team from './routes/team';
 import upload from './routes/upload';
 import favorites from './routes/favorites';
 import ai from './routes/ai';
+import studio from './routes/studio';
 import autopublish from './routes/autopublish';
 import cashback from './routes/cashback';
 import referral from './routes/referral';
@@ -107,6 +108,7 @@ app.route('/upload', upload);
 app.route('/favorites', favorites);
 // Business Premium routes
 app.route('/ai', ai);
+app.route('/studio', studio);
 app.route('/autopublish', autopublish);
 // User Premium routes (Cashback & Referral)
 app.route('/cashback', cashback);

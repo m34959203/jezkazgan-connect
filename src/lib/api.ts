@@ -3101,3 +3101,139 @@ export async function deleteCollaboration(id: string): Promise<{ success: boolea
   }
   return res.json();
 }
+
+// ============================================
+// KZ Connect Studio - AI Poster Generation
+// ============================================
+
+export interface StudioStatus {
+  available: boolean;
+  provider: string;
+  features: string[];
+}
+
+export interface StudioTheme {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface StudioPosterDetails {
+  title: string;
+  tagline: string;
+  date: string;
+  location: string;
+  description: string;
+  theme: string;
+  imagePrompt?: string;
+}
+
+export interface StudioGenerationResult {
+  id: string;
+  imageUrl: string;
+  details: StudioPosterDetails;
+  isAiGenerated: boolean;
+  aiDisclaimer: string;
+  generatedAt: string;
+}
+
+export type PosterTheme =
+  | 'modern-nomad'
+  | 'urban-pulse'
+  | 'great-steppe'
+  | 'cyber-shanyrak'
+  | 'silk-road';
+
+/**
+ * Check KZ Connect Studio availability
+ */
+export async function checkStudioStatus(): Promise<StudioStatus> {
+  const res = await fetch(`${API_URL}/studio/status`);
+  if (!res.ok) {
+    return { available: false, provider: 'gemini', features: [] };
+  }
+  return res.json();
+}
+
+/**
+ * Get available poster themes
+ */
+export async function getStudioThemes(): Promise<{ themes: StudioTheme[] }> {
+  const res = await fetch(`${API_URL}/studio/themes`);
+  if (!res.ok) {
+    return { themes: [] };
+  }
+  return res.json();
+}
+
+/**
+ * Refine event details using AI (without image generation)
+ */
+export async function refineStudioDetails(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+}): Promise<{ details: StudioPosterDetails }> {
+  const res = await fetch(`${API_URL}/studio/refine`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to refine details');
+  }
+
+  return res.json();
+}
+
+/**
+ * Generate full poster (text refinement + image generation)
+ * Requires Business Premium subscription
+ */
+export async function generateStudioPoster(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+}): Promise<StudioGenerationResult> {
+  const res = await fetch(`${API_URL}/studio/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to generate poster');
+  }
+
+  return res.json();
+}
+
+/**
+ * Get studio generation history
+ */
+export async function fetchStudioHistory(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AiGenerationHistory[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const url = `${API_URL}/studio/history${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    return [];
+  }
+
+  return res.json();
+}
