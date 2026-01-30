@@ -3110,6 +3110,11 @@ export interface StudioStatus {
   available: boolean;
   provider: string;
   features: string[];
+  video?: {
+    available: boolean;
+    maxDuration: string;
+    aspectRatios: string[];
+  };
 }
 
 export interface StudioTheme {
@@ -3233,6 +3238,57 @@ export async function fetchStudioHistory(params?: {
 
   if (!res.ok) {
     return [];
+  }
+
+  return res.json();
+}
+
+// ============================================
+// KZ Connect Studio - Video Generation (Veo 2)
+// ============================================
+
+export interface StudioVideoResult {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  duration: string;
+  aspectRatio: string;
+  details: StudioPosterDetails;
+  isAiGenerated: boolean;
+  aiDisclaimer: string;
+  generatedAt: string;
+}
+
+export type VideoAspectRatio = '16:9' | '9:16';
+export type VideoDuration = '4s' | '8s';
+
+/**
+ * Generate promotional video using Veo 2
+ * Requires Business Premium subscription and VEO_ENABLED=true
+ */
+export async function generateStudioVideo(data: {
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  theme: PosterTheme;
+  duration?: VideoDuration;
+  aspectRatio?: VideoAspectRatio;
+  sourceImage?: string; // Base64 for image-to-video
+}): Promise<StudioVideoResult> {
+  const res = await fetch(`${API_URL}/studio/generate-video`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      ...data,
+      duration: data.duration || '8s',
+      aspectRatio: data.aspectRatio || '16:9',
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || error.message || 'Failed to generate video');
   }
 
   return res.json();

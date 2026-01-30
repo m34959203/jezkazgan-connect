@@ -9,6 +9,10 @@ import {
   Calendar,
   FileText,
   ChevronRight,
+  Video,
+  Image as ImageIcon,
+  Play,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,14 +34,32 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PosterPreview, type GeneratedPoster } from '@/components/ui/poster-preview';
+import { AiBadge } from '@/components/ui/ai-badge';
 import { cn } from '@/lib/utils';
 import {
   checkStudioStatus,
   getStudioThemes,
   generateStudioPoster,
+  generateStudioVideo,
   type StudioTheme,
   type StudioStatus,
+  type StudioVideoResult,
+  type VideoAspectRatio,
+  type VideoDuration,
 } from '@/lib/api';
 
 export type PosterTheme =
@@ -50,6 +72,8 @@ export type PosterTheme =
 interface AiPosterStudioProps {
   /** Callback when poster is generated and user wants to use it */
   onPosterGenerated?: (imageUrl: string, details: GeneratedPoster['details']) => void;
+  /** Callback when video is generated */
+  onVideoGenerated?: (videoUrl: string, details: GeneratedPoster['details']) => void;
   /** Pre-fill form with event context */
   context?: {
     title?: string;
@@ -99,9 +123,11 @@ const THEME_VISUALS: Record<PosterTheme, {
 };
 
 type GenerationStep = 'idle' | 'refining' | 'generating' | 'complete' | 'error';
+type ContentType = 'poster' | 'video';
 
 export function AiPosterStudio({
   onPosterGenerated,
+  onVideoGenerated,
   context,
   isPremium = false,
   className,
@@ -110,6 +136,7 @@ export function AiPosterStudio({
   const [isOpen, setIsOpen] = useState(false);
   const [studioStatus, setStudioStatus] = useState<StudioStatus | null>(null);
   const [themes, setThemes] = useState<StudioTheme[]>([]);
+  const [contentType, setContentType] = useState<ContentType>('poster');
 
   // Form state
   const [title, setTitle] = useState(context?.title || '');
@@ -118,10 +145,15 @@ export function AiPosterStudio({
   const [description, setDescription] = useState(context?.description || '');
   const [selectedTheme, setSelectedTheme] = useState<PosterTheme>('modern-nomad');
 
+  // Video specific settings
+  const [videoDuration, setVideoDuration] = useState<VideoDuration>('8s');
+  const [videoAspectRatio, setVideoAspectRatio] = useState<VideoAspectRatio>('16:9');
+
   // Generation state
   const [step, setStep] = useState<GenerationStep>('idle');
   const [error, setError] = useState<string | null>(null);
   const [poster, setPoster] = useState<GeneratedPoster | null>(null);
+  const [video, setVideo] = useState<StudioVideoResult | null>(null);
 
   // Check studio availability and load themes
   useEffect(() => {
@@ -144,7 +176,7 @@ export function AiPosterStudio({
     if (context?.description) setDescription(context.description);
   }, [context]);
 
-  const handleGenerate = async () => {
+  const handleGeneratePoster = async () => {
     if (!title.trim() || !date.trim() || !location.trim()) {
       setError('Заполните название, дату и локацию');
       return;
@@ -183,6 +215,44 @@ export function AiPosterStudio({
     }
   };
 
+  const handleGenerateVideo = async () => {
+    if (!title.trim() || !date.trim() || !location.trim()) {
+      setError('Заполните название, дату и локацию');
+      return;
+    }
+
+    setStep('refining');
+    setError(null);
+    setVideo(null);
+
+    try {
+      setStep('generating');
+
+      const result = await generateStudioVideo({
+        title,
+        date,
+        location,
+        description,
+        theme: selectedTheme,
+        duration: videoDuration,
+        aspectRatio: videoAspectRatio,
+      });
+
+      setVideo(result);
+      setStep('complete');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Ошибка генерации видео';
+      if (message.includes('Premium')) {
+        setError('Требуется подписка Business Premium');
+      } else if (message.includes('not available')) {
+        setError('Генерация видео временно недоступна. Обратитесь в поддержку.');
+      } else {
+        setError(message);
+      }
+      setStep('error');
+    }
+  };
+
   const handleUsePoster = () => {
     if (poster && onPosterGenerated) {
       onPosterGenerated(poster.imageUrl, poster.details);
@@ -191,11 +261,22 @@ export function AiPosterStudio({
     }
   };
 
+  const handleUseVideo = () => {
+    if (video && onVideoGenerated) {
+      onVideoGenerated(video.videoUrl, video.details);
+      setIsOpen(false);
+      resetForm();
+    }
+  };
+
   const resetForm = () => {
     setPoster(null);
+    setVideo(null);
     setStep('idle');
     setError(null);
   };
+
+  const isVideoAvailable = studioStatus?.video?.available ?? false;
 
   // Non-premium placeholder
   if (!isPremium) {
@@ -217,7 +298,7 @@ export function AiPosterStudio({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Создавайте профессиональные афиши с ИИ для любого города Казахстана
+              Создавайте афиши и видео с ИИ для любого города Казахстана
             </p>
           </div>
         </div>
@@ -252,210 +333,367 @@ export function AiPosterStudio({
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            Создайте профессиональную афишу для вашего события с учётом контекста города
+            Создайте профессиональный контент для вашего события с учётом контекста города
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
-          {/* Left Column - Form */}
-          <div className="space-y-5">
-            {/* Event Details Card */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  Детали события
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Название события</Label>
-                  <Input
-                    id="title"
-                    placeholder="Концерт, выставка или форум"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    disabled={step === 'refining' || step === 'generating'}
-                  />
-                </div>
+        {/* Content Type Tabs */}
+        <Tabs value={contentType} onValueChange={(v) => { setContentType(v as ContentType); resetForm(); }}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="poster" className="gap-2">
+              <ImageIcon className="w-4 h-4" />
+              Афиша
+            </TabsTrigger>
+            <TabsTrigger value="video" className="gap-2" disabled={!isVideoAvailable}>
+              <Video className="w-4 h-4" />
+              Видео
+              {!isVideoAvailable && (
+                <Badge variant="outline" className="text-[10px] ml-1">Скоро</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-                <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 py-4">
+            {/* Left Column - Form */}
+            <div className="space-y-5">
+              {/* Event Details Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    Детали события
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date" className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      Дата
-                    </Label>
+                    <Label htmlFor="title">Название события</Label>
                     <Input
-                      id="date"
-                      placeholder="1 февраля 2026"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
+                      id="title"
+                      placeholder="Концерт, выставка или форум"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
                       disabled={step === 'refining' || step === 'generating'}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location" className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      Город и место
-                    </Label>
-                    <Input
-                      id="location"
-                      placeholder="Алматы, Медеу"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      disabled={step === 'refining' || step === 'generating'}
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Описание (опционально)</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Краткое описание события..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
-                    className="resize-none"
-                    disabled={step === 'refining' || step === 'generating'}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Theme Selection Card */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-primary" />
-                  Визуальный стиль
-                </CardTitle>
-                <CardDescription>
-                  Выберите тему, отражающую дух вашего события
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(Object.keys(THEME_VISUALS) as PosterTheme[]).map((themeId) => {
-                    const theme = THEME_VISUALS[themeId];
-                    const themeData = themes.find(t => t.id === themeId);
-                    const isSelected = selectedTheme === themeId;
-
-                    return (
-                      <button
-                        key={themeId}
-                        type="button"
-                        onClick={() => setSelectedTheme(themeId)}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="date" className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        Дата
+                      </Label>
+                      <Input
+                        id="date"
+                        placeholder="1 февраля 2026"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
                         disabled={step === 'refining' || step === 'generating'}
-                        className={cn(
-                          'relative p-3 rounded-xl border-2 transition-all text-left',
-                          'hover:border-primary/50 hover:bg-primary/5',
-                          isSelected
-                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                            : 'border-border'
-                        )}
-                      >
-                        <div className={cn(
-                          'w-8 h-8 rounded-lg flex items-center justify-center text-lg mb-2',
-                          `bg-gradient-to-br ${theme.gradient}`
-                        )}>
-                          {theme.icon}
-                        </div>
-                        <div className="font-medium text-sm">
-                          {themeData?.name || themeId}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {theme.description}
-                        </div>
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
-                        )}
-                      </button>
-                    );
-                  })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location" className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5" />
+                        Город и место
+                      </Label>
+                      <Input
+                        id="location"
+                        placeholder="Алматы, Медеу"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        disabled={step === 'refining' || step === 'generating'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Описание (опционально)</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Краткое описание события..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={2}
+                      className="resize-none"
+                      disabled={step === 'refining' || step === 'generating'}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Theme Selection Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-primary" />
+                    Визуальный стиль
+                  </CardTitle>
+                  <CardDescription>
+                    Выберите тему, отражающую дух вашего события
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(Object.keys(THEME_VISUALS) as PosterTheme[]).map((themeId) => {
+                      const theme = THEME_VISUALS[themeId];
+                      const themeData = themes.find(t => t.id === themeId);
+                      const isSelected = selectedTheme === themeId;
+
+                      return (
+                        <button
+                          key={themeId}
+                          type="button"
+                          onClick={() => setSelectedTheme(themeId)}
+                          disabled={step === 'refining' || step === 'generating'}
+                          className={cn(
+                            'relative p-3 rounded-xl border-2 transition-all text-left',
+                            'hover:border-primary/50 hover:bg-primary/5',
+                            isSelected
+                              ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                              : 'border-border'
+                          )}
+                        >
+                          <div className={cn(
+                            'w-8 h-8 rounded-lg flex items-center justify-center text-lg mb-2',
+                            `bg-gradient-to-br ${theme.gradient}`
+                          )}>
+                            {theme.icon}
+                          </div>
+                          <div className="font-medium text-sm">
+                            {themeData?.name || themeId}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {theme.description}
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Video Settings (only for video tab) */}
+              <TabsContent value="video" className="mt-0">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Video className="w-4 h-4 text-primary" />
+                      Настройки видео
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Длительность</Label>
+                        <Select
+                          value={videoDuration}
+                          onValueChange={(v) => setVideoDuration(v as VideoDuration)}
+                          disabled={step === 'refining' || step === 'generating'}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="4s">4 секунды</SelectItem>
+                            <SelectItem value="8s">8 секунд</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Формат</Label>
+                        <Select
+                          value={videoAspectRatio}
+                          onValueChange={(v) => setVideoAspectRatio(v as VideoAspectRatio)}
+                          disabled={step === 'refining' || step === 'generating'}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="16:9">16:9 (Горизонтальное)</SelectItem>
+                            <SelectItem value="9:16">9:16 (Stories)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Error Display */}
+              {error && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+                  {error}
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            {/* Error Display */}
-            {error && (
-              <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+              {/* Generate Buttons */}
+              <TabsContent value="poster" className="mt-0">
+                {step !== 'complete' && (
+                  <Button
+                    onClick={handleGeneratePoster}
+                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !date.trim() || !location.trim()}
+                    className="w-full h-12 gap-2 text-base"
+                    size="lg"
+                  >
+                    {step === 'refining' && (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Анализируем контекст региона...
+                      </>
+                    )}
+                    {step === 'generating' && (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Создаём уникальный визуал...
+                      </>
+                    )}
+                    {(step === 'idle' || step === 'error') && (
+                      <>
+                        <Wand2 className="w-5 h-5" />
+                        Создать афишу
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                )}
+                {step === 'complete' && poster && (
+                  <Button variant="outline" onClick={resetForm} className="w-full">
+                    Создать новую афишу
+                  </Button>
+                )}
+              </TabsContent>
 
-            {/* Generate Button */}
-            {step !== 'complete' && (
-              <Button
-                onClick={handleGenerate}
-                disabled={step === 'refining' || step === 'generating' || !title.trim() || !date.trim() || !location.trim()}
-                className="w-full h-12 gap-2 text-base"
-                size="lg"
-              >
-                {step === 'refining' && (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Анализируем контекст региона...
-                  </>
+              <TabsContent value="video" className="mt-0">
+                {step !== 'complete' && (
+                  <Button
+                    onClick={handleGenerateVideo}
+                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !date.trim() || !location.trim()}
+                    className="w-full h-12 gap-2 text-base"
+                    size="lg"
+                  >
+                    {step === 'refining' && (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Анализируем сценарий...
+                      </>
+                    )}
+                    {step === 'generating' && (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Генерируем видео (до 5 минут)...
+                      </>
+                    )}
+                    {(step === 'idle' || step === 'error') && (
+                      <>
+                        <Video className="w-5 h-5" />
+                        Создать видео
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
                 )}
-                {step === 'generating' && (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Создаём уникальный визуал...
-                  </>
+                {step === 'complete' && video && (
+                  <Button variant="outline" onClick={resetForm} className="w-full">
+                    Создать новое видео
+                  </Button>
                 )}
-                {(step === 'idle' || step === 'error') && (
-                  <>
-                    <Wand2 className="w-5 h-5" />
-                    Создать афишу
-                    <ChevronRight className="w-4 h-4" />
-                  </>
-                )}
-              </Button>
-            )}
+              </TabsContent>
+            </div>
 
-            {/* Try Again Button */}
-            {step === 'complete' && (
-              <Button
-                variant="outline"
-                onClick={resetForm}
-                className="w-full"
-              >
-                Создать новую афишу
-              </Button>
-            )}
+            {/* Right Column - Preview */}
+            <div className="flex flex-col items-center justify-center min-h-[400px]">
+              {step === 'idle' && !poster && !video && (
+                <div className="text-center p-8 border-2 border-dashed border-border rounded-3xl w-full">
+                  <div className="text-5xl mb-4">🇰🇿</div>
+                  <h3 className="text-lg font-semibold text-muted-foreground">Студия готова</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-2">
+                    {contentType === 'poster'
+                      ? 'Создайте афишу для любого города Казахстана'
+                      : 'Создайте промо-видео для вашего события'}
+                  </p>
+                </div>
+              )}
+
+              {(step === 'refining' || step === 'generating') && (
+                <div className="text-center">
+                  <div className="w-16 h-16 border-t-2 border-primary rounded-full animate-spin mx-auto mb-6" />
+                  <p className="text-primary font-semibold uppercase tracking-widest text-xs animate-pulse">
+                    {contentType === 'poster'
+                      ? (step === 'refining' ? 'Генерируем смыслы...' : 'Рисуем атмосферу...')
+                      : (step === 'refining' ? 'Создаём сценарий...' : 'Рендерим видео...')}
+                  </p>
+                </div>
+              )}
+
+              {/* Poster Preview */}
+              <TabsContent value="poster" className="w-full mt-0">
+                {poster && step === 'complete' && (
+                  <PosterPreview
+                    poster={poster}
+                    onUse={onPosterGenerated ? handleUsePoster : undefined}
+                    className="w-full"
+                  />
+                )}
+              </TabsContent>
+
+              {/* Video Preview */}
+              <TabsContent value="video" className="w-full mt-0">
+                {video && step === 'complete' && (
+                  <div className="space-y-4">
+                    <div className="relative rounded-2xl overflow-hidden border shadow-lg">
+                      <video
+                        src={video.videoUrl}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        className={cn(
+                          'w-full',
+                          video.aspectRatio === '9:16' ? 'max-h-[400px] mx-auto' : ''
+                        )}
+                      />
+                      <AiBadge position="top-right" size="sm" />
+                    </div>
+
+                    <div className="text-center text-sm text-muted-foreground">
+                      <p>{video.details.title}</p>
+                      <p className="text-xs">{video.duration} • {video.aspectRatio}</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 gap-2"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = video.videoUrl;
+                          link.download = `video-${video.details.title.replace(/\s+/g, '-').toLowerCase()}.mp4`;
+                          link.click();
+                        }}
+                      >
+                        <Download className="w-4 h-4" />
+                        Скачать
+                      </Button>
+                      {onVideoGenerated && (
+                        <Button className="flex-1 gap-2" onClick={handleUseVideo}>
+                          <Play className="w-4 h-4" />
+                          Использовать
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Видео сгенерировано ИИ • Бейне ЖИ арқылы жасалған • Согласно Закону РК об ИИ
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+            </div>
           </div>
-
-          {/* Right Column - Preview */}
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
-            {step === 'idle' && !poster && (
-              <div className="text-center p-8 border-2 border-dashed border-border rounded-3xl w-full">
-                <div className="text-5xl mb-4">🇰🇿</div>
-                <h3 className="text-lg font-semibold text-muted-foreground">Студия готова</h3>
-                <p className="text-sm text-muted-foreground/70 mt-2">
-                  Создайте афишу для любого города Казахстана
-                </p>
-              </div>
-            )}
-
-            {(step === 'refining' || step === 'generating') && (
-              <div className="text-center">
-                <div className="w-16 h-16 border-t-2 border-primary rounded-full animate-spin mx-auto mb-6" />
-                <p className="text-primary font-semibold uppercase tracking-widest text-xs animate-pulse">
-                  {step === 'refining' ? 'Генерируем смыслы...' : 'Рисуем атмосферу...'}
-                </p>
-              </div>
-            )}
-
-            {poster && step === 'complete' && (
-              <PosterPreview
-                poster={poster}
-                onUse={onPosterGenerated ? handleUsePoster : undefined}
-                className="w-full"
-              />
-            )}
-          </div>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
