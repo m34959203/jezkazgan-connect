@@ -36,11 +36,20 @@ export interface PosterGenerationResult {
 }
 
 export type PosterTheme =
+  // Региональные стили Казахстана
   | 'modern-nomad'    // Этно-футуризм
   | 'urban-pulse'     // Мегаполис
   | 'great-steppe'    // Природа и простор
   | 'cyber-shanyrak'  // Технологии
-  | 'silk-road';      // Классика и история
+  | 'silk-road'       // Классика и история
+  // Стили по категориям событий
+  | 'concert-vibe'    // Концерты
+  | 'edu-smart'       // Обучение
+  | 'business-pro'    // Семинары/Бизнес
+  | 'leisure-fun'     // Досуг
+  | 'sport-energy'    // Спорт
+  | 'kids-magic'      // Для детей
+  | 'art-gallery';    // Выставки
 
 // Kazakhstan AI Law - mandatory disclosure
 export const AI_DISCLAIMER_KZ = 'Бұл сурет жасанды интеллект арқылы жасалған';
@@ -78,6 +87,7 @@ export interface VideoGenerationResult {
 
 // Theme descriptions for visual prompts
 const THEME_CONFIGS: Record<PosterTheme, { name: string; visualStyle: string; colors: string }> = {
+  // === Региональные стили Казахстана ===
   'modern-nomad': {
     name: 'Modern Nomad',
     visualStyle: 'ethno-futurism, traditional Kazakh patterns reimagined in modern minimalist style, subtle shanyrak elements, nomadic heritage meets contemporary design',
@@ -102,6 +112,42 @@ const THEME_CONFIGS: Record<PosterTheme, { name: string; visualStyle: string; co
     name: 'Silk Road',
     visualStyle: 'classical elegance, historical architecture, oriental patterns, ancient trade route heritage, traditional craftsmanship',
     colors: 'rich burgundy and gold, warm amber, antique tones',
+  },
+  // === Стили по категориям событий ===
+  'concert-vibe': {
+    name: 'Concert Vibe',
+    visualStyle: 'live music atmosphere, stage lights, crowd silhouettes, microphones, guitars, dynamic performance energy, concert hall ambiance, rock and pop aesthetics',
+    colors: 'vibrant purple and pink spotlights, electric blue, warm orange stage glow, dark backgrounds with dramatic lighting',
+  },
+  'edu-smart': {
+    name: 'Edu Smart',
+    visualStyle: 'educational environment, books, graduation caps, lightbulbs of ideas, brain illustrations, modern classroom, knowledge symbols, academic excellence',
+    colors: 'deep navy blue, forest green, gold accents, clean white backgrounds, scholarly palette',
+  },
+  'business-pro': {
+    name: 'Business Pro',
+    visualStyle: 'professional corporate setting, conference room, business charts, handshakes, modern office, networking, keynote presentation, executive style',
+    colors: 'sophisticated navy and gray, silver accents, minimal white, professional blue tones',
+  },
+  'leisure-fun': {
+    name: 'Leisure Fun',
+    visualStyle: 'relaxed entertainment, friends gathering, cafe atmosphere, movie night, board games, casual fun, weekend vibes, social activities',
+    colors: 'warm coral and teal, sunny yellow, playful pastels, inviting warm tones',
+  },
+  'sport-energy': {
+    name: 'Sport Energy',
+    visualStyle: 'athletic power, sports equipment, stadium atmosphere, running tracks, gym energy, competition spirit, fitness motivation, dynamic movement',
+    colors: 'energetic red and orange, electric green, bold black, high-contrast athletic palette',
+  },
+  'kids-magic': {
+    name: 'Kids Magic',
+    visualStyle: 'magical childhood, colorful balloons, cartoon characters, fairy tale elements, playground fun, birthday party vibes, toys and games, wonder and joy',
+    colors: 'bright rainbow colors, candy pink, sky blue, cheerful yellow, magical purple sparkles',
+  },
+  'art-gallery': {
+    name: 'Art Gallery',
+    visualStyle: 'museum exhibition space, art frames, sculptures, creative installations, gallery lighting, artistic expression, cultural sophistication, curator aesthetic',
+    colors: 'elegant white gallery walls, subtle gray, accent colors from famous artworks, sophisticated minimal palette',
   },
 };
 
@@ -340,15 +386,45 @@ export async function generatePoster(request: PosterGenerationRequest): Promise<
   };
 }
 
-// Get available themes
-export function getAvailableThemes(): Array<{ id: PosterTheme; name: string; description: string }> {
+// Get available themes grouped by type
+export function getAvailableThemes(): Array<{
+  id: PosterTheme;
+  name: string;
+  description: string;
+  category?: 'regional' | 'event';
+  forEventCategory?: string;
+}> {
   return [
-    { id: 'modern-nomad', name: 'Modern Nomad', description: 'Этно-футуризм — традиции в современном прочтении' },
-    { id: 'urban-pulse', name: 'Urban Pulse', description: 'Мегаполис — энергия большого города' },
-    { id: 'great-steppe', name: 'Great Steppe', description: 'Великая степь — природа и простор' },
-    { id: 'cyber-shanyrak', name: 'Cyber Shanyrak', description: 'Технологии — цифровое будущее' },
-    { id: 'silk-road', name: 'Silk Road', description: 'Шёлковый путь — классика и история' },
+    // Региональные стили Казахстана
+    { id: 'modern-nomad', name: 'Modern Nomad', description: 'Этно-футуризм — традиции в современном прочтении', category: 'regional' },
+    { id: 'urban-pulse', name: 'Urban Pulse', description: 'Мегаполис — энергия большого города', category: 'regional' },
+    { id: 'great-steppe', name: 'Great Steppe', description: 'Великая степь — природа и простор', category: 'regional' },
+    { id: 'cyber-shanyrak', name: 'Cyber Shanyrak', description: 'Технологии — цифровое будущее', category: 'regional' },
+    { id: 'silk-road', name: 'Silk Road', description: 'Шёлковый путь — классика и история', category: 'regional' },
+    // Стили по категориям событий
+    { id: 'concert-vibe', name: 'Concert Vibe', description: 'Концерты — живая музыка и энергия', category: 'event', forEventCategory: 'concerts' },
+    { id: 'edu-smart', name: 'Edu Smart', description: 'Обучение — знания и развитие', category: 'event', forEventCategory: 'education' },
+    { id: 'business-pro', name: 'Business Pro', description: 'Семинары — профессионализм и нетворкинг', category: 'event', forEventCategory: 'seminars' },
+    { id: 'leisure-fun', name: 'Leisure Fun', description: 'Досуг — отдых и развлечения', category: 'event', forEventCategory: 'leisure' },
+    { id: 'sport-energy', name: 'Sport Energy', description: 'Спорт — движение и победы', category: 'event', forEventCategory: 'sports' },
+    { id: 'kids-magic', name: 'Kids Magic', description: 'Для детей — волшебство и радость', category: 'event', forEventCategory: 'children' },
+    { id: 'art-gallery', name: 'Art Gallery', description: 'Выставки — искусство и культура', category: 'event', forEventCategory: 'exhibitions' },
   ];
+}
+
+// Map event category to recommended theme
+export function getRecommendedTheme(eventCategory?: string): PosterTheme {
+  const categoryMap: Record<string, PosterTheme> = {
+    'concerts': 'concert-vibe',
+    'education': 'edu-smart',
+    'seminars': 'business-pro',
+    'leisure': 'leisure-fun',
+    'sports': 'sport-energy',
+    'children': 'kids-magic',
+    'exhibitions': 'art-gallery',
+    'other': 'modern-nomad',
+  };
+  return categoryMap[eventCategory || ''] || 'modern-nomad';
 }
 
 // ============================================
@@ -357,11 +433,20 @@ export function getAvailableThemes(): Array<{ id: PosterTheme; name: string; des
 
 // Video-specific motion styles for each theme
 const VIDEO_THEME_MOTION: Record<PosterTheme, string> = {
+  // Региональные стили
   'modern-nomad': 'slow elegant camera movement, traditional patterns gently animating, subtle wind effects on fabrics',
   'urban-pulse': 'dynamic camera movement through city, lights flickering, traffic motion blur, cinematic dolly shots',
   'great-steppe': 'sweeping panoramic shot across steppe, clouds moving, grass swaying, eagles soaring',
   'cyber-shanyrak': 'digital particles flowing, holographic elements morphing, tech interfaces animating',
   'silk-road': 'gentle camera drift through historical scenes, fabric textures flowing, candlelight flickering',
+  // Стили по категориям событий
+  'concert-vibe': 'dynamic stage lighting sweeps, crowd energy waves, guitar strings vibrating, smoke effects rising, spotlight movements',
+  'edu-smart': 'pages turning smoothly, lightbulb illuminating, knowledge symbols floating, smooth zoom on learning elements',
+  'business-pro': 'professional steadicam through conference, charts animating, handshake motion, elegant corporate pan',
+  'leisure-fun': 'playful camera movement, friends laughing animation, cozy cafe atmosphere, warm light transitions',
+  'sport-energy': 'fast-paced action shots, athlete motion blur, stadium crowd wave, victory celebration dynamics',
+  'kids-magic': 'magical sparkles floating, balloons rising, cartoon elements bouncing, rainbow color transitions, fairy dust effects',
+  'art-gallery': 'slow elegant gallery walk, artwork reveal transitions, sculpture rotation, sophisticated lighting changes',
 };
 
 /**

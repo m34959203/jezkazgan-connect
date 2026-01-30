@@ -63,11 +63,20 @@ import {
 } from '@/lib/api';
 
 export type PosterTheme =
+  // Региональные стили Казахстана
   | 'modern-nomad'
   | 'urban-pulse'
   | 'great-steppe'
   | 'cyber-shanyrak'
-  | 'silk-road';
+  | 'silk-road'
+  // Стили по категориям событий
+  | 'concert-vibe'
+  | 'edu-smart'
+  | 'business-pro'
+  | 'leisure-fun'
+  | 'sport-energy'
+  | 'kids-magic'
+  | 'art-gallery';
 
 interface AiPosterStudioProps {
   /** Callback when poster is generated and user wants to use it */
@@ -94,33 +103,87 @@ const THEME_VISUALS: Record<PosterTheme, {
   icon: string;
   gradient: string;
   description: string;
+  category: 'regional' | 'event';
 }> = {
+  // === Региональные стили Казахстана ===
   'modern-nomad': {
     icon: '🏛️',
     gradient: 'from-amber-500 to-orange-600',
     description: 'Этно-футуризм',
+    category: 'regional',
   },
   'urban-pulse': {
     icon: '🌃',
     gradient: 'from-purple-500 to-indigo-600',
     description: 'Мегаполис',
+    category: 'regional',
   },
   'great-steppe': {
     icon: '🏔️',
     gradient: 'from-emerald-500 to-teal-600',
     description: 'Природа',
+    category: 'regional',
   },
   'cyber-shanyrak': {
     icon: '⚡',
     gradient: 'from-cyan-500 to-blue-600',
     description: 'Технологии',
+    category: 'regional',
   },
   'silk-road': {
     icon: '🏺',
     gradient: 'from-amber-600 to-red-700',
     description: 'История',
+    category: 'regional',
+  },
+  // === Стили по категориям событий ===
+  'concert-vibe': {
+    icon: '🎸',
+    gradient: 'from-pink-500 to-purple-600',
+    description: 'Концерты',
+    category: 'event',
+  },
+  'edu-smart': {
+    icon: '📚',
+    gradient: 'from-blue-600 to-indigo-700',
+    description: 'Обучение',
+    category: 'event',
+  },
+  'business-pro': {
+    icon: '💼',
+    gradient: 'from-slate-500 to-gray-700',
+    description: 'Семинары',
+    category: 'event',
+  },
+  'leisure-fun': {
+    icon: '🎉',
+    gradient: 'from-orange-400 to-pink-500',
+    description: 'Досуг',
+    category: 'event',
+  },
+  'sport-energy': {
+    icon: '⚽',
+    gradient: 'from-red-500 to-orange-600',
+    description: 'Спорт',
+    category: 'event',
+  },
+  'kids-magic': {
+    icon: '🎈',
+    gradient: 'from-yellow-400 to-pink-400',
+    description: 'Для детей',
+    category: 'event',
+  },
+  'art-gallery': {
+    icon: '🎨',
+    gradient: 'from-violet-500 to-purple-600',
+    description: 'Выставки',
+    category: 'event',
   },
 };
+
+// Get themes grouped by category
+const getRegionalThemes = () => Object.entries(THEME_VISUALS).filter(([, v]) => v.category === 'regional');
+const getEventThemes = () => Object.entries(THEME_VISUALS).filter(([, v]) => v.category === 'event');
 
 type GenerationStep = 'idle' | 'refining' | 'generating' | 'complete' | 'error';
 type ContentType = 'poster' | 'video';
@@ -431,45 +494,92 @@ export function AiPosterStudio({
                     Выберите тему, отражающую дух вашего события
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {(Object.keys(THEME_VISUALS) as PosterTheme[]).map((themeId) => {
-                      const theme = THEME_VISUALS[themeId];
-                      const themeData = themes.find(t => t.id === themeId);
-                      const isSelected = selectedTheme === themeId;
+                <CardContent className="space-y-4">
+                  {/* По категориям событий */}
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                      По категории события
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {getEventThemes().map(([themeId, theme]) => {
+                        const themeData = themes.find(t => t.id === themeId);
+                        const isSelected = selectedTheme === themeId;
 
-                      return (
-                        <button
-                          key={themeId}
-                          type="button"
-                          onClick={() => setSelectedTheme(themeId)}
-                          disabled={step === 'refining' || step === 'generating'}
-                          className={cn(
-                            'relative p-3 rounded-xl border-2 transition-all text-left',
-                            'hover:border-primary/50 hover:bg-primary/5',
-                            isSelected
-                              ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                              : 'border-border'
-                          )}
-                        >
-                          <div className={cn(
-                            'w-8 h-8 rounded-lg flex items-center justify-center text-lg mb-2',
-                            `bg-gradient-to-br ${theme.gradient}`
-                          )}>
-                            {theme.icon}
-                          </div>
-                          <div className="font-medium text-sm">
-                            {themeData?.name || themeId}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {theme.description}
-                          </div>
-                          {isSelected && (
-                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
-                          )}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={themeId}
+                            type="button"
+                            onClick={() => setSelectedTheme(themeId as PosterTheme)}
+                            disabled={step === 'refining' || step === 'generating'}
+                            className={cn(
+                              'relative p-2 rounded-lg border-2 transition-all text-left',
+                              'hover:border-primary/50 hover:bg-primary/5',
+                              isSelected
+                                ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                                : 'border-border'
+                            )}
+                          >
+                            <div className={cn(
+                              'w-7 h-7 rounded-md flex items-center justify-center text-base mb-1',
+                              `bg-gradient-to-br ${theme.gradient}`
+                            )}>
+                              {theme.icon}
+                            </div>
+                            <div className="font-medium text-xs truncate">
+                              {themeData?.name || theme.description}
+                            </div>
+                            {isSelected && (
+                              <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Региональные стили Казахстана */}
+                  <div>
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                      Региональные стили
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {getRegionalThemes().map(([themeId, theme]) => {
+                        const themeData = themes.find(t => t.id === themeId);
+                        const isSelected = selectedTheme === themeId;
+
+                        return (
+                          <button
+                            key={themeId}
+                            type="button"
+                            onClick={() => setSelectedTheme(themeId as PosterTheme)}
+                            disabled={step === 'refining' || step === 'generating'}
+                            className={cn(
+                              'relative p-3 rounded-xl border-2 transition-all text-left',
+                              'hover:border-primary/50 hover:bg-primary/5',
+                              isSelected
+                                ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                                : 'border-border'
+                            )}
+                          >
+                            <div className={cn(
+                              'w-8 h-8 rounded-lg flex items-center justify-center text-lg mb-2',
+                              `bg-gradient-to-br ${theme.gradient}`
+                            )}>
+                              {theme.icon}
+                            </div>
+                            <div className="font-medium text-sm">
+                              {themeData?.name || themeId}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {theme.description}
+                            </div>
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

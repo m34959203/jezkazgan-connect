@@ -3025,11 +3025,20 @@ export interface StudioHistoryItem {
 }
 
 export type PosterTheme =
+  // Региональные стили Казахстана
   | 'modern-nomad'
   | 'urban-pulse'
   | 'great-steppe'
   | 'cyber-shanyrak'
-  | 'silk-road';
+  | 'silk-road'
+  // Стили по категориям событий
+  | 'concert-vibe'
+  | 'edu-smart'
+  | 'business-pro'
+  | 'leisure-fun'
+  | 'sport-energy'
+  | 'kids-magic'
+  | 'art-gallery';
 
 /**
  * Check KZ Connect Studio availability
