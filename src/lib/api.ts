@@ -1462,134 +1462,6 @@ export async function fetchPublicCityPhotos(citySlug: string): Promise<{
 }
 
 // ============================================
-// Business Premium: AI Image Generation (Nano Banana)
-// ============================================
-
-export interface AiGenerationResult {
-  id: string;
-  imageUrl: string;
-  revisedPrompt?: string;
-  prompt: string;
-  style?: string;
-}
-
-export interface AiGenerationHistory {
-  id: string;
-  prompt: string;
-  style: string | null;
-  generatedImageUrl: string | null;
-  status: string;
-  usedFor: string | null;
-  createdAt: string;
-}
-
-export interface AiStatus {
-  available: boolean;
-  provider: 'ideogram';
-  model: string;
-  isFree: boolean;
-}
-
-export async function checkAiGenerationStatus(): Promise<AiStatus> {
-  const res = await fetch(`${API_URL}/ai/status`);
-  if (!res.ok) throw new Error('Failed to check AI status');
-  return res.json();
-}
-
-export async function getAiPromptSuggestions(params: {
-  contentType: 'event' | 'promotion' | 'banner';
-  title?: string;
-  description?: string;
-  category?: string;
-  discount?: string;
-}): Promise<{ suggestions: string[] }> {
-  const searchParams = new URLSearchParams();
-  searchParams.set('contentType', params.contentType);
-  if (params.title) searchParams.set('title', params.title);
-  if (params.description) searchParams.set('description', params.description);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.discount) searchParams.set('discount', params.discount);
-
-  const res = await fetch(`${API_URL}/ai/suggestions?${searchParams}`);
-  if (!res.ok) throw new Error('Failed to get prompt suggestions');
-  return res.json();
-}
-
-// Image idea structure for AI-generated suggestions
-export interface ImageIdea {
-  id: number;
-  title: string;
-  description: string;
-  prompt: string;
-  style: 'banner' | 'promo' | 'event' | 'poster' | 'social';
-  tags: string[];
-}
-
-export async function getAiImageIdeas(params: {
-  title?: string;
-  description?: string;
-  category?: string;
-  date?: string;
-  location?: string;
-}): Promise<{ ideas: ImageIdea[] }> {
-  const searchParams = new URLSearchParams();
-  if (params.title) searchParams.set('title', params.title);
-  if (params.description) searchParams.set('description', params.description);
-  if (params.category) searchParams.set('category', params.category);
-  if (params.date) searchParams.set('date', params.date);
-  if (params.location) searchParams.set('location', params.location);
-
-  const res = await fetch(`${API_URL}/ai/ideas?${searchParams}`);
-  if (!res.ok) throw new Error('Failed to get image ideas');
-  return res.json();
-}
-
-export async function generateAiImage(data: {
-  prompt: string;
-  style?: 'banner' | 'promo' | 'event' | 'poster' | 'social';
-  translatePrompt?: boolean;
-}): Promise<AiGenerationResult> {
-  const res = await fetch(`${API_URL}/ai/generate`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to generate image');
-  }
-  return res.json();
-}
-
-export async function fetchAiGenerationHistory(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<AiGenerationHistory[]> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set('limit', params.limit.toString());
-  if (params?.offset) searchParams.set('offset', params.offset.toString());
-
-  const res = await fetch(`${API_URL}/ai/history?${searchParams}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Failed to fetch AI generation history');
-  return res.json();
-}
-
-export async function markAiGenerationUsed(id: string, data: {
-  usedFor: 'event' | 'promotion' | 'banner';
-  usedForId: string;
-}): Promise<AiGenerationHistory> {
-  const res = await fetch(`${API_URL}/ai/${id}/used`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to mark generation as used');
-  return res.json();
-}
-
-// ============================================
 // Business Premium: Auto-Publish to Social Media
 // ============================================
 
@@ -3142,6 +3014,16 @@ export interface StudioGenerationResult {
   generatedAt: string;
 }
 
+export interface StudioHistoryItem {
+  id: string;
+  prompt: string;
+  style: string | null;
+  generatedImageUrl: string | null;
+  status: string;
+  usedFor: string | null;
+  createdAt: string;
+}
+
 export type PosterTheme =
   | 'modern-nomad'
   | 'urban-pulse'
@@ -3226,7 +3108,7 @@ export async function generateStudioPoster(data: {
 export async function fetchStudioHistory(params?: {
   limit?: number;
   offset?: number;
-}): Promise<AiGenerationHistory[]> {
+}): Promise<StudioHistoryItem[]> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set('limit', params.limit.toString());
   if (params?.offset) searchParams.set('offset', params.offset.toString());

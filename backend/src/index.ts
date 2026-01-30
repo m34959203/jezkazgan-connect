@@ -14,7 +14,6 @@ import admin from './routes/admin';
 import team from './routes/team';
 import upload from './routes/upload';
 import favorites from './routes/favorites';
-import ai from './routes/ai';
 import studio from './routes/studio';
 import autopublish from './routes/autopublish';
 import cashback from './routes/cashback';
@@ -106,8 +105,7 @@ app.route('/admin', admin);
 app.route('/team', team);
 app.route('/upload', upload);
 app.route('/favorites', favorites);
-// Business Premium routes
-app.route('/ai', ai);
+// Business Premium: KZ Connect Studio
 app.route('/studio', studio);
 app.route('/autopublish', autopublish);
 // User Premium routes (Cashback & Referral)

@@ -11,10 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { VideoUpload } from '@/components/ui/video-upload';
-import { AiImageGenerator } from '@/components/ui/ai-image-generator';
-import { AiImageIdeas } from '@/components/ui/ai-image-ideas';
 import { AiPosterStudio } from '@/components/ui/ai-poster-studio';
-import type { ImageIdea } from '@/lib/api';
 import type { PosterDetails } from '@/components/ui/poster-preview';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
@@ -51,12 +48,6 @@ export default function CreateEvent() {
   const [image, setImage] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoThumbnail, setVideoThumbnail] = useState('');
-  const [selectedIdea, setSelectedIdea] = useState<ImageIdea | null>(null);
-
-  // Handle idea selection - opens AI generator with pre-filled prompt
-  const handleIdeaSelected = (idea: ImageIdea) => {
-    setSelectedIdea(idea);
-  };
 
   // Handle poster generation from KZ Connect Studio
   const handlePosterGenerated = (imageUrl: string, details: PosterDetails) => {
@@ -210,9 +201,8 @@ export default function CreateEvent() {
                 label="Изображение события"
               />
 
-              {/* AI Image Tools */}
+              {/* KZ Connect Studio - AI Poster & Video Generation */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* KZ Connect Studio - Full Poster Generation */}
                 <AiPosterStudio
                   onPosterGenerated={handlePosterGenerated}
                   context={{
@@ -223,64 +213,12 @@ export default function CreateEvent() {
                   }}
                   isPremium={isPremium}
                 />
-
-                {/* Quick AI Image Generation */}
-                <AiImageIdeas
-                  title={title}
-                  description={description}
-                  category={category}
-                  location={location}
-                  onSelectIdea={handleIdeaSelected}
-                  isPremium={isPremium}
-                />
-                <AiImageGenerator
-                  contentType="event"
-                  onImageGenerated={(url) => {
-                    setImage(url);
-                    setSelectedIdea(null); // Clear selected idea after generation
-                  }}
-                  isPremium={isPremium}
-                  context={{
-                    title,
-                    description,
-                    category,
-                  }}
-                  defaultPrompt={selectedIdea?.prompt}
-                  defaultStyle={selectedIdea?.style}
-                />
                 {!isPremium && (
                   <span className="text-xs text-muted-foreground">
-                    AI инструменты доступны в Premium
+                    AI Studio доступен в Premium
                   </span>
                 )}
               </div>
-
-              {/* Selected Idea Preview */}
-              {selectedIdea && (
-                <div className="p-3 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 rounded-lg">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <span className="font-medium text-sm">{selectedIdea.title}</span>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {selectedIdea.style}
-                      </Badge>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => setSelectedIdea(null)}
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{selectedIdea.description}</p>
-                  <div className="bg-background/50 rounded p-2">
-                    <p className="text-xs font-mono">{selectedIdea.prompt}</p>
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
