@@ -351,6 +351,7 @@ export async function createEvent(data: {
   price?: number;
   maxPrice?: number;
   isFree?: boolean;
+  publishAt?: string;
 }): Promise<Event> {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -450,6 +451,7 @@ export async function createPromotion(data: {
   conditions?: string;
   validUntil: string;
   isPremiumOnly?: boolean;
+  publishAt?: string;
 }): Promise<Promotion> {
   const token = localStorage.getItem('token');
   if (!token) {
