@@ -542,6 +542,8 @@ async function pollVideoGeneration(
         throw new Error(result.error.message || 'Video generation failed');
       }
 
+      // Try multiple response formats (Veo 3.1 may use different structures)
+      // Format 1: result.response.generatedVideos[0].video
       if (result.response?.generatedVideos?.[0]) {
         const video = result.response.generatedVideos[0];
         return {
@@ -550,7 +552,43 @@ async function pollVideoGeneration(
         };
       }
 
-      throw new Error('No video in completed operation');
+      // Format 2: result.response.videos[0]
+      if (result.response?.videos?.[0]) {
+        const video = result.response.videos[0];
+        return {
+          videoUrl: video.uri || video.url || `data:video/mp4;base64,${video.bytesBase64Encoded || video.data}`,
+          thumbnailUrl: video.thumbnailUri || video.thumbnail?.uri,
+        };
+      }
+
+      // Format 3: result.result.videos[0] or result.result.generatedVideos[0]
+      if (result.result?.videos?.[0] || result.result?.generatedVideos?.[0]) {
+        const video = result.result.videos?.[0] || result.result.generatedVideos[0];
+        return {
+          videoUrl: video.uri || video.url || video.video?.uri || `data:video/mp4;base64,${video.bytesBase64Encoded || video.video?.bytesBase64Encoded}`,
+          thumbnailUrl: video.thumbnailUri || video.thumbnail?.uri,
+        };
+      }
+
+      // Format 4: result.metadata with mediaFile
+      if (result.metadata?.mediaFile) {
+        return {
+          videoUrl: result.metadata.mediaFile.uri || result.metadata.mediaFile.url,
+          thumbnailUrl: result.metadata.thumbnailUri,
+        };
+      }
+
+      // Format 5: Direct response in result.response
+      if (result.response?.video || result.response?.uri) {
+        return {
+          videoUrl: result.response.video?.uri || result.response.uri || `data:video/mp4;base64,${result.response.video?.bytesBase64Encoded}`,
+          thumbnailUrl: result.response.thumbnail?.uri,
+        };
+      }
+
+      // Log the actual response structure for debugging
+      console.error('Veo API response structure:', JSON.stringify(result, null, 2));
+      throw new Error(`No video in completed operation. Response keys: ${Object.keys(result).join(', ')}`);
     }
 
     // Wait before next poll
