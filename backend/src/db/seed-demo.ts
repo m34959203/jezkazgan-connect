@@ -1,6 +1,7 @@
 import { db, users, businesses, events, promotions, cities } from './index';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { fileURLToPath } from 'url';
 
 // Demo business data
 const demoBusinesses = [
@@ -333,8 +334,9 @@ async function seedDemoBusinesses() {
 // Export for API use
 export { seedDemoBusinesses };
 
-// Run directly if executed as script
-if (require.main === module) {
+// Run directly if executed as script (ESM-compatible check)
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
   seedDemoBusinesses()
     .then(() => process.exit(0))
     .catch((err) => {
