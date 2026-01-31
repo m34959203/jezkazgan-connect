@@ -542,10 +542,12 @@ async function pollVideoGeneration(
         throw new Error(result.error.message || 'Video generation failed');
       }
 
+      const response = result.response || {};
+
       // Try multiple response formats (Veo 3.1 may use different structures)
       // Format 1: result.response.generatedVideos[0].video
-      if (result.response?.generatedVideos?.[0]) {
-        const video = result.response.generatedVideos[0];
+      if (response.generatedVideos?.[0]) {
+        const video = response.generatedVideos[0];
         return {
           videoUrl: video.video?.uri || `data:video/mp4;base64,${video.video?.bytesBase64Encoded}`,
           thumbnailUrl: video.thumbnail?.uri,
@@ -553,15 +555,42 @@ async function pollVideoGeneration(
       }
 
       // Format 2: result.response.videos[0]
-      if (result.response?.videos?.[0]) {
-        const video = result.response.videos[0];
+      if (response.videos?.[0]) {
+        const video = response.videos[0];
         return {
           videoUrl: video.uri || video.url || `data:video/mp4;base64,${video.bytesBase64Encoded || video.data}`,
           thumbnailUrl: video.thumbnailUri || video.thumbnail?.uri,
         };
       }
 
-      // Format 3: result.result.videos[0] or result.result.generatedVideos[0]
+      // Format 3: result.response.predictions[0] (Vertex AI predict format)
+      if (response.predictions?.[0]) {
+        const pred = response.predictions[0];
+        const videoData = pred.video || pred.bytesBase64Encoded || pred;
+        if (typeof videoData === 'string') {
+          return {
+            videoUrl: videoData.startsWith('http') ? videoData : `data:video/mp4;base64,${videoData}`,
+            thumbnailUrl: pred.thumbnail?.uri,
+          };
+        }
+        if (videoData.uri || videoData.bytesBase64Encoded) {
+          return {
+            videoUrl: videoData.uri || `data:video/mp4;base64,${videoData.bytesBase64Encoded}`,
+            thumbnailUrl: videoData.thumbnail?.uri || pred.thumbnail?.uri,
+          };
+        }
+      }
+
+      // Format 4: result.response.generateVideoResponse
+      if (response.generateVideoResponse?.generatedSamples?.[0]) {
+        const sample = response.generateVideoResponse.generatedSamples[0];
+        return {
+          videoUrl: sample.video?.uri || `data:video/mp4;base64,${sample.video?.bytesBase64Encoded}`,
+          thumbnailUrl: sample.thumbnail?.uri,
+        };
+      }
+
+      // Format 5: result.result.videos[0] or result.result.generatedVideos[0]
       if (result.result?.videos?.[0] || result.result?.generatedVideos?.[0]) {
         const video = result.result.videos?.[0] || result.result.generatedVideos[0];
         return {
@@ -570,7 +599,7 @@ async function pollVideoGeneration(
         };
       }
 
-      // Format 4: result.metadata with mediaFile
+      // Format 6: result.metadata with mediaFile
       if (result.metadata?.mediaFile) {
         return {
           videoUrl: result.metadata.mediaFile.uri || result.metadata.mediaFile.url,
@@ -578,17 +607,18 @@ async function pollVideoGeneration(
         };
       }
 
-      // Format 5: Direct response in result.response
-      if (result.response?.video || result.response?.uri) {
+      // Format 7: Direct response in result.response
+      if (response.video || response.uri) {
         return {
-          videoUrl: result.response.video?.uri || result.response.uri || `data:video/mp4;base64,${result.response.video?.bytesBase64Encoded}`,
-          thumbnailUrl: result.response.thumbnail?.uri,
+          videoUrl: response.video?.uri || response.uri || `data:video/mp4;base64,${response.video?.bytesBase64Encoded}`,
+          thumbnailUrl: response.thumbnail?.uri,
         };
       }
 
       // Log the actual response structure for debugging
+      const responseKeys = Object.keys(response);
       console.error('Veo API response structure:', JSON.stringify(result, null, 2));
-      throw new Error(`No video in completed operation. Response keys: ${Object.keys(result).join(', ')}`);
+      throw new Error(`No video in completed operation. Response keys: ${responseKeys.length > 0 ? responseKeys.join(', ') : '(empty response)'}`);
     }
 
     // Wait before next poll
