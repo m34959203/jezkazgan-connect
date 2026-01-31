@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Percent, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { ArrowLeft, Percent, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createPromotion } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 export default function CreatePromotion() {
   const navigate = useNavigate();
@@ -23,7 +28,7 @@ export default function CreatePromotion() {
   const [description, setDescription] = useState('');
   const [discount, setDiscount] = useState('');
   const [conditions, setConditions] = useState('');
-  const [validUntil, setValidUntil] = useState('');
+  const [validUntilDate, setValidUntilDate] = useState<Date | undefined>(undefined);
   const [image, setImage] = useState('');
 
   if (isLoading) {
@@ -48,7 +53,7 @@ export default function CreatePromotion() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title || !discount || !validUntil) {
+    if (!title || !discount || !validUntilDate) {
       toast({
         title: 'Заполните обязательные поля',
         description: 'Название, скидка и срок действия обязательны',
@@ -61,14 +66,15 @@ export default function CreatePromotion() {
 
     try {
       // Convert date to ISO datetime (end of day)
-      const validUntilDate = new Date(`${validUntil}T23:59:59`).toISOString();
+      const dateStr = format(validUntilDate, 'yyyy-MM-dd');
+      const validUntilDateTime = new Date(`${dateStr}T23:59:59`).toISOString();
 
       await createPromotion({
         title,
         description: description || undefined,
         discount,
         conditions: conditions || undefined,
-        validUntil: validUntilDate,
+        validUntil: validUntilDateTime,
         image: image || undefined,
       });
 
@@ -176,19 +182,30 @@ export default function CreatePromotion() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="validUntil">Действует до *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="validUntil"
-                  type="date"
-                  className="pl-10"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                />
-              </div>
+              <Label>Действует до *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !validUntilDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {validUntilDate ? format(validUntilDate, 'd MMMM yyyy', { locale: ru }) : 'Выберите дату'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={validUntilDate}
+                    onSelect={setValidUntilDate}
+                    initialFocus
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </CardContent>
         </Card>
