@@ -3,6 +3,7 @@
 // Provider: Google Gemini (gemini-2.0-flash for text, imagen-4.0-generate-001 for images)
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { uploadVideoToCloudinary, downloadVideoWithAuth } from './cloudinary';
 
 export interface EventDetails {
   title: string;
@@ -523,6 +524,52 @@ export async function generatePromotionalVideo(request: VideoGenerationRequest):
 }
 
 /**
+ * Helper to process video URL - download from Google and upload to Cloudinary
+ */
+async function processVideoUrl(
+  videoUrl: string,
+  thumbnailUrl: string | undefined,
+  apiKey: string
+): Promise<{ videoUrl: string; thumbnailUrl?: string }> {
+  // If it's already a base64 data URL, upload directly to Cloudinary
+  if (videoUrl.startsWith('data:')) {
+    try {
+      const cloudinaryResult = await uploadVideoToCloudinary(videoUrl);
+      console.log('Video uploaded to Cloudinary:', cloudinaryResult.url);
+      return {
+        videoUrl: cloudinaryResult.url,
+        thumbnailUrl: thumbnailUrl,
+      };
+    } catch (uploadError) {
+      console.error('Failed to upload video to Cloudinary:', uploadError);
+      // Return the base64 URL as fallback
+      return { videoUrl, thumbnailUrl };
+    }
+  }
+
+  // If it's a Google URL, download with auth and upload to Cloudinary
+  if (videoUrl.includes('generativelanguage.googleapis.com')) {
+    try {
+      console.log('Downloading video from Google...');
+      const base64Video = await downloadVideoWithAuth(videoUrl, apiKey);
+      console.log('Video downloaded, uploading to Cloudinary...');
+      const cloudinaryResult = await uploadVideoToCloudinary(base64Video);
+      console.log('Video uploaded to Cloudinary:', cloudinaryResult.url);
+      return {
+        videoUrl: cloudinaryResult.url,
+        thumbnailUrl: thumbnailUrl,
+      };
+    } catch (error) {
+      console.error('Failed to process video:', error);
+      throw new Error(`Failed to process video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // For other URLs, return as-is
+  return { videoUrl, thumbnailUrl };
+}
+
+/**
  * Poll for video generation completion (Veo uses async operations)
  */
 async function pollVideoGeneration(
@@ -543,76 +590,65 @@ async function pollVideoGeneration(
       }
 
       const response = result.response || {};
+      let rawVideoUrl: string | undefined;
+      let rawThumbnailUrl: string | undefined;
 
       // Try multiple response formats (Veo 3.1 may use different structures)
       // Format 1: result.response.generatedVideos[0].video
       if (response.generatedVideos?.[0]) {
         const video = response.generatedVideos[0];
-        return {
-          videoUrl: video.video?.uri || `data:video/mp4;base64,${video.video?.bytesBase64Encoded}`,
-          thumbnailUrl: video.thumbnail?.uri,
-        };
+        rawVideoUrl = video.video?.uri || (video.video?.bytesBase64Encoded ? `data:video/mp4;base64,${video.video.bytesBase64Encoded}` : undefined);
+        rawThumbnailUrl = video.thumbnail?.uri;
       }
 
       // Format 2: result.response.videos[0]
-      if (response.videos?.[0]) {
+      if (!rawVideoUrl && response.videos?.[0]) {
         const video = response.videos[0];
-        return {
-          videoUrl: video.uri || video.url || `data:video/mp4;base64,${video.bytesBase64Encoded || video.data}`,
-          thumbnailUrl: video.thumbnailUri || video.thumbnail?.uri,
-        };
+        rawVideoUrl = video.uri || video.url || (video.bytesBase64Encoded ? `data:video/mp4;base64,${video.bytesBase64Encoded}` : undefined) || (video.data ? `data:video/mp4;base64,${video.data}` : undefined);
+        rawThumbnailUrl = video.thumbnailUri || video.thumbnail?.uri;
       }
 
       // Format 3: result.response.predictions[0] (Vertex AI predict format)
-      if (response.predictions?.[0]) {
+      if (!rawVideoUrl && response.predictions?.[0]) {
         const pred = response.predictions[0];
         const videoData = pred.video || pred.bytesBase64Encoded || pred;
         if (typeof videoData === 'string') {
-          return {
-            videoUrl: videoData.startsWith('http') ? videoData : `data:video/mp4;base64,${videoData}`,
-            thumbnailUrl: pred.thumbnail?.uri,
-          };
+          rawVideoUrl = videoData.startsWith('http') ? videoData : `data:video/mp4;base64,${videoData}`;
+        } else if (videoData.uri || videoData.bytesBase64Encoded) {
+          rawVideoUrl = videoData.uri || `data:video/mp4;base64,${videoData.bytesBase64Encoded}`;
         }
-        if (videoData.uri || videoData.bytesBase64Encoded) {
-          return {
-            videoUrl: videoData.uri || `data:video/mp4;base64,${videoData.bytesBase64Encoded}`,
-            thumbnailUrl: videoData.thumbnail?.uri || pred.thumbnail?.uri,
-          };
-        }
+        rawThumbnailUrl = videoData?.thumbnail?.uri || pred.thumbnail?.uri;
       }
 
       // Format 4: result.response.generateVideoResponse
-      if (response.generateVideoResponse?.generatedSamples?.[0]) {
+      if (!rawVideoUrl && response.generateVideoResponse?.generatedSamples?.[0]) {
         const sample = response.generateVideoResponse.generatedSamples[0];
-        return {
-          videoUrl: sample.video?.uri || `data:video/mp4;base64,${sample.video?.bytesBase64Encoded}`,
-          thumbnailUrl: sample.thumbnail?.uri,
-        };
+        rawVideoUrl = sample.video?.uri || (sample.video?.bytesBase64Encoded ? `data:video/mp4;base64,${sample.video.bytesBase64Encoded}` : undefined);
+        rawThumbnailUrl = sample.thumbnail?.uri;
       }
 
       // Format 5: result.result.videos[0] or result.result.generatedVideos[0]
-      if (result.result?.videos?.[0] || result.result?.generatedVideos?.[0]) {
+      if (!rawVideoUrl && (result.result?.videos?.[0] || result.result?.generatedVideos?.[0])) {
         const video = result.result.videos?.[0] || result.result.generatedVideos[0];
-        return {
-          videoUrl: video.uri || video.url || video.video?.uri || `data:video/mp4;base64,${video.bytesBase64Encoded || video.video?.bytesBase64Encoded}`,
-          thumbnailUrl: video.thumbnailUri || video.thumbnail?.uri,
-        };
+        rawVideoUrl = video.uri || video.url || video.video?.uri || (video.bytesBase64Encoded ? `data:video/mp4;base64,${video.bytesBase64Encoded}` : undefined) || (video.video?.bytesBase64Encoded ? `data:video/mp4;base64,${video.video.bytesBase64Encoded}` : undefined);
+        rawThumbnailUrl = video.thumbnailUri || video.thumbnail?.uri;
       }
 
       // Format 6: result.metadata with mediaFile
-      if (result.metadata?.mediaFile) {
-        return {
-          videoUrl: result.metadata.mediaFile.uri || result.metadata.mediaFile.url,
-          thumbnailUrl: result.metadata.thumbnailUri,
-        };
+      if (!rawVideoUrl && result.metadata?.mediaFile) {
+        rawVideoUrl = result.metadata.mediaFile.uri || result.metadata.mediaFile.url;
+        rawThumbnailUrl = result.metadata.thumbnailUri;
       }
 
       // Format 7: Direct response in result.response
-      if (response.video || response.uri) {
-        return {
-          videoUrl: response.video?.uri || response.uri || `data:video/mp4;base64,${response.video?.bytesBase64Encoded}`,
-          thumbnailUrl: response.thumbnail?.uri,
-        };
+      if (!rawVideoUrl && (response.video || response.uri)) {
+        rawVideoUrl = response.video?.uri || response.uri || (response.video?.bytesBase64Encoded ? `data:video/mp4;base64,${response.video.bytesBase64Encoded}` : undefined);
+        rawThumbnailUrl = response.thumbnail?.uri;
+      }
+
+      if (rawVideoUrl) {
+        // Process the video URL - download from Google and upload to Cloudinary
+        return await processVideoUrl(rawVideoUrl, rawThumbnailUrl, apiKey);
       }
 
       // Log the actual response structure for debugging
