@@ -1,21 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Check,
   X,
   Crown,
   Zap,
   CreditCard,
-  Receipt,
   AlertCircle,
-  Download,
   TrendingUp,
   Building2,
-  BarChart3,
   Megaphone,
   Users,
   Wand2,
   Send,
-  Video
+  Video,
+  Calendar,
+  Clock,
+  Info
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,12 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useMyBusiness } from '@/hooks/use-api';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const tierLimits = { free: 3, lite: 10, premium: 999 };
 
@@ -93,7 +99,79 @@ const tiers = [
   },
 ];
 
+// Calculate days remaining in subscription
+function getSubscriptionProgress(tierUntil: string | null): {
+  daysRemaining: number;
+  totalDays: number;
+  percentage: number;
+  isExpiringSoon: boolean;
+} {
+  if (!tierUntil) {
+    return { daysRemaining: 0, totalDays: 30, percentage: 0, isExpiringSoon: false };
+  }
+
+  const now = new Date();
+  const endDate = new Date(tierUntil);
+  const diffTime = endDate.getTime() - now.getTime();
+  const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+  // Assume 30 days subscription period
+  const totalDays = 30;
+  const percentage = Math.max(0, Math.min(100, (daysRemaining / totalDays) * 100));
+  const isExpiringSoon = daysRemaining <= 5 && daysRemaining > 0;
+
+  return { daysRemaining, totalDays, percentage, isExpiringSoon };
+}
+
+// Calculate pro-rata price for mid-month subscription
+function calculateProRataPrice(fullPrice: number): {
+  proRataPrice: number;
+  daysRemaining: number;
+  totalDaysInMonth: number;
+  isProRata: boolean;
+  nextBillingDate: Date;
+} {
+  const now = new Date();
+  const currentDay = now.getDate();
+
+  // Get last day of current month
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = lastDayOfMonth - currentDay + 1; // Including today
+
+  // If it's the 1st, no pro-rata needed
+  if (currentDay === 1) {
+    const nextBillingDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return {
+      proRataPrice: fullPrice,
+      daysRemaining: lastDayOfMonth,
+      totalDaysInMonth: lastDayOfMonth,
+      isProRata: false,
+      nextBillingDate,
+    };
+  }
+
+  // Calculate pro-rata price
+  const dailyRate = fullPrice / lastDayOfMonth;
+  const proRataPrice = Math.round(dailyRate * daysRemaining);
+
+  // Next billing will be on the 1st of next month
+  const nextBillingDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  return {
+    proRataPrice,
+    daysRemaining,
+    totalDaysInMonth: lastDayOfMonth,
+    isProRata: true,
+    nextBillingDate,
+  };
+}
+
 const formatPrice = (price: number) => {
+  if (price === 0) return 'Бесплатно';
+  return new Intl.NumberFormat('ru-RU').format(price) + ' ₸';
+};
+
+const formatPriceWithPeriod = (price: number) => {
   if (price === 0) return 'Бесплатно';
   return new Intl.NumberFormat('ru-RU').format(price) + ' ₸/мес';
 };
@@ -118,6 +196,20 @@ export default function BusinessSubscription() {
     nextBillingDate: tierUntil || null,
   };
 
+  // Calculate subscription progress
+  const subscriptionProgress = useMemo(() =>
+    getSubscriptionProgress(business.nextBillingDate),
+    [business.nextBillingDate]
+  );
+
+  // Calculate pro-rata pricing for selected tier
+  const proRataInfo = useMemo(() => {
+    if (!selectedTier) return null;
+    const tier = tiers.find(t => t.id === selectedTier);
+    if (!tier || tier.price === 0) return null;
+    return calculateProRataPrice(tier.price);
+  }, [selectedTier]);
+
   const currentTierIndex = tiers.findIndex((t) => t.id === business.tier);
 
   if (isLoading) {
@@ -135,7 +227,7 @@ export default function BusinessSubscription() {
 
   const handleConfirmUpgrade = () => {
     // Here would be the payment integration
-    console.log('Upgrading to:', selectedTier, 'via', paymentMethod);
+    console.log('Upgrading to:', selectedTier, 'via', paymentMethod, 'pro-rata:', proRataInfo);
     setUpgradeDialogOpen(false);
   };
 
@@ -174,11 +266,17 @@ export default function BusinessSubscription() {
                   <h3 className="text-xl font-bold">
                     {tiers.find((t) => t.id === business.tier)?.name}
                   </h3>
-                  <Badge variant="outline">Активен</Badge>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Активен
+                  </Badge>
                 </div>
                 {business.tier !== 'free' && business.nextBillingDate && (
-                  <p className="text-muted-foreground">
-                    Подписка до: {new Date(business.nextBillingDate).toLocaleDateString('ru-RU')}
+                  <p className="text-muted-foreground text-sm">
+                    Следующее списание: {new Date(business.nextBillingDate).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
                   </p>
                 )}
               </div>
@@ -199,9 +297,44 @@ export default function BusinessSubscription() {
             </div>
           </div>
 
-          {/* Usage */}
+          {/* Subscription Progress Bar - for paid tiers */}
+          {business.tier !== 'free' && business.nextBillingDate && (
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Период подписки</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span className={`text-sm font-medium ${
+                    subscriptionProgress.isExpiringSoon ? 'text-amber-600' : ''
+                  }`}>
+                    {subscriptionProgress.daysRemaining} {
+                      subscriptionProgress.daysRemaining === 1 ? 'день' :
+                      subscriptionProgress.daysRemaining >= 2 && subscriptionProgress.daysRemaining <= 4 ? 'дня' : 'дней'
+                    } осталось
+                  </span>
+                </div>
+              </div>
+              <Progress
+                value={subscriptionProgress.percentage}
+                className={`h-3 ${subscriptionProgress.isExpiringSoon ? '[&>div]:bg-amber-500' : ''}`}
+              />
+              {subscriptionProgress.isExpiringSoon && (
+                <div className="flex items-center gap-2 mt-3 text-amber-600">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">
+                    Подписка скоро закончится. Продлите для сохранения всех возможностей.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Publication Usage - for non-premium */}
           {business.tier !== 'premium' && (
-            <div className="mt-6 p-4 bg-muted rounded-lg">
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg border">
               <div className="flex justify-between mb-2">
                 <span className="text-sm font-medium">Использовано публикаций</span>
                 <span className="text-sm">{business.postsUsed} из {business.postsLimit}</span>
@@ -387,9 +520,9 @@ export default function BusinessSubscription() {
         </CardContent>
       </Card>
 
-      {/* Upgrade dialog */}
+      {/* Upgrade dialog with pro-rata calculation */}
       <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Оформление подписки</DialogTitle>
             <DialogDescription>
@@ -398,17 +531,56 @@ export default function BusinessSubscription() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="p-4 bg-muted rounded-lg">
+            {/* Pricing breakdown */}
+            <div className="p-4 bg-muted rounded-lg space-y-3">
               <div className="flex justify-between">
-                <span>Тариф</span>
+                <span className="text-muted-foreground">Тариф</span>
                 <span className="font-medium">{tiers.find((t) => t.id === selectedTier)?.name}</span>
               </div>
-              <div className="flex justify-between mt-2">
-                <span>Сумма</span>
-                <span className="font-bold text-lg">
-                  {formatPrice(tiers.find((t) => t.id === selectedTier)?.price || 0)}
-                </span>
-              </div>
+
+              {proRataInfo && proRataInfo.isProRata ? (
+                <>
+                  <div className="border-t pt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Info className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm text-blue-600 font-medium">Пропорциональный расчёт</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Так как сегодня не 1-е число, оплата рассчитывается пропорционально оставшимся дням месяца.
+                    </p>
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Полная стоимость</span>
+                        <span>{formatPrice(tiers.find((t) => t.id === selectedTier)?.price || 0)}/мес</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Дней до конца месяца</span>
+                        <span>{proRataInfo.daysRemaining} из {proRataInfo.totalDaysInMonth}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                        <span>К оплате сейчас</span>
+                        <span className="text-primary">{formatPrice(proRataInfo.proRataPrice)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg">
+                    <p className="text-xs text-blue-800 dark:text-blue-200">
+                      <Calendar className="w-3 h-3 inline mr-1" />
+                      Начиная с {proRataInfo.nextBillingDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })},
+                      будет списываться полная сумма {formatPrice(tiers.find((t) => t.id === selectedTier)?.price || 0)} ежемесячно.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                  <span>К оплате</span>
+                  <span className="text-primary">
+                    {formatPriceWithPeriod(tiers.find((t) => t.id === selectedTier)?.price || 0)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -416,18 +588,18 @@ export default function BusinessSubscription() {
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
                   <RadioGroupItem value="kaspi" id="kaspi" />
-                  <Label htmlFor="kaspi" className="flex items-center gap-2 cursor-pointer">
+                  <Label htmlFor="kaspi" className="flex items-center gap-2 cursor-pointer flex-1">
                     <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center text-white font-bold text-xs">
                       K
                     </div>
-                    Kaspi QR / Kaspi Pay
+                    <span>Kaspi QR / Kaspi Pay</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
                   <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
+                  <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
                     <CreditCard className="w-5 h-5" />
-                    Банковская карта
+                    <span>Банковская карта</span>
                   </Label>
                 </div>
               </RadioGroup>
@@ -439,7 +611,7 @@ export default function BusinessSubscription() {
               Отмена
             </Button>
             <Button onClick={handleConfirmUpgrade}>
-              Оплатить
+              Оплатить {proRataInfo?.isProRata ? formatPrice(proRataInfo.proRataPrice) : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
