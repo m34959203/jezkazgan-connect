@@ -330,9 +330,15 @@ async function seedDemoBusinesses() {
   }
 }
 
-seedDemoBusinesses()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('❌ Seed failed:', err);
-    process.exit(1);
-  });
+// Export for API use
+export { seedDemoBusinesses };
+
+// Run directly if executed as script
+if (require.main === module) {
+  seedDemoBusinesses()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('❌ Seed failed:', err);
+      process.exit(1);
+    });
+}

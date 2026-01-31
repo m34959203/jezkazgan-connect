@@ -3,6 +3,7 @@ import { db, users, businesses, events, promotions, cities, cityBanners, cityPho
 import { eq, desc, sql, count, and, gte, lte, like, or, isNull, inArray } from 'drizzle-orm';
 import { authMiddleware, adminMiddleware, type AuthUser } from '../middleware/auth';
 import { onUserBecamePremium } from './referral';
+import { seedDemoBusinesses } from '../db/seed-demo';
 
 const admin = new Hono<{ Variables: { user: AuthUser } }>();
 
@@ -1855,6 +1856,20 @@ admin.get('/referral/list', async (c) => {
   } catch (error) {
     console.error('Referrals list error:', error);
     return c.json({ error: 'Failed to fetch referrals' }, 500);
+  }
+});
+
+// ==================== SEED DEMO DATA ====================
+
+// Trigger demo seed (updates event dates and creates missing demo data)
+admin.post('/seed-demo', async (c) => {
+  try {
+    console.log('[Admin] Running seed-demo...');
+    await seedDemoBusinesses();
+    return c.json({ success: true, message: 'Demo data seeded successfully' });
+  } catch (error) {
+    console.error('Seed demo error:', error);
+    return c.json({ error: 'Failed to seed demo data', details: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
 
