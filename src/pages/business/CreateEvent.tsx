@@ -207,10 +207,11 @@ export default function CreateEvent() {
                   onPosterGenerated={handlePosterGenerated}
                   context={{
                     title,
-                    date: date && time ? `${date} ${time}` : date,
-                    location: location || business?.city?.name || 'Жезказган',
+                    date: date || undefined,
+                    location: location || undefined,
                     description,
                   }}
+                  businessCity={business?.city?.name}
                   isPremium={isPremium}
                 />
                 {!isPremium && (

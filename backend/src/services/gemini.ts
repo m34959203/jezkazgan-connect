@@ -192,8 +192,8 @@ export async function refineEventDetails(input: PosterGenerationRequest): Promis
    - Визуальный стиль: ${themeConfig.visualStyle}
    - Цветовая гамма: ${themeConfig.colors}
    - Добавь элементы, связанные с городом и контекстом
-   - ВАЖНО: Если нужен текст на изображении, используй ТОЛЬКО кириллический шрифт
-   - Добавь в промпт: "Cyrillic text only, professional Russian typography, clear readable Cyrillic letters"
+   - КРИТИЧЕСКИ ВАЖНО: НЕ ДОБАВЛЯЙ НИКАКОГО ТЕКСТА в изображение! Изображение должно быть полностью без букв, слов, надписей.
+   - Добавь в промпт: "STRICTLY NO TEXT, no letters, no words, no typography, no signs, no captions - pure visual background only"
    - Формат: вертикальный постер 9:16
 
 Верни ТОЛЬКО JSON без markdown форматирования:
@@ -204,7 +204,7 @@ export async function refineEventDetails(input: PosterGenerationRequest): Promis
   "location": "уточнённая локация",
   "description": "краткое описание",
   "theme": "${themeConfig.name}",
-  "imagePrompt": "detailed english prompt for image generation"
+  "imagePrompt": "detailed english prompt for image generation WITHOUT any text"
 }`;
 
   const result = await model.generateContent(prompt);
@@ -230,7 +230,7 @@ export async function refineEventDetails(input: PosterGenerationRequest): Promis
       location: input.location,
       description: input.description || '',
       theme: themeConfig.name,
-      imagePrompt: `Professional event poster background, ${themeConfig.visualStyle}, ${themeConfig.colors}, ${cityContext}, cinematic lighting, 9:16 vertical format. If text present: Cyrillic only, professional Russian typography, clear readable Cyrillic letters`,
+      imagePrompt: `Professional event poster background, ${themeConfig.visualStyle}, ${themeConfig.colors}, ${cityContext}, cinematic lighting, 9:16 vertical format. STRICTLY NO TEXT - no letters, no words, no typography, pure visual background only`,
     };
   }
 }
@@ -414,9 +414,8 @@ Motion style: ${motionStyle}.
 Color palette: ${themeConfig.colors}.
 ${aspectRatio === '9:16' ? 'Vertical mobile format, designed for social media stories.' : 'Widescreen cinematic format.'}
 Smooth camera movement, professional quality, atmospheric lighting.
-CRITICAL TEXT REQUIREMENTS: If any text appears in the video, it MUST be in Cyrillic (Russian) only.
-Use professional Russian typography with clear readable Cyrillic letters (А-Я, а-я).
-NO Latin letters or mixed alphabets. High-quality Cyrillic text rendering.
+CRITICAL: DO NOT include any text, letters, words, or typography in the video.
+The video must be completely text-free - pure visual content only.
 Reflecting the unique culture and aesthetics of modern Kazakhstan.`;
 }
 
