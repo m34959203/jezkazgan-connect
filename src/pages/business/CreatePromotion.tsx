@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ArrowLeft, Percent, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Percent, Calendar as CalendarIcon, CalendarClock, Clock, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,9 @@ export default function CreatePromotion() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if business has Premium tier
+  const isPremium = business?.tier === 'premium';
+
   // Form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,6 +33,11 @@ export default function CreatePromotion() {
   const [conditions, setConditions] = useState('');
   const [validUntilDate, setValidUntilDate] = useState<Date | undefined>(undefined);
   const [image, setImage] = useState('');
+
+  // Scheduled posting (Premium only)
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [publishDate, setPublishDate] = useState('');
+  const [publishTime, setPublishTime] = useState('');
 
   if (isLoading) {
     return (
@@ -69,6 +77,12 @@ export default function CreatePromotion() {
       const dateStr = format(validUntilDate, 'yyyy-MM-dd');
       const validUntilDateTime = new Date(`${dateStr}T23:59:59`).toISOString();
 
+      // Prepare publishAt for scheduled posting (Premium only)
+      let publishAt: string | undefined;
+      if (isPremium && isScheduled && publishDate && publishTime) {
+        publishAt = new Date(`${publishDate}T${publishTime}`).toISOString();
+      }
+
       await createPromotion({
         title,
         description: description || undefined,
@@ -76,11 +90,12 @@ export default function CreatePromotion() {
         conditions: conditions || undefined,
         validUntil: validUntilDateTime,
         image: image || undefined,
+        publishAt,
       });
 
       toast({
         title: 'Акция создана!',
-        description: 'Акция успешно опубликована',
+        description: publishAt ? 'Акция будет опубликована по расписанию' : 'Акция успешно опубликована',
       });
 
       navigate('/business/publications');
@@ -210,10 +225,86 @@ export default function CreatePromotion() {
           </CardContent>
         </Card>
 
+        {/* Scheduled posting - Premium only */}
+        <Card className={!isPremium ? 'opacity-60' : ''}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarClock className="w-5 h-5" />
+                Отложенный постинг
+              </CardTitle>
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                <Crown className="w-3 h-3" />
+                Premium
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!isPremium ? (
+              <p className="text-sm text-muted-foreground">
+                Отложенный постинг доступен только для тарифа Premium.
+                <Link to="/for-business#pricing" className="text-primary ml-1 hover:underline">
+                  Узнать больше
+                </Link>
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isScheduled"
+                    checked={isScheduled}
+                    onChange={(e) => setIsScheduled(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="isScheduled" className="text-sm font-normal cursor-pointer">
+                    Запланировать публикацию на определённое время
+                  </Label>
+                </div>
+
+                {isScheduled && (
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="publishDate">Дата публикации</Label>
+                      <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="publishDate"
+                          type="date"
+                          className="pl-10"
+                          value={publishDate}
+                          onChange={(e) => setPublishDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="publishTime">Время публикации</Label>
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="publishTime"
+                          type="time"
+                          className="pl-10"
+                          value={publishTime}
+                          onChange={(e) => setPublishTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Info */}
         <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-900">
           <p className="text-sm text-green-700 dark:text-green-300">
-            Акция сразу будет опубликована и доступна всем пользователям города.
+            {isScheduled && publishDate && publishTime
+              ? `Акция будет опубликована ${new Date(`${publishDate}T${publishTime}`).toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' })}`
+              : 'Акция сразу будет опубликована и доступна всем пользователям города.'
+            }
           </p>
         </div>
 

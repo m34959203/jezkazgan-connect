@@ -1,7 +1,12 @@
+import { useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { FileText } from 'lucide-react';
 
 export default function Terms() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <Layout>
       <div className="container py-8 md:py-12 max-w-4xl">
