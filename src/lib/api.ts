@@ -284,6 +284,99 @@ export async function fetchMyBusinessStats(): Promise<BusinessStats> {
   return res.json();
 }
 
+// Business banner types and API functions
+export interface BusinessBanner {
+  id: string;
+  imageUrl: string;
+  link: string | null;
+  linkType: string;
+  isActive: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  viewsCount: number;
+  clicksCount: number;
+  createdAt: string;
+  stats: {
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  };
+}
+
+export interface BusinessBannerResponse {
+  banner: BusinessBanner | null;
+  error?: string;
+}
+
+// Fetch current user's business banner
+export async function fetchMyBusinessBanner(): Promise<BusinessBannerResponse> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me/banner`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to fetch business banner');
+  }
+  return res.json();
+}
+
+// Update business banner
+export async function updateMyBusinessBanner(data: {
+  imageUrl: string;
+  link?: string;
+  linkType: 'profile' | 'event' | 'promotion' | 'external';
+  isActive: boolean;
+}): Promise<{ banner: BusinessBanner }> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me/banner`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to update business banner');
+  }
+  return res.json();
+}
+
+// Delete business banner
+export async function deleteMyBusinessBanner(): Promise<{ success: boolean }> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/businesses/me/banner`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || error.error || 'Failed to delete business banner');
+  }
+  return res.json();
+}
+
 // Business publications interface
 export interface BusinessPublications {
   events: Array<{

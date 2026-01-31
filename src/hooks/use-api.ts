@@ -12,6 +12,10 @@ import {
   fetchMyBusiness,
   fetchMyBusinessStats,
   fetchMyBusinessPublications,
+  fetchMyBusinessBanner,
+  updateMyBusinessBanner,
+  deleteMyBusinessBanner,
+  type BusinessBannerResponse,
   fetchAdminStats,
   fetchAdminFinance,
   fetchAdminUsers,
@@ -220,6 +224,36 @@ export function useMyBusinessPublications() {
     queryFn: fetchMyBusinessPublications,
     staleTime: 1000 * 60 * 2, // 2 minutes
     retry: false,
+  });
+}
+
+// Business banner hooks
+export function useMyBusinessBanner() {
+  return useQuery<BusinessBannerResponse>({
+    queryKey: ['myBusinessBanner'],
+    queryFn: fetchMyBusinessBanner,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    retry: false,
+  });
+}
+
+export function useUpdateMyBusinessBanner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateMyBusinessBanner,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBusinessBanner'] });
+    },
+  });
+}
+
+export function useDeleteMyBusinessBanner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteMyBusinessBanner,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBusinessBanner'] });
+    },
   });
 }
 
