@@ -80,8 +80,6 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
         description: events.description,
         category: events.category,
         image: events.image,
-        videoUrl: events.videoUrl,
-        videoThumbnail: events.videoThumbnail,
         date: events.date,
         location: events.location,
         price: events.price,
@@ -126,8 +124,6 @@ app.get('/:id', async (c) => {
       description: events.description,
       category: events.category,
       image: events.image,
-      videoUrl: events.videoUrl,
-      videoThumbnail: events.videoThumbnail,
       date: events.date,
       endDate: events.endDate,
       location: events.location,
@@ -209,8 +205,7 @@ const createEventSchema = z.object({
   description: z.string().optional(),
   category: z.enum(['concerts', 'theater', 'festivals', 'education', 'seminars', 'leisure', 'sports', 'children', 'exhibitions', 'other']),
   image: z.string().url().optional(),
-  videoUrl: z.string().url().optional(), // Business Premium: видео формат
-  videoThumbnail: z.string().url().optional(), // Превью для видео
+  // videoUrl and videoThumbnail removed - need database migration
   date: z.string().datetime(),
   endDate: z.string().datetime().optional(),
   location: z.string().optional(),
@@ -253,15 +248,6 @@ app.post('/', authMiddleware, zValidator('json', createEventSchema), async (c) =
     if (business[0].tierUntil && new Date(business[0].tierUntil) < new Date()) {
       businessTier = 'free';
     }
-  }
-
-  // Business Premium: video format requires Premium tier
-  if (data.videoUrl && businessTier !== 'premium') {
-    return c.json({
-      error: 'Business Premium subscription required for video format',
-      requiredTier: 'premium',
-      currentTier: businessTier,
-    }, 403);
   }
 
   const result = await db
