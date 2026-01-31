@@ -110,10 +110,10 @@ export const apiRateLimit = rateLimit({
   message: 'Превышен лимит запросов. Попробуйте через минуту.',
 });
 
-// Strict rate limiter for auth endpoints (10 requests per minute)
+// Strict rate limiter for auth endpoints (20 requests per minute)
 export const authRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 10,
+  maxRequests: 20,
   message: 'Слишком много попыток входа. Подождите минуту.',
 });
 
