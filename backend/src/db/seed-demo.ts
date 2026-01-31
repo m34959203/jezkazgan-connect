@@ -257,7 +257,7 @@ async function seedDemoBusinesses() {
         console.log(`🏪 Created business: ${demo.business.name} (${demo.business.tier})`);
       }
 
-      // Create events
+      // Create or update events
       for (const event of demo.events) {
         const existingEvent = await db
           .select()
@@ -277,11 +277,16 @@ async function seedDemoBusinesses() {
           });
           console.log(`  📅 Created event: ${event.title}`);
         } else {
-          console.log(`  📅 Event already exists: ${event.title}`);
+          // Update existing event dates
+          await db
+            .update(events)
+            .set({ date: event.date })
+            .where(eq(events.id, existingEvent[0].id));
+          console.log(`  📅 Updated event date: ${event.title}`);
         }
       }
 
-      // Create promotions
+      // Create or update promotions
       for (const promo of demo.promotions) {
         const existingPromo = await db
           .select()
@@ -301,7 +306,12 @@ async function seedDemoBusinesses() {
           });
           console.log(`  🎁 Created promotion: ${promo.title}`);
         } else {
-          console.log(`  🎁 Promotion already exists: ${promo.title}`);
+          // Update existing promotion dates
+          await db
+            .update(promotions)
+            .set({ validUntil: promo.validUntil, isActive: true })
+            .where(eq(promotions.id, existingPromo[0].id));
+          console.log(`  🎁 Updated promotion date: ${promo.title}`);
         }
       }
 
