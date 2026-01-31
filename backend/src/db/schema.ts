@@ -156,8 +156,7 @@ export const events = pgTable('events', {
   category: eventCategoryEnum('category').notNull(),
   image: text('image'),
   isImageAiGenerated: boolean('is_image_ai_generated').default(false), // Kazakhstan AI Law compliance
-  videoUrl: text('video_url'), // Business Premium: видео формат для событий
-  videoThumbnail: text('video_thumbnail'), // Превью для видео
+  // videoUrl and videoThumbnail removed - need database migration to add these columns
   date: timestamp('date').notNull(),
   endDate: timestamp('end_date'),
   location: text('location'),

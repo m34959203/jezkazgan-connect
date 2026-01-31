@@ -285,7 +285,6 @@ app.post('/publish', authMiddleware, zValidator('json', publishSchema), async (c
       title: event.title,
       description: event.description || undefined,
       imageUrl: event.image || undefined,
-      videoUrl: event.videoUrl || undefined,
       contentType: 'event',
       date: event.date?.toISOString(),
       location: event.location || undefined,
