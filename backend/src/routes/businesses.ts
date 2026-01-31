@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { eq, and, desc, sql } from 'drizzle-orm';
-import { db, businesses, cities, users, events, promotions } from '../db';
+import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { db, businesses, cities, users, events, promotions, cityBanners } from '../db';
 import { authMiddleware, getCurrentUser, type AuthUser } from '../middleware/auth';
 
 const app = new Hono<{ Variables: { user: AuthUser } }>();
@@ -247,6 +247,195 @@ app.get('/me/publications', authMiddleware, async (c) => {
       status: p.isActive && new Date(p.validUntil) >= new Date() ? 'active' : 'expired',
     })),
   });
+});
+
+// GET /businesses/me/banner - баннер бизнеса
+app.get('/me/banner', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select({ id: businesses.id, cityId: businesses.cityId, tier: businesses.tier })
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  // Только Premium может иметь баннер
+  if (business[0].tier !== 'premium') {
+    return c.json({ error: 'Premium required', banner: null }, 200);
+  }
+
+  const businessId = business[0].id;
+  const cityId = business[0].cityId;
+
+  // Найти баннер бизнеса
+  const banner = await db
+    .select({
+      id: cityBanners.id,
+      imageUrl: cityBanners.imageUrl,
+      link: cityBanners.link,
+      linkType: cityBanners.linkType,
+      isActive: cityBanners.isActive,
+      startDate: cityBanners.startDate,
+      endDate: cityBanners.endDate,
+      viewsCount: cityBanners.viewsCount,
+      clicksCount: cityBanners.clicksCount,
+      createdAt: cityBanners.createdAt,
+    })
+    .from(cityBanners)
+    .where(and(
+      eq(cityBanners.businessId, businessId),
+      eq(cityBanners.cityId, cityId)
+    ))
+    .limit(1);
+
+  if (!banner.length) {
+    return c.json({ banner: null });
+  }
+
+  // Рассчитать CTR
+  const views = banner[0].viewsCount || 0;
+  const clicks = banner[0].clicksCount || 0;
+  const ctr = views > 0 ? ((clicks / views) * 100).toFixed(2) : '0.00';
+
+  return c.json({
+    banner: {
+      ...banner[0],
+      stats: {
+        impressions: views,
+        clicks: clicks,
+        ctr: parseFloat(ctr),
+      }
+    }
+  });
+});
+
+// PUT /businesses/me/banner - создать/обновить баннер бизнеса
+const bannerSchema = z.object({
+  imageUrl: z.string().url(),
+  link: z.string().optional(),
+  linkType: z.enum(['profile', 'event', 'promotion', 'external']).default('profile'),
+  isActive: z.boolean().default(true),
+});
+
+app.put('/me/banner', authMiddleware, zValidator('json', bannerSchema), async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const data = c.req.valid('json');
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select({ id: businesses.id, cityId: businesses.cityId, name: businesses.name, tier: businesses.tier })
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  // Только Premium может создавать баннер
+  if (business[0].tier !== 'premium') {
+    return c.json({ error: 'Premium subscription required' }, 403);
+  }
+
+  const businessId = business[0].id;
+  const cityId = business[0].cityId;
+
+  // Проверить существует ли уже баннер
+  const existingBanner = await db
+    .select({ id: cityBanners.id })
+    .from(cityBanners)
+    .where(and(
+      eq(cityBanners.businessId, businessId),
+      eq(cityBanners.cityId, cityId)
+    ))
+    .limit(1);
+
+  // Определить link на основе linkType
+  let link = data.link;
+  if (data.linkType === 'profile') {
+    link = `/business/${businessId}`;
+  }
+
+  if (existingBanner.length) {
+    // Обновить существующий баннер
+    const result = await db
+      .update(cityBanners)
+      .set({
+        imageUrl: data.imageUrl,
+        link,
+        linkType: data.linkType,
+        isActive: data.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(cityBanners.id, existingBanner[0].id))
+      .returning();
+
+    return c.json({ banner: result[0] });
+  } else {
+    // Создать новый баннер
+    const result = await db
+      .insert(cityBanners)
+      .values({
+        cityId,
+        businessId,
+        title: business[0].name,
+        imageUrl: data.imageUrl,
+        link,
+        linkType: data.linkType,
+        isActive: data.isActive,
+        position: 10, // Низкий приоритет по умолчанию
+      })
+      .returning();
+
+    return c.json({ banner: result[0] }, 201);
+  }
+});
+
+// DELETE /businesses/me/banner - удалить баннер бизнеса
+app.delete('/me/banner', authMiddleware, async (c) => {
+  const user = getCurrentUser(c);
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Найти бизнес пользователя
+  const business = await db
+    .select({ id: businesses.id, cityId: businesses.cityId })
+    .from(businesses)
+    .where(eq(businesses.ownerId, user.id))
+    .limit(1);
+
+  if (!business.length) {
+    return c.json({ error: 'Business not found' }, 404);
+  }
+
+  const businessId = business[0].id;
+  const cityId = business[0].cityId;
+
+  // Удалить баннер
+  await db
+    .delete(cityBanners)
+    .where(and(
+      eq(cityBanners.businessId, businessId),
+      eq(cityBanners.cityId, cityId)
+    ));
+
+  return c.json({ success: true });
 });
 
 // GET /businesses/:id - бизнес по ID

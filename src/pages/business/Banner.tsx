@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Upload,
@@ -6,19 +6,16 @@ import {
   Eye,
   MousePointer,
   TrendingUp,
-  Calendar,
-  Clock,
-  ExternalLink,
-  Trash2,
-  Edit,
   Crown,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -27,48 +24,59 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-
-// Mock data
-const mockBusiness = {
-  tier: 'premium' as const, // Change to 'lite' or 'free' to see locked state
-};
-
-const mockBanner = {
-  id: '1',
-  imageUrl: 'https://placehold.co/1200x300/F59E0B/FFF?text=Рекламный+баннер',
-  link: '/business/profile',
-  linkType: 'profile' as const,
-  isActive: true,
-  schedule: {
-    enabled: false,
-    startTime: '09:00',
-    endTime: '21:00',
-    days: ['пн', 'вт', 'ср', 'чт', 'пт'],
-  },
-  stats: {
-    impressions: 45230,
-    clicks: 1245,
-    ctr: 2.75,
-  },
-};
-
-const mockWeeklyStats = [
-  { day: 'Пн', impressions: 6500, clicks: 180 },
-  { day: 'Вт', impressions: 7200, clicks: 195 },
-  { day: 'Ср', impressions: 6800, clicks: 175 },
-  { day: 'Чт', impressions: 7500, clicks: 210 },
-  { day: 'Пт', impressions: 8200, clicks: 240 },
-  { day: 'Сб', impressions: 5100, clicks: 130 },
-  { day: 'Вс', impressions: 3930, clicks: 115 },
-];
+import { ImageUpload } from '@/components/ui/image-upload';
+import { useMyBusiness, useMyBusinessBanner, useUpdateMyBusinessBanner, useDeleteMyBusinessBanner } from '@/hooks/use-api';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function BusinessBanner() {
-  const business = mockBusiness;
-  const [banner, setBanner] = useState(mockBanner);
+  const { toast } = useToast();
+  const { data: business, isLoading: businessLoading } = useMyBusiness();
+  const { data: bannerData, isLoading: bannerLoading } = useMyBusinessBanner();
+  const updateBanner = useUpdateMyBusinessBanner();
+  const deleteBanner = useDeleteMyBusinessBanner();
+
+  const [imageUrl, setImageUrl] = useState('');
+  const [linkType, setLinkType] = useState<'profile' | 'event' | 'promotion' | 'external'>('profile');
+  const [externalLink, setExternalLink] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Sync form with loaded banner data
+  const banner = bannerData?.banner;
+  const hasBanner = !!banner;
+
+  // Initialize form when banner data loads
+  useEffect(() => {
+    if (banner) {
+      setImageUrl(banner.imageUrl || '');
+      setLinkType((banner.linkType as any) || 'profile');
+      setIsActive(banner.isActive ?? true);
+      if (banner.linkType === 'external' && banner.link) {
+        setExternalLink(banner.link);
+      }
+    }
+  }, [banner]);
+
+  if (businessLoading || bannerLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Check if user has Premium tier
-  if (business.tier !== 'premium') {
+  if (!business || business.tier !== 'premium') {
     return (
       <div className="space-y-6">
         <div>
@@ -102,21 +110,21 @@ export default function BusinessBanner() {
           <Card>
             <CardContent className="pt-6 text-center">
               <Eye className="w-8 h-8 mx-auto text-primary mb-2" />
-              <h4 className="font-medium">45,000+ показов</h4>
-              <p className="text-sm text-muted-foreground">в месяц в среднем</p>
+              <h4 className="font-medium">Тысячи показов</h4>
+              <p className="text-sm text-muted-foreground">в месяц</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <MousePointer className="w-8 h-8 mx-auto text-primary mb-2" />
-              <h4 className="font-medium">2-3% CTR</h4>
+              <h4 className="font-medium">Высокий CTR</h4>
               <p className="text-sm text-muted-foreground">кликабельность</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <TrendingUp className="w-8 h-8 mx-auto text-primary mb-2" />
-              <h4 className="font-medium">+40% трафика</h4>
+              <h4 className="font-medium">Больше трафика</h4>
               <p className="text-sm text-muted-foreground">на ваш профиль</p>
             </CardContent>
           </Card>
@@ -125,7 +133,57 @@ export default function BusinessBanner() {
     );
   }
 
-  const maxImpressions = Math.max(...mockWeeklyStats.map((s) => s.impressions));
+  const handleSave = async () => {
+    if (!imageUrl) {
+      toast({
+        title: 'Загрузите изображение',
+        description: 'Для сохранения баннера необходимо загрузить изображение',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await updateBanner.mutateAsync({
+        imageUrl,
+        linkType,
+        link: linkType === 'external' ? externalLink : undefined,
+        isActive,
+      });
+      toast({
+        title: 'Баннер сохранён',
+        description: 'Изменения успешно применены',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось сохранить баннер',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteBanner.mutateAsync();
+      setImageUrl('');
+      setShowDeleteDialog(false);
+      toast({
+        title: 'Баннер удалён',
+        description: 'Баннер успешно удалён',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось удалить баннер',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const stats = banner?.stats || { impressions: 0, clicks: 0, ctr: 0 };
+  const displayImageUrl = imageUrl || banner?.imageUrl || '';
+  const displayIsActive = hasBanner ? (banner?.isActive ?? true) : isActive;
 
   return (
     <div className="space-y-6">
@@ -137,62 +195,66 @@ export default function BusinessBanner() {
             Управление баннером на главной странице
           </p>
         </div>
-        <Badge className={banner.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-          {banner.isActive ? 'Активен' : 'Отключён'}
-        </Badge>
+        {hasBanner && (
+          <Badge className={displayIsActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+            {displayIsActive ? 'Активен' : 'Отключён'}
+          </Badge>
+        )}
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Показы</p>
-                <p className="text-2xl font-bold">{banner.stats.impressions.toLocaleString()}</p>
+      {hasBanner && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Показы</p>
+                  <p className="text-2xl font-bold">{stats.impressions.toLocaleString()}</p>
+                </div>
+                <Eye className="w-8 h-8 text-blue-600" />
               </div>
-              <Eye className="w-8 h-8 text-blue-600" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">за 30 дней</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Клики</p>
-                <p className="text-2xl font-bold">{banner.stats.clicks.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-1">за всё время</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Клики</p>
+                  <p className="text-2xl font-bold">{stats.clicks.toLocaleString()}</p>
+                </div>
+                <MousePointer className="w-8 h-8 text-green-600" />
               </div>
-              <MousePointer className="w-8 h-8 text-green-600" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">за 30 дней</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">CTR</p>
-                <p className="text-2xl font-bold">{banner.stats.ctr}%</p>
+              <p className="text-xs text-muted-foreground mt-1">за всё время</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">CTR</p>
+                  <p className="text-2xl font-bold">{stats.ctr}%</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-amber-600" />
               </div>
-              <TrendingUp className="w-8 h-8 text-amber-600" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">кликабельность</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Позиция</p>
-                <p className="text-2xl font-bold">Главная</p>
+              <p className="text-xs text-muted-foreground mt-1">кликабельность</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Позиция</p>
+                  <p className="text-2xl font-bold">Главная</p>
+                </div>
+                <Image className="w-8 h-8 text-purple-600" />
               </div>
-              <Image className="w-8 h-8 text-purple-600" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">топ страницы</p>
-          </CardContent>
-        </Card>
-      </div>
+              <p className="text-xs text-muted-foreground mt-1">страница города</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Banner preview & upload */}
@@ -204,42 +266,19 @@ export default function BusinessBanner() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {banner.imageUrl ? (
-              <div className="relative group">
-                <img
-                  src={banner.imageUrl}
-                  alt="Banner preview"
-                  className="w-full h-auto rounded-lg border"
-                />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                  <Button size="sm" variant="secondary">
-                    <Edit className="w-4 h-4 mr-1" />
-                    Изменить
-                  </Button>
-                  <Button size="sm" variant="destructive">
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Удалить
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  Перетащите изображение или нажмите для загрузки
-                </p>
-                <Button variant="outline">
-                  Выбрать файл
-                </Button>
-              </div>
-            )}
+            <ImageUpload
+              value={displayImageUrl}
+              onChange={(url) => setImageUrl(url)}
+              folder="afisha/banners"
+              aspectRatio={4}
+            />
 
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label>Ссылка при клике</Label>
                 <Select
-                  value={banner.linkType}
-                  onValueChange={(value) => setBanner({ ...banner, linkType: value as any })}
+                  value={linkType}
+                  onValueChange={(value) => setLinkType(value as any)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -253,13 +292,13 @@ export default function BusinessBanner() {
                 </Select>
               </div>
 
-              {banner.linkType === 'external' && (
+              {linkType === 'external' && (
                 <div className="space-y-2">
                   <Label>URL</Label>
                   <Input
                     placeholder="https://..."
-                    value={banner.link}
-                    onChange={(e) => setBanner({ ...banner, link: e.target.value })}
+                    value={externalLink}
+                    onChange={(e) => setExternalLink(e.target.value)}
                   />
                 </div>
               )}
@@ -270,141 +309,90 @@ export default function BusinessBanner() {
                   <p className="text-xs text-muted-foreground">Показывать на главной</p>
                 </div>
                 <Switch
-                  checked={banner.isActive}
-                  onCheckedChange={(checked) => setBanner({ ...banner, isActive: checked })}
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
                 />
               </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleSave}
+                disabled={updateBanner.isPending || !displayImageUrl}
+                className="flex-1"
+              >
+                {updateBanner.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {hasBanner ? 'Сохранить изменения' : 'Создать баннер'}
+              </Button>
+              {hasBanner && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={deleteBanner.isPending}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Schedule & Stats chart */}
+        {/* Info & tips */}
         <div className="space-y-6">
-          {/* Schedule */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Расписание показа
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+          {/* No banner yet */}
+          {!hasBanner && (
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center">
+                <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-semibold mb-2">Создайте свой первый баннер</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Загрузите изображение баннера, выберите ссылку и нажмите "Создать баннер"
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tips */}
+          <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <div>
-                  <Label>Показывать по расписанию</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Ограничить время показа баннера
-                  </p>
+                  <p className="font-medium text-blue-900 dark:text-blue-100">Советы для эффективного баннера</p>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 mt-1 space-y-1">
+                    <li>• Используйте яркие, контрастные цвета</li>
+                    <li>• Добавьте чёткий призыв к действию (CTA)</li>
+                    <li>• Укажите ограниченное предложение для срочности</li>
+                    <li>• Обновляйте баннер раз в 2-4 недели</li>
+                  </ul>
                 </div>
-                <Switch
-                  checked={banner.schedule.enabled}
-                  onCheckedChange={(checked) =>
-                    setBanner({
-                      ...banner,
-                      schedule: { ...banner.schedule, enabled: checked },
-                    })
-                  }
-                />
-              </div>
-
-              {banner.schedule.enabled && (
-                <div className="space-y-3 p-3 bg-muted rounded-lg">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">С</Label>
-                      <Input
-                        type="time"
-                        value={banner.schedule.startTime}
-                        onChange={(e) =>
-                          setBanner({
-                            ...banner,
-                            schedule: { ...banner.schedule, startTime: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">До</Label>
-                      <Input
-                        type="time"
-                        value={banner.schedule.endTime}
-                        onChange={(e) =>
-                          setBanner({
-                            ...banner,
-                            schedule: { ...banner.schedule, endTime: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day) => (
-                      <button
-                        key={day}
-                        className={`flex-1 py-1 text-xs rounded ${
-                          banner.schedule.days.includes(day.toLowerCase())
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-background border'
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Weekly chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Статистика за неделю</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {mockWeeklyStats.map((stat) => (
-                  <div key={stat.day} className="flex items-center gap-3">
-                    <span className="w-6 text-sm text-muted-foreground">{stat.day}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-4 bg-primary/20 rounded"
-                          style={{ width: `${(stat.impressions / maxImpressions) * 100}%` }}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {stat.impressions.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground w-16 text-right">
-                      {stat.clicks} кликов
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Tips */}
-      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 dark:text-blue-100">Советы для эффективного баннера</p>
-              <ul className="text-sm text-blue-800 dark:text-blue-200 mt-1 space-y-1">
-                <li>• Используйте яркие, контрастные цвета</li>
-                <li>• Добавьте чёткий призыв к действию (CTA)</li>
-                <li>• Укажите ограниченное предложение для срочности</li>
-                <li>• Обновляйте баннер раз в 2-4 недели</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить баннер?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Баннер будет удалён вместе со всей статистикой.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteBanner.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
