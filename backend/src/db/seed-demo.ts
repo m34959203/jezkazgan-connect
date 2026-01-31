@@ -1,5 +1,5 @@
 import { db, users, businesses, events, promotions, cities } from './index';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 // Demo business data
@@ -262,7 +262,10 @@ async function seedDemoBusinesses() {
         const existingEvent = await db
           .select()
           .from(events)
-          .where(eq(events.title, event.title))
+          .where(and(
+            eq(events.title, event.title),
+            eq(events.businessId, businessId)
+          ))
           .limit(1);
 
         if (existingEvent.length === 0) {
@@ -273,6 +276,8 @@ async function seedDemoBusinesses() {
             ...event,
           });
           console.log(`  📅 Created event: ${event.title}`);
+        } else {
+          console.log(`  📅 Event already exists: ${event.title}`);
         }
       }
 
@@ -281,7 +286,10 @@ async function seedDemoBusinesses() {
         const existingPromo = await db
           .select()
           .from(promotions)
-          .where(eq(promotions.title, promo.title))
+          .where(and(
+            eq(promotions.title, promo.title),
+            eq(promotions.businessId, businessId)
+          ))
           .limit(1);
 
         if (existingPromo.length === 0) {
@@ -292,6 +300,8 @@ async function seedDemoBusinesses() {
             isActive: true,
           });
           console.log(`  🎁 Created promotion: ${promo.title}`);
+        } else {
+          console.log(`  🎁 Promotion already exists: ${promo.title}`);
         }
       }
 
