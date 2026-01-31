@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar, MapPin, Loader2, AlertCircle, Star, Crown } from 'lucide-react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { Search, MoreHorizontal, Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Calendar as CalendarIcon, MapPin, Loader2, AlertCircle, Star, Crown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -108,7 +113,6 @@ export default function EventsPage() {
     category: '',
     cityId: '',
     businessId: '',
-    date: '',
     time: '',
     location: '',
     address: '',
@@ -116,6 +120,7 @@ export default function EventsPage() {
     isFree: true,
     image: '',
   });
+  const [selectedEventDate, setSelectedEventDate] = useState<Date | undefined>(undefined);
 
   // Load cities and businesses for dropdowns
   useEffect(() => {
@@ -229,7 +234,6 @@ export default function EventsPage() {
       category: '',
       cityId: '',
       businessId: '',
-      date: '',
       time: '',
       location: '',
       address: '',
@@ -237,10 +241,11 @@ export default function EventsPage() {
       isFree: true,
       image: '',
     });
+    setSelectedEventDate(undefined);
   };
 
   const handleCreateEvent = async () => {
-    if (!newEvent.title || !newEvent.category || !newEvent.date || !newEvent.time || !newEvent.cityId) {
+    if (!newEvent.title || !newEvent.category || !selectedEventDate || !newEvent.time || !newEvent.cityId) {
       toast({
         title: 'Заполните обязательные поля',
         description: 'Название, категория, город, дата и время обязательны',
@@ -251,7 +256,8 @@ export default function EventsPage() {
 
     setIsSubmitting(true);
     try {
-      const dateTime = new Date(`${newEvent.date}T${newEvent.time}`).toISOString();
+      const dateStr = format(selectedEventDate, 'yyyy-MM-dd');
+      const dateTime = new Date(`${dateStr}T${newEvent.time}`).toISOString();
 
       await createEvent({
         cityId: newEvent.cityId,
@@ -678,13 +684,30 @@ export default function EventsPage() {
             {/* Date and Time */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date">Дата *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={newEvent.date}
-                  onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                />
+                <Label>Дата *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !selectedEventDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedEventDate ? format(selectedEventDate, 'd MMMM yyyy', { locale: ru }) : 'Выберите дату'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedEventDate}
+                      onSelect={setSelectedEventDate}
+                      initialFocus
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="time">Время *</Label>

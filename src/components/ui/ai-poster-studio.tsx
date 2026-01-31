@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import {
   Wand2,
   Loader2,
@@ -6,19 +8,22 @@ import {
   Crown,
   Palette,
   MapPin,
-  Calendar,
+  Calendar as CalendarIcon,
   FileText,
   ChevronRight,
   Video,
   Image as ImageIcon,
   Play,
   Download,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -90,6 +95,8 @@ interface AiPosterStudioProps {
     location?: string;
     description?: string;
   };
+  /** Business city name - auto-fills location */
+  businessCity?: string;
   /** Is user a Premium subscriber */
   isPremium?: boolean;
   /** Additional CSS classes */
@@ -159,6 +166,7 @@ export function AiPosterStudio({
   onPosterGenerated,
   onVideoGenerated,
   context,
+  businessCity,
   isPremium = false,
   className,
   triggerVariant = 'outline',
@@ -170,14 +178,20 @@ export function AiPosterStudio({
 
   // Form state
   const [title, setTitle] = useState(context?.title || '');
-  const [date, setDate] = useState(context?.date || '');
-  const [location, setLocation] = useState(context?.location || '');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    context?.date ? new Date(context.date) : undefined
+  );
+  // Use businessCity as default for location
+  const [location, setLocation] = useState(context?.location || businessCity || '');
   const [description, setDescription] = useState(context?.description || '');
   const [selectedTheme, setSelectedTheme] = useState<PosterTheme>('concert-vibe');
 
   // Video specific settings
   const [videoDuration, setVideoDuration] = useState<VideoDuration>('8s');
   const [videoAspectRatio, setVideoAspectRatio] = useState<VideoAspectRatio>('16:9');
+
+  // Source image for video generation (required)
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
 
   // Generation state
   const [step, setStep] = useState<GenerationStep>('idle');
@@ -201,13 +215,14 @@ export function AiPosterStudio({
   // Update form when context changes
   useEffect(() => {
     if (context?.title) setTitle(context.title);
-    if (context?.date) setDate(context.date);
+    if (context?.date) setSelectedDate(new Date(context.date));
     if (context?.location) setLocation(context.location);
+    else if (businessCity) setLocation(businessCity);
     if (context?.description) setDescription(context.description);
-  }, [context]);
+  }, [context, businessCity]);
 
   const handleGeneratePoster = async () => {
-    if (!title.trim() || !date.trim() || !location.trim()) {
+    if (!title.trim() || !selectedDate || !location.trim()) {
       setError('Заполните название, дату и локацию');
       return;
     }
@@ -216,12 +231,14 @@ export function AiPosterStudio({
     setError(null);
     setPoster(null);
 
+    const dateStr = format(selectedDate, 'd MMMM yyyy', { locale: ru });
+
     try {
       setStep('generating');
 
       const result = await generateStudioPoster({
         title,
-        date,
+        date: dateStr,
         location,
         description,
         theme: selectedTheme,
@@ -246,8 +263,13 @@ export function AiPosterStudio({
   };
 
   const handleGenerateVideo = async () => {
-    if (!title.trim() || !date.trim() || !location.trim()) {
+    if (!title.trim() || !selectedDate || !location.trim()) {
       setError('Заполните название, дату и локацию');
+      return;
+    }
+
+    if (!sourceImage) {
+      setError('Загрузите изображение-шаблон для генерации видео');
       return;
     }
 
@@ -255,17 +277,20 @@ export function AiPosterStudio({
     setError(null);
     setVideo(null);
 
+    const dateStr = format(selectedDate, 'd MMMM yyyy', { locale: ru });
+
     try {
       setStep('generating');
 
       const result = await generateStudioVideo({
         title,
-        date,
+        date: dateStr,
         location,
         description,
         theme: selectedTheme,
         duration: videoDuration,
         aspectRatio: videoAspectRatio,
+        sourceImage: sourceImage,
       });
 
       setVideo(result);
@@ -302,8 +327,29 @@ export function AiPosterStudio({
   const resetForm = () => {
     setPoster(null);
     setVideo(null);
+    setSourceImage(null);
     setStep('idle');
     setError(null);
+  };
+
+  // Handle image upload for video source
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSourceImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Use generated poster as video source
+  const useGeneratedPosterForVideo = () => {
+    if (poster?.imageUrl) {
+      setSourceImage(poster.imageUrl);
+      setContentType('video');
+    }
   };
 
   const isVideoAvailable = studioStatus?.video?.available ?? false;
@@ -408,17 +454,34 @@ export function AiPosterStudio({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="date" className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" />
+                      <Label className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-3.5 h-3.5" />
                         Дата
                       </Label>
-                      <Input
-                        id="date"
-                        placeholder="1 февраля 2026"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        disabled={step === 'refining' || step === 'generating'}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-start text-left font-normal',
+                              !selectedDate && 'text-muted-foreground'
+                            )}
+                            disabled={step === 'refining' || step === 'generating'}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {selectedDate ? format(selectedDate, 'd MMMM yyyy', { locale: ru }) : 'Выберите дату'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={setSelectedDate}
+                            initialFocus
+                            disabled={(date) => date < new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location" className="flex items-center gap-1.5">
@@ -432,6 +495,11 @@ export function AiPosterStudio({
                         onChange={(e) => setLocation(e.target.value)}
                         disabled={step === 'refining' || step === 'generating'}
                       />
+                      {businessCity && !location.includes(businessCity) && (
+                        <p className="text-xs text-muted-foreground">
+                          Город бизнеса: {businessCity}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -508,7 +576,73 @@ export function AiPosterStudio({
               </Card>
 
               {/* Video Settings (only for video tab) */}
-              <TabsContent value="video" className="mt-0">
+              <TabsContent value="video" className="mt-0 space-y-4">
+                {/* Source Image - Required for video */}
+                <Card className={cn(
+                  'border-2',
+                  sourceImage ? 'border-green-500/50' : 'border-orange-500/50'
+                )}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                      Изображение-шаблон
+                      <Badge variant="outline" className="text-orange-600 border-orange-500/50 text-[10px]">
+                        Обязательно
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Загрузите или создайте изображение для анимации
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {sourceImage ? (
+                      <div className="relative">
+                        <img
+                          src={sourceImage}
+                          alt="Source"
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => setSourceImage(null)}
+                        >
+                          Удалить
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                          <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                          <span className="text-sm text-muted-foreground">Загрузить изображение</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={step === 'refining' || step === 'generating'}
+                          />
+                        </label>
+                        {poster && (
+                          <Button
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={useGeneratedPosterForVideo}
+                          >
+                            <Wand2 className="w-4 h-4" />
+                            Использовать созданную афишу
+                          </Button>
+                        )}
+                        <p className="text-xs text-muted-foreground text-center">
+                          Или сначала создайте афишу во вкладке "Афиша"
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Video Parameters */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -567,7 +701,7 @@ export function AiPosterStudio({
                 {step !== 'complete' && (
                   <Button
                     onClick={handleGeneratePoster}
-                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !date.trim() || !location.trim()}
+                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !selectedDate || !location.trim()}
                     className="w-full h-12 gap-2 text-base"
                     size="lg"
                   >
@@ -603,7 +737,7 @@ export function AiPosterStudio({
                 {step !== 'complete' && (
                   <Button
                     onClick={handleGenerateVideo}
-                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !date.trim() || !location.trim()}
+                    disabled={step === 'refining' || step === 'generating' || !title.trim() || !selectedDate || !location.trim() || !sourceImage}
                     className="w-full h-12 gap-2 text-base"
                     size="lg"
                   >

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import {
   ArrowLeft,
   Plus,
@@ -10,7 +12,7 @@ import {
   MousePointerClick,
   Image as ImageIcon,
   ExternalLink,
-  Calendar,
+  Calendar as CalendarIcon,
   ToggleLeft,
   ToggleRight,
   GripVertical,
@@ -53,6 +55,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   useCityBanners,
   useCreateCityBanner,
@@ -62,6 +66,7 @@ import {
 } from '@/hooks/use-api';
 import { toast } from 'sonner';
 import type { CityBanner } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface BannerFormData {
   title: string;
@@ -71,8 +76,8 @@ interface BannerFormData {
   linkType: string;
   isActive: boolean;
   businessId: string;
-  startDate: string;
-  endDate: string;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
 }
 
 const defaultFormData: BannerFormData = {
@@ -83,8 +88,8 @@ const defaultFormData: BannerFormData = {
   linkType: 'external',
   isActive: true,
   businessId: '',
-  startDate: '',
-  endDate: '',
+  startDate: undefined,
+  endDate: undefined,
 };
 
 export default function CityBannersPage() {
@@ -126,8 +131,8 @@ export default function CityBannersPage() {
       linkType: banner.linkType || 'external',
       isActive: banner.isActive,
       businessId: banner.businessId || '',
-      startDate: banner.startDate ? new Date(banner.startDate).toISOString().split('T')[0] : '',
-      endDate: banner.endDate ? new Date(banner.endDate).toISOString().split('T')[0] : '',
+      startDate: banner.startDate ? new Date(banner.startDate) : undefined,
+      endDate: banner.endDate ? new Date(banner.endDate) : undefined,
     });
     setDialogOpen(true);
   };
@@ -147,8 +152,8 @@ export default function CityBannersPage() {
         linkType: formData.linkType,
         isActive: formData.isActive,
         businessId: formData.businessId || undefined,
-        startDate: formData.startDate || undefined,
-        endDate: formData.endDate || undefined,
+        startDate: formData.startDate ? formData.startDate.toISOString() : undefined,
+        endDate: formData.endDate ? formData.endDate.toISOString() : undefined,
       };
 
       if (editingBanner) {
@@ -551,22 +556,54 @@ export default function CityBannersPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startDate">Дата начала</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                />
+                <Label>Дата начала</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !formData.startDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.startDate ? format(formData.startDate, 'd MMM yyyy', { locale: ru }) : 'Выберите'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.startDate}
+                      onSelect={(date) => setFormData({ ...formData, startDate: date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endDate">Дата окончания</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                />
+                <Label>Дата окончания</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !formData.endDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.endDate ? format(formData.endDate, 'd MMM yyyy', { locale: ru }) : 'Выберите'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.endDate}
+                      onSelect={(date) => setFormData({ ...formData, endDate: date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 

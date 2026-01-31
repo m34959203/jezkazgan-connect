@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, Crown, CalendarClock } from 'lucide-react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { ArrowLeft, Calendar as CalendarIcon, MapPin, Clock, Crown, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { VideoUpload } from '@/components/ui/video-upload';
 import { AiPosterStudio } from '@/components/ui/ai-poster-studio';
@@ -16,6 +20,7 @@ import type { PosterDetails } from '@/components/ui/poster-preview';
 import { useMyBusiness } from '@/hooks/use-api';
 import { useToast } from '@/hooks/use-toast';
 import { createEvent } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 const eventCategories = [
   { value: 'concerts', label: 'Концерты' },
@@ -39,7 +44,7 @@ export default function CreateEvent() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
@@ -86,7 +91,7 @@ export default function CreateEvent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title || !category || !date || !time) {
+    if (!title || !category || !selectedDate || !time) {
       toast({
         title: 'Заполните обязательные поля',
         description: 'Название, категория, дата и время обязательны',
@@ -99,7 +104,8 @@ export default function CreateEvent() {
 
     try {
       // Combine date and time into ISO datetime
-      const dateTime = new Date(`${date}T${time}`).toISOString();
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const dateTime = new Date(`${dateStr}T${time}`).toISOString();
 
       // Calculate publishAt for scheduled posting (Premium only)
       let publishAt: string | undefined;
@@ -219,10 +225,11 @@ export default function CreateEvent() {
                   onPosterGenerated={handlePosterGenerated}
                   context={{
                     title,
-                    date: date && time ? `${date} ${time}` : date,
-                    location: location || business?.city?.name || 'Жезказган',
+                    date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined,
+                    location: location || undefined,
                     description,
                   }}
+                  businessCity={business?.city?.name}
                   isPremium={isPremium}
                 />
                 {!isPremium && (
@@ -272,18 +279,30 @@ export default function CreateEvent() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date">Дата *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="date"
-                    type="date"
-                    className="pl-10"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                  />
-                </div>
+                <Label>Дата *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !selectedDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, 'd MMMM yyyy', { locale: ru }) : 'Выберите дату'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
@@ -344,7 +363,7 @@ export default function CreateEvent() {
                 <div className="space-y-2">
                   <Label htmlFor="publishDate">Дата публикации</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
                       id="publishDate"
                       type="date"
