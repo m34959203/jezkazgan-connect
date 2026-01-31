@@ -54,6 +54,7 @@ import BusinessBanner from "./pages/business/Banner";
 import BusinessCreateEvent from "./pages/business/CreateEvent";
 import BusinessCreatePromotion from "./pages/business/CreatePromotion";
 import BusinessAutoPublish from "./pages/business/AutoPublish";
+import BusinessStats from "./pages/business/Stats";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ const App = () => (
             <Route path="publications/promotions/new" element={<BusinessCreatePromotion />} />
             <Route path="profile" element={<BusinessProfile />} />
             <Route path="team" element={<BusinessTeam />} />
+            <Route path="stats" element={<BusinessStats />} />
             <Route path="subscription" element={<BusinessSubscription />} />
             <Route path="settings" element={<BusinessSettings />} />
             <Route path="banner" element={<BusinessBanner />} />
