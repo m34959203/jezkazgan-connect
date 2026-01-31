@@ -149,6 +149,82 @@ export function transformCloudinaryUrl(
   return url.replace('/upload/', `/upload/${transformation}/`);
 }
 
+// Upload video to Cloudinary from base64 or URL
+export async function uploadVideoToCloudinary(
+  videoData: string, // base64 data or URL
+  options?: { folder?: string }
+): Promise<{ url: string; publicId: string }> {
+  const config = getCloudinaryConfig();
+
+  if (!config.cloudName) {
+    throw new Error('CLOUDINARY_CLOUD_NAME not configured');
+  }
+
+  const folder = options?.folder || 'afisha_videos';
+  const uploadUrl = `https://api.cloudinary.com/v1_1/${config.cloudName}/video/upload`;
+
+  // Prepare form data
+  const formData = new FormData();
+
+  // Check if it's a URL or base64
+  if (videoData.startsWith('http')) {
+    // It's a URL - we need to download first and upload as base64
+    // because Google URLs require API key authentication
+    throw new Error('URL upload not supported - use base64 or download first');
+  } else if (videoData.startsWith('data:')) {
+    // It's a base64 data URL
+    formData.append('file', videoData);
+  } else {
+    // Assume it's raw base64
+    formData.append('file', `data:video/mp4;base64,${videoData}`);
+  }
+
+  formData.append('upload_preset', config.uploadPreset);
+  formData.append('folder', folder);
+  formData.append('resource_type', 'video');
+
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Cloudinary upload failed: ${error.error?.message || response.status}`);
+  }
+
+  const result = await response.json();
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+  };
+}
+
+// Download video from URL with API key authentication
+export async function downloadVideoWithAuth(
+  videoUrl: string,
+  apiKey: string
+): Promise<string> {
+  // Add API key to URL if it's a Google URL
+  let urlWithAuth = videoUrl;
+  if (videoUrl.includes('generativelanguage.googleapis.com')) {
+    const separator = videoUrl.includes('?') ? '&' : '?';
+    urlWithAuth = `${videoUrl}${separator}key=${apiKey}`;
+  }
+
+  const response = await fetch(urlWithAuth);
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Failed to download video: ${response.status} - ${errorText.substring(0, 200)}`);
+  }
+
+  // Convert to base64
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+  return `data:video/mp4;base64,${base64}`;
+}
+
 // Delete image from Cloudinary (requires API key and secret)
 export async function deleteImage(publicId: string): Promise<boolean> {
   const config = getCloudinaryConfig();
