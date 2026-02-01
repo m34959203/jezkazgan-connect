@@ -1,13 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-bekend-production.up.railway.app';
 
 // Log API configuration on startup (only in development)
 if (import.meta.env.DEV) {
-  console.log('[API] URL:', API_URL || '(same origin)');
-}
-
-// Warn if API_URL is not configured in production
-if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
-  console.warn('[API] VITE_API_URL is not configured. API calls will use same-origin.');
+  console.log('[API] URL:', API_URL);
 }
 
 // Helper function to make API requests with proper error handling
