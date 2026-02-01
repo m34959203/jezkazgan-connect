@@ -1,4 +1,44 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://afisha-bekend-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+// Log API configuration on startup (only in development)
+if (import.meta.env.DEV) {
+  console.log('[API] URL:', API_URL || '(same origin)');
+}
+
+// Warn if API_URL is not configured in production
+if (!import.meta.env.VITE_API_URL && import.meta.env.PROD) {
+  console.warn('[API] VITE_API_URL is not configured. API calls will use same-origin.');
+}
+
+// Helper function to make API requests with proper error handling
+async function apiRequest<T>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  const fullUrl = `${API_URL}${url}`;
+
+  try {
+    const res = await fetch(fullUrl, options);
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      const errorMessage = errorBody.error || errorBody.message || `HTTP ${res.status}`;
+      console.error(`[API] ${options?.method || 'GET'} ${url} failed:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return res.json();
+  } catch (error) {
+    // Network errors (CORS, DNS, connection refused, etc.)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error(`[API] Network error for ${options?.method || 'GET'} ${fullUrl}`);
+      console.error('[API] This usually means: CORS issue, server unreachable, or wrong API URL');
+      console.error('[API] Current API_URL:', API_URL || '(same origin)');
+      throw new Error(`Не удалось подключиться к серверу. Проверьте интернет-соединение.`);
+    }
+    throw error;
+  }
+}
 
 export interface City {
   id: string;
@@ -168,16 +208,11 @@ export async function fetchPromotions(params?: {
 
 // Auth functions
 export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  return apiRequest<{ user: User; token: string }>('/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Login failed');
-  }
-  return res.json();
 }
 
 export async function register(data: {
@@ -186,16 +221,11 @@ export async function register(data: {
   name?: string;
   phone?: string;
 }): Promise<{ user: User; token: string }> {
-  const res = await fetch(`${API_URL}/auth/register`, {
+  return apiRequest<{ user: User; token: string }>('/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Registration failed');
-  }
-  return res.json();
 }
 
 // Fetch current user from /auth/me
