@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown, Shield, LogOut, Building2 } from 'lucide-react';
+import { Menu, X, Search, Bell, User, MapPin, Loader2, Check, ChevronsUpDown, Shield, LogOut, Building2, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useCities, useCurrentUser, useLogout } from '@/hooks/use-api';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from '@/components/ThemeProvider';
 
 const navLinks = [
   { href: '/', label: 'Афиша' },
@@ -22,6 +24,36 @@ const navLinks = [
   { href: '/businesses', label: 'Бизнесы' },
   { href: '/community', label: 'Сообщество' },
 ];
+
+function MobileThemeToggle() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('dark');
+    else if (theme === 'dark') setTheme('system');
+    else setTheme('light');
+  };
+
+  const getLabel = () => {
+    if (theme === 'light') return 'Светлая тема';
+    if (theme === 'dark') return 'Тёмная тема';
+    return 'Системная тема';
+  };
+
+  return (
+    <button
+      onClick={cycleTheme}
+      className="px-4 py-3 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 w-full text-left"
+    >
+      {resolvedTheme === 'dark' ? (
+        <Moon className="w-4 h-4" />
+      ) : (
+        <Sun className="w-4 h-4" />
+      )}
+      {getLabel()}
+    </button>
+  );
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -141,6 +173,7 @@ export function Header() {
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
             </Button>
+            <ThemeToggle />
 
             {user ? (
               <DropdownMenu>
@@ -230,6 +263,7 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
+              <MobileThemeToggle />
               {isBusiness && (
                 <Link
                   to="/business"
