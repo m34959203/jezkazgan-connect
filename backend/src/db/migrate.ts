@@ -774,6 +774,28 @@ export async function runMigrations() {
     console.log('[Migration] ✓ Indexes created for collaborations tables');
 
     // ============================================
+    // ADD is_image_ai_generated COLUMN (Kazakhstan AI Law compliance)
+    // ============================================
+
+    await sql`
+      DO $$ BEGIN
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS is_image_ai_generated BOOLEAN DEFAULT false;
+      EXCEPTION
+        WHEN duplicate_column THEN NULL;
+      END $$;
+    `;
+    console.log('[Migration] ✓ Added is_image_ai_generated column to events table');
+
+    await sql`
+      DO $$ BEGIN
+        ALTER TABLE promotions ADD COLUMN IF NOT EXISTS is_image_ai_generated BOOLEAN DEFAULT false;
+      EXCEPTION
+        WHEN duplicate_column THEN NULL;
+      END $$;
+    `;
+    console.log('[Migration] ✓ Added is_image_ai_generated column to promotions table');
+
+    // ============================================
     // ADD NEW EVENT CATEGORIES
     // ============================================
 
